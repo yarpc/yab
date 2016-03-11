@@ -109,18 +109,29 @@ func TestTChannelCallSuccess(t *testing.T) {
 }
 
 func TestTChannelCallError(t *testing.T) {
-	svr, transport := setupServerAndTransport(t)
-	defer svr.Close()
-
 	ctx, cancel := tchannel.NewContext(time.Second)
 	defer cancel()
 
-	req := &Request{
-		Method: "echo",
-		Body:   []byte{1},
+	tests := []struct {
+		ctx    context.Context
+		method string
+		errMsg string
+	}{
+		{ctx, "echo", "no handler"},
+		{context.Background(), "", "timeout required"},
 	}
-	_, err := transport.Call(ctx, req)
 
-	require.Error(t, err, "Call should fail")
-	assert.Contains(t, err.Error(), "no handler")
+	svr, transport := setupServerAndTransport(t)
+	defer svr.Close()
+
+	for _, tt := range tests {
+		req := &Request{
+			Method: tt.method,
+			Body:   []byte{1},
+		}
+		_, err := transport.Call(tt.ctx, req)
+
+		require.Error(t, err, "Call should fail")
+		assert.Contains(t, err.Error(), tt.errMsg)
+	}
 }
