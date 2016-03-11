@@ -58,3 +58,22 @@ func TestMapKeys(t *testing.T) {
 		assert.Equal(t, tt.want, got, "MapKeys result mismatch")
 	}
 }
+
+func TestMapKeysInvalidType(t *testing.T) {
+	tests := []struct {
+		msg string
+		v   interface{}
+	}{
+		{"*int", new(int)},
+		{"string", "test"},
+		{"struct", struct{}{}},
+		{"*struct", &struct{}{}},
+		{"invalid map type (int key)", map[int]string{1: "a"}},
+	}
+
+	for _, tt := range tests {
+		assert.Panics(t, func() {
+			MapKeys(tt.v)
+		}, "%v: %v", tt.msg, tt.v)
+	}
+}
