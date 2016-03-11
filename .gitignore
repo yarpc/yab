@@ -1,0 +1,8 @@
+# Binaries
+/tbench
+*.test
+
+# Profiling output
+*.prof
+
+/vendor

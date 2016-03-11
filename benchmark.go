@@ -1,0 +1,158 @@
+// Copyright (c) 2016 Uber Technologies, Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+package main
+
+import (
+	"runtime"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"github.com/uber/tbench/ratelimit"
+	"github.com/uber/tbench/transport"
+)
+
+// setGoMaxProcs sets runtime.GOMAXPROCS if the option is set
+// and returns the number of GOMAXPROCS configured.
+func (o BenchmarkOptions) setGoMaxProcs() int {
+	if o.NumCPUs > 0 {
+		runtime.GOMAXPROCS(o.NumCPUs)
+	}
+	return runtime.GOMAXPROCS(-1)
+}
+
+func (o BenchmarkOptions) getNumConnections(goMaxProcs int) int {
+	if o.Connections > 0 {
+		return o.Connections
+	}
+
+	// If the user doesn't specify a number of connections, choose a sane default.
+	return goMaxProcs * 2
+}
+
+type runToken struct {
+	requestsLeft int64
+	limiter      ratelimit.Limiter
+}
+
+func (t *runToken) More() bool {
+	t.limiter.Take()
+	return atomic.AddInt64(&t.requestsLeft, -1) >= 0
+}
+
+func (t *runToken) Next() *runToken {
+	return t
+}
+
+func newRunToken(maxRequests, rps int, maxDuration time.Duration) *runToken {
+	limiter := ratelimit.NewInfinite()
+	if rps > 0 {
+		limiter = ratelimit.New(rps)
+	}
+
+	t := &runToken{
+		requestsLeft: int64(maxRequests),
+		limiter:      limiter,
+	}
+	time.AfterFunc(maxDuration, func() {
+		atomic.StoreInt64(&t.requestsLeft, 0)
+	})
+
+	return t
+}
+
+func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run *runToken) {
+	for cur := run; cur.More(); cur = cur.Next() {
+		latency, err := m.call(t)
+		if err != nil {
+			s.recordError(err)
+			continue
+		}
+
+		s.recordLatency(latency)
+	}
+}
+
+func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
+	opts := allOpts.BOpts
+
+	// By default, benchmarks are disabled. At least MaxDuration needs to
+	// be set to enable them.
+	if opts.MaxDuration == 0 {
+		return
+	}
+
+	goMaxProcs := opts.setGoMaxProcs()
+	numConns := opts.getNumConnections(goMaxProcs)
+	out.Printf("Benchmark parameters:\n")
+	out.Printf("  CPUs:            %v\n", goMaxProcs)
+	out.Printf("  Connections:     %v\n", numConns)
+	out.Printf("  Concurrency:     %v\n", opts.Concurrency)
+	out.Printf("  Max requests:    %v\n", opts.MaxRequests)
+	out.Printf("  Max duration:    %v\n", opts.MaxDuration)
+	out.Printf("  Max RPS:         %v\n", opts.RPS)
+
+	// Warm up number of connections.
+	connections, err := m.WarmTransports(numConns, allOpts.TOpts)
+	if err != nil {
+		out.Fatalf("Failed to create connections: %v", err)
+	}
+
+	var wg sync.WaitGroup
+	states := make([]*benchmarkState, len(connections)*opts.Concurrency)
+	for i := range states {
+		states[i] = newBenchmarkState()
+	}
+
+	rt := newRunToken(opts.MaxRequests, opts.RPS, opts.MaxDuration)
+
+	start := time.Now()
+	for i, c := range connections {
+		for j := 0; j < opts.Concurrency; j++ {
+			state := states[i*opts.Concurrency+j]
+
+			wg.Add(1)
+			go func(c transport.Transport) {
+				defer wg.Done()
+				runWorker(c, m, state, rt)
+			}(c)
+		}
+	}
+
+	// TODO: Support streaming updates.
+
+	// Wait for all the worker goroutines to end.
+	wg.Wait()
+	total := time.Since(start)
+
+	// Merge all the states into 0
+	overall := states[0]
+	for _, s := range states[1:] {
+		overall.merge(s)
+	}
+
+	overall.printErrors(out)
+	overall.printLatencies(out)
+
+	out.Printf("Elapsed time:      %v\n", (total / time.Millisecond * time.Millisecond))
+	out.Printf("Total requests:    %v\n", len(overall.latencies))
+	out.Printf("RPS:               %.2f\n", float64(len(overall.latencies))/total.Seconds())
+}
