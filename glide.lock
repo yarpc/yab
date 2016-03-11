@@ -1,0 +1,31 @@
+hash: 9c5ae201877c264f697dbe3f6609ede8f1a8c371507ad520889f8f6bbfc67054
+updated: 2016-03-10T23:02:10.899434856-08:00
+imports:
+- name: github.com/apache/thrift
+  version: 23d6746079d7b5fdb38214387c63f987e68a6d8f
+  subpackages:
+  - lib/go/thrift
+- name: github.com/jessevdk/go-flags
+  version: 6b9493b3cb60367edd942144879646604089e3f7
+- name: github.com/thriftrw/thriftrw-go
+  version: fa2079dcd5e7f71ecd4a1af10a428b1e21f5bf75
+  subpackages:
+  - ast
+  - compile
+  - protocol
+  - wire
+  - idl
+  - protocol/binary
+  - idl/internal
+- name: github.com/uber/tchannel-go
+  version: 5c2734fb6946fdb9b2486e794bcb8f9bdf5b67b9
+  subpackages:
+  - thrift
+  - tnet
+  - typed
+  - thrift/gen-go/meta
+- name: golang.org/x/net
+  version: 6c89489cafabcbc76df9dbf84ebf07204673fecf
+  subpackages:
+  - context
+devImports: []

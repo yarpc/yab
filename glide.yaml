@@ -1,0 +1,15 @@
+package: github.com/uber/tbench
+import:
+- package: github.com/jessevdk/go-flags
+- package: github.com/thriftrw/thriftrw-go
+  subpackages:
+  - ast
+  - compile
+  - protocol
+  - wire
+- package: github.com/uber/tchannel-go
+  subpackages:
+  - thrift
+- package: golang.org/x/net
+  subpackages:
+  - context
