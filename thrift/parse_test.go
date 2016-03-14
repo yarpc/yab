@@ -92,6 +92,11 @@ func TestParseRequest(t *testing.T) {
 				10: i32 arg_i32,
 				11: bool arg_bool,
 				12: double arg_double,
+				13: optional list<string> str_list,
+				14: optional set<string> str_set,
+				15: optional map<string, i32> s_i_map;
+				16: optional map<i32, i32> i_i_map;
+				17: optional map<bool, i32> b_i_map;
       )
     }
 
@@ -251,6 +256,121 @@ func TestParseRequest(t *testing.T) {
 					},
 				})},
 			},
+		},
+		{
+			request: map[string]interface{}{
+				"str_list": []interface{}{"a", "b", "c"},
+			},
+			want: []wire.Field{{
+				ID: 13,
+				Value: wire.NewValueList(wire.List{
+					ValueType: wire.TBinary,
+					Size:      3,
+					Items: wire.ValueListFromSlice([]wire.Value{
+						wire.NewValueString("a"),
+						wire.NewValueString("b"),
+						wire.NewValueString("c"),
+					}),
+				}),
+			}},
+		},
+		{
+			// wrong type for list
+			request: map[string]interface{}{
+				"str_list": "asd",
+			},
+			errMsg: "must be specified using list[*]",
+		},
+		{
+			// wrong type for value in the list
+			request: map[string]interface{}{
+				"str_list": []interface{}{"a", 1, "c"},
+			},
+			errMsg: "list item failed",
+		},
+		{
+			request: map[string]interface{}{
+				"str_set": []interface{}{"a", "b", "c"},
+			},
+			want: []wire.Field{{
+				ID: 14,
+				Value: wire.NewValueSet(wire.Set{
+					ValueType: wire.TBinary,
+					Size:      3,
+					Items: wire.ValueListFromSlice([]wire.Value{
+						wire.NewValueString("a"),
+						wire.NewValueString("b"),
+						wire.NewValueString("c"),
+					}),
+				}),
+			}},
+		},
+		{
+			request: map[string]interface{}{
+				"s_i_map": map[string]interface{}{
+					"a": json.Number("1"),
+					"b": json.Number("2"),
+					"c": json.Number("3"),
+				},
+			},
+			want: []wire.Field{{
+				ID: 15,
+				Value: wire.NewValueMap(wire.Map{
+					KeyType:   wire.TBinary,
+					ValueType: wire.TI32,
+					Size:      3,
+					Items: wire.MapItemListFromSlice([]wire.MapItem{
+						{wire.NewValueString("a"), wire.NewValueI32(1)},
+						{wire.NewValueString("b"), wire.NewValueI32(2)},
+						{wire.NewValueString("c"), wire.NewValueI32(3)},
+					}),
+				}),
+			}},
+		},
+		{
+			request: map[string]interface{}{
+				"i_i_map": map[string]interface{}{
+					"2": json.Number("1"),
+					"1": json.Number("2"),
+				},
+			},
+			want: []wire.Field{{
+				ID: 16,
+				Value: wire.NewValueMap(wire.Map{
+					KeyType:   wire.TI32,
+					ValueType: wire.TI32,
+					Size:      2,
+					Items: wire.MapItemListFromSlice([]wire.MapItem{
+						{wire.NewValueI32(2), wire.NewValueI32(1)},
+						{wire.NewValueI32(1), wire.NewValueI32(2)},
+					}),
+				}),
+			}},
+		},
+		{
+			// map is not the right type.
+			request: map[string]interface{}{
+				"s_i_map": "asd",
+			},
+			errMsg: "map must be specified using map[string]*",
+		},
+		{
+			// map key type is wrong.
+			request: map[string]interface{}{
+				"b_i_map": map[string]interface{}{
+					"asd": json.Number("1"),
+				},
+			},
+			errMsg: "map key (asd) failed",
+		},
+		{
+			// map value type is wrong.
+			request: map[string]interface{}{
+				"b_i_map": map[string]interface{}{
+					"true": "asd",
+				},
+			},
+			errMsg: "map value (asd) failed",
 		},
 	}
 
