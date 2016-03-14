@@ -21,8 +21,10 @@
 package thrift
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/thriftrw/thriftrw-go/ast"
 	"github.com/thriftrw/thriftrw-go/compile"
@@ -67,6 +69,84 @@ func structToValue(fieldGroup compile.FieldGroup, value interface{}) (wire.Struc
 	}
 
 	return wire.Struct{Fields: fields}, nil
+}
+
+func listToValue(t string, spec compile.TypeSpec, value interface{}) (wire.List, error) {
+	valueList, ok := value.([]interface{})
+	if !ok {
+		return wire.List{}, fmt.Errorf("%v must be specified using list[*]", t)
+	}
+
+	values := make([]wire.Value, len(valueList))
+	for i, v := range valueList {
+		wv, err := toWireValue(spec, v)
+		if err != nil {
+			return wire.List{}, fmt.Errorf("%v item failed: %v", t, err)
+		}
+
+		values[i] = wv
+	}
+
+	return wire.List{
+		ValueType: spec.TypeCode(),
+		Size:      len(values),
+		Items:     wire.ValueListFromSlice(values),
+	}, nil
+}
+
+// JSON only allows keys to be strings, but the Thrift type may declare
+// a non-string type as the key. If the Thrift key type is not string or binary,
+// try to unmarshal the string as JSON and use wireToValue.
+func convertMapKey(keySpec compile.TypeSpec, value string) interface{} {
+	if keySpec.TypeCode() == wire.TBinary {
+		return value
+	}
+
+	var data interface{}
+	decoder := json.NewDecoder(strings.NewReader(value))
+	decoder.UseNumber()
+	if err := decoder.Decode(&data); err == nil {
+		return data
+	}
+
+	// Since we couldn't unmarshal the string as JSON, just use it directly.
+	return value
+}
+
+// mapToValue converts a map from JSON to a wire.Map.
+// TODO: Allow specifying maps using a []MapItem form so the user
+// can cleanly use non-string/int keys.
+func mapToValue(keySpec, valueSpec compile.TypeSpec, value interface{}) (wire.Map, error) {
+	valueMap, ok := value.(map[string]interface{})
+	if !ok {
+		return wire.Map{}, fmt.Errorf("map must be specified using map[string]*")
+	}
+
+	items := make([]wire.MapItem, 0, len(valueMap))
+	for k, v := range valueMap {
+		keyValue := convertMapKey(keySpec, k)
+		kw, err := toWireValue(keySpec, keyValue)
+		if err != nil {
+			return wire.Map{}, fmt.Errorf("map key (%v) failed: %v", k, err)
+		}
+
+		vw, err := toWireValue(valueSpec, v)
+		if err != nil {
+			return wire.Map{}, fmt.Errorf("map value (%v) for key (%v) failed: %v", k, v, err)
+		}
+
+		items = append(items, wire.MapItem{
+			Key:   kw,
+			Value: vw,
+		})
+	}
+
+	return wire.Map{
+		KeyType:   keySpec.TypeCode(),
+		ValueType: valueSpec.TypeCode(),
+		Size:      len(valueMap),
+		Items:     wire.MapItemListFromSlice(items),
+	}, nil
 }
 
 // checkStructValue checks that the given wire.Struct is valid for the given spec.
@@ -121,16 +201,26 @@ func toWireValue(spec compile.TypeSpec, value interface{}) (w wire.Value, err er
 		}
 		w = wire.NewValueStruct(structValue)
 	case wire.TList:
-		panic("list not yet supported")
+		lspec := spec.(*compile.ListSpec)
+		var wireValue wire.List
+		wireValue, err = listToValue("list", lspec.ValueSpec, value)
+		w = wire.NewValueList(wireValue)
 	case wire.TSet:
-		panic("set not yet supported")
+		lspec := spec.(*compile.SetSpec)
+		var wireValue wire.List
+		wireValue, err = listToValue("set", lspec.ValueSpec, value)
+		w = wire.NewValueSet(wire.Set(wireValue))
 	case wire.TMap:
-		panic("map not yet supported")
+		mspec := spec.(*compile.MapSpec)
+		var wireValue wire.Map
+		wireValue, err = mapToValue(mspec.KeySpec, mspec.ValueSpec, value)
+		w = wire.NewValueMap(wireValue)
 	default:
-		panic("Unknown type???")
+		panic(fmt.Sprintf("got unknown TypeCode in spec: %v", spec))
 	}
 
 	if err != nil {
+		// TODO: Error messages should use the thrift field name, not type.
 		return wire.Value{}, fmt.Errorf("field %q %v", spec.ThriftName(), err)
 	}
 	return w, nil

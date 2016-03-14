@@ -109,6 +109,6 @@ func parseBinary(value interface{}) ([]byte, error) {
 	case string:
 		return []byte(v), nil
 	default:
-		return nil, fmt.Errorf("cannot parse string from %q of type %T", value, v)
+		return nil, fmt.Errorf("cannot parse string from: type %T, value %v", value, v)
 	}
 }
