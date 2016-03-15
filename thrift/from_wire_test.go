@@ -133,14 +133,33 @@ func TestValueFromWireSuccess(t *testing.T) {
 			v:    i32s(10, 11, 12, 13),
 		},
 		{
-			w: makeWireMap(wire.TI32, wire.TBinary, 3, func(i int) (key, value wire.Value) {
-				return wire.NewValueI32(int32(i)), wire.NewValueString(fmt.Sprintf("%v-v", i))
+			w: makeWireMap(wire.TBinary, wire.TBinary, 3, func(i int) (key, value wire.Value) {
+				return wire.NewValueString(fmt.Sprintf("%v-k", i)), wire.NewValueString(fmt.Sprintf("%v-v", i))
 			}),
-			spec: &compile.MapSpec{KeySpec: compile.I32Spec, ValueSpec: compile.StringSpec},
-			v: map[interface{}]interface{}{
-				int32(0): "0-v",
-				int32(1): "1-v",
-				int32(2): "2-v",
+			spec: &compile.MapSpec{KeySpec: compile.StringSpec, ValueSpec: compile.StringSpec},
+			v: map[string]interface{}{
+				"0-k": "0-v",
+				"1-k": "1-v",
+				"2-k": "2-v",
+			},
+		},
+		{
+			// map<list<string>,string>
+			w: makeWireMap(wire.TList, wire.TBinary, 3, func(i int) (key, value wire.Value) {
+				key = makeWireList(wire.TBinary, i, func(i int) wire.Value {
+					return wire.NewValueString(fmt.Sprintf("k%v", i))
+				})
+				return key, wire.NewValueString(fmt.Sprintf("%v-v", i))
+			}),
+			spec: &compile.MapSpec{
+				KeySpec:   &compile.ListSpec{ValueSpec: compile.StringSpec},
+				ValueSpec: compile.StringSpec,
+			},
+			// The key is JSON serialized if it's not a string.
+			v: map[string]interface{}{
+				"[]":          "0-v",
+				`["k0"]`:      "1-v",
+				`["k0","k1"]`: "2-v",
 			},
 		},
 		{
