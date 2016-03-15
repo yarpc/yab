@@ -370,7 +370,7 @@ func TestParseRequest(t *testing.T) {
 					"true": "asd",
 				},
 			},
-			errMsg: "map value (asd) failed",
+			errMsg: "map value (asd) for key (true) failed",
 		},
 	}
 

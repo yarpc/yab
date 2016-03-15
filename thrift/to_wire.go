@@ -132,7 +132,7 @@ func mapToValue(keySpec, valueSpec compile.TypeSpec, value interface{}) (wire.Ma
 
 		vw, err := toWireValue(valueSpec, v)
 		if err != nil {
-			return wire.Map{}, fmt.Errorf("map value (%v) for key (%v) failed: %v", k, v, err)
+			return wire.Map{}, fmt.Errorf("map value (%v) for key (%v) failed: %v", v, k, err)
 		}
 
 		items = append(items, wire.MapItem{
