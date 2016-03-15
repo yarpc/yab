@@ -384,8 +384,9 @@ func TestParseRequest(t *testing.T) {
 			continue
 		}
 		if assert.NoError(t, err, "Expected no error for %v", req) {
-			want := wire.Struct{Fields: tt.want}
-			assert.Equal(t, want, got, "Fields mismatch for %v", req)
+			want := wire.NewValueStruct(wire.Struct{Fields: tt.want})
+			assert.True(t, wire.ValuesAreEqual(want, wire.NewValueStruct(got)),
+				"Parsed mismatch for %v:\n want %v\n  got %v\n", req, want, got)
 		}
 	}
 }
