@@ -21,6 +21,7 @@
 package thrift
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/thriftrw/thriftrw-go/compile"
@@ -91,8 +92,8 @@ func valueFromWireSet(spec *compile.SetSpec, w wire.Set) ([]interface{}, error) 
 	}, wire.List(w))
 }
 
-func valueFromWireMap(spec *compile.MapSpec, w wire.Map) (map[interface{}]interface{}, error) {
-	result := make(map[interface{}]interface{}, w.Size)
+func valueFromWireMap(spec *compile.MapSpec, w wire.Map) (map[string]interface{}, error) {
+	result := make(map[string]interface{}, w.Size)
 	values := wire.MapItemListToSlice(w.Items, w.Size)
 	for _, v := range values {
 		key, err := valueFromWire(spec.KeySpec, v.Key)
@@ -105,9 +106,19 @@ func valueFromWireMap(spec *compile.MapSpec, w wire.Map) (map[interface{}]interf
 			return nil, specMapItemMismatch{"value", err}
 		}
 
-		// Note: If the key is not hashable, this will fail.
-		// We might want to use a []MapItem to represent maps in that case.
-		result[key] = value
+		// Note: If the key is not hashable, we marshal it to a string and use that.
+		// We might want to use a []MapItem instead to represent the map.
+		if keyS, ok := key.(string); ok {
+			result[keyS] = value
+			continue
+		}
+
+		bs, err := json.Marshal(key)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal key object: %v\nkey: %v", err, key)
+		}
+
+		result[string(bs)] = value
 	}
 	return result, nil
 }
