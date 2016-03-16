@@ -81,7 +81,7 @@ func TestBenchmarkStateLatencies(t *testing.T) {
 	state := newBenchmarkState(stats)
 
 	var latencies []time.Duration
-	for i := 0; i < 10000; i++ {
+	for i := 0; i <= 10000; i++ {
 		latency := time.Duration(i) * time.Microsecond
 		state.recordLatency(latency)
 		latencies = append(latencies, latency)
@@ -97,6 +97,7 @@ func TestBenchmarkStateLatencies(t *testing.T) {
 		"0.9900: 9.9ms",
 		"0.9990: 9.99ms",
 		"0.9995: 9.995ms",
+		"1.0000: 10ms",
 	}
 	bufStr := buf.String()
 	for _, msg := range expected {
@@ -114,7 +115,7 @@ func TestBenchmarkStateLatencies(t *testing.T) {
 func TestBenchmarkStateMergeLatencies(t *testing.T) {
 	state1 := newBenchmarkState(statsd.Noop)
 	state2 := newBenchmarkState(statsd.Noop)
-	for i := 0; i < 10000; i++ {
+	for i := 0; i <= 10000; i++ {
 		if i%2 == 0 {
 			state1.recordLatency(time.Duration(i) * time.Microsecond)
 		} else {
@@ -133,6 +134,7 @@ func TestBenchmarkStateMergeLatencies(t *testing.T) {
 		"0.9900: 9.9ms",
 		"0.9990: 9.99ms",
 		"0.9995: 9.995ms",
+		"1.0000: 10ms",
 	}
 	bufStr := buf.String()
 	for _, msg := range expected {
@@ -154,5 +156,61 @@ func TestErrorToMessage(t *testing.T) {
 	for _, tt := range tests {
 		got := errorToMessage(tt.err)
 		assert.Equal(t, tt.want, got, "%q should be mapped to %q", tt.err.Error(), tt.want)
+	}
+}
+
+func timeDurationSeq(start, step time.Duration, count int) []time.Duration {
+	durations := make([]time.Duration, count)
+	c := start
+	for i := 0; i < count; i++ {
+		durations[i] = c
+		c += step
+	}
+	return durations
+}
+
+func TestBenchmarkStateGetQuantilePanics(t *testing.T) {
+	state := newBenchmarkState(statsd.Noop)
+
+	tests := []float64{-0.1, 1.0000001, 10}
+	for _, tt := range tests {
+		assert.Panics(t, func() {
+			state.getQuantile(tt)
+		}, "Invalid quantile %v should cause panic", tt)
+	}
+}
+
+func TestBenchmarkStateGetQuantileSuccess(t *testing.T) {
+	seq10 := timeDurationSeq(0, 10, 11 /* 0 to 100 inclusive */)
+
+	tests := []struct {
+		latencies []time.Duration
+		q         float64
+		want      time.Duration
+	}{
+		{nil, 0.0, 0},
+		{nil, 0.5, 0},
+		{nil, 1.0, 0},
+		{[]time.Duration{1}, 0.0, 1},
+		{[]time.Duration{1}, 0.5, 1},
+		{[]time.Duration{1}, 1.0, 1},
+		{seq10, 0.0, 0},
+		{seq10, 0.5, 50},
+		{seq10, 1.0, 100},
+		{seq10, 0.2, 20},
+		{seq10, 0.3, 30},
+		// Test linear interpolation
+		{seq10, 0.22, 22},
+		{seq10, 0.25, 25},
+		{seq10, 0.29, 29},
+	}
+
+	for _, tt := range tests {
+		state := newBenchmarkState(statsd.Noop)
+		for _, d := range tt.latencies {
+			state.recordLatency(d)
+		}
+		got := state.getQuantile(tt.q)
+		assert.Equal(t, tt.want, got, "P%v of %v mismatch", tt.q, tt.latencies)
 	}
 }
