@@ -55,4 +55,7 @@ type BenchmarkOptions struct {
 	Connections int `long:"connections" description:"The number of TCP connections to use"`
 	Concurrency int `long:"concurrency" default:"1" description:"The number of concurrent calls per connection"`
 	RPS         int `long:"rps" default:"0" description:"Limit on the number of requests per second. The default (0) is no limit."`
+
+	// Benchmark metrics can optionally be reported via statsd.
+	StatsdHostPort string `long:"statsd" description:"Optional host:port of a StatsD server to report metrics"`
 }

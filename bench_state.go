@@ -25,16 +25,19 @@ import (
 	"time"
 
 	"github.com/uber/tbench/sorted"
+	"github.com/uber/tbench/statsd"
 )
 
 type benchmarkState struct {
+	statter   statsd.Client
 	errors    map[string]int
 	latencies []time.Duration
 }
 
-func newBenchmarkState() *benchmarkState {
+func newBenchmarkState(statter statsd.Client) *benchmarkState {
 	return &benchmarkState{
-		errors: make(map[string]int),
+		statter: statter,
+		errors:  make(map[string]int),
 	}
 }
 
@@ -45,6 +48,7 @@ func (s *benchmarkState) recordError(err error) {
 
 	msg := errorToMessage(err)
 	s.errors[msg]++
+	s.statter.Inc("error")
 }
 
 func (s *benchmarkState) merge(other *benchmarkState) {
@@ -56,6 +60,8 @@ func (s *benchmarkState) merge(other *benchmarkState) {
 
 func (s *benchmarkState) recordLatency(d time.Duration) {
 	s.latencies = append(s.latencies, d)
+	s.statter.Inc("success")
+	s.statter.Timing("latency", d)
 }
 
 func (s *benchmarkState) printLatencies(out output) {

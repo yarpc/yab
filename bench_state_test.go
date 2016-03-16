@@ -26,12 +26,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/uber/tbench/statsd"
+
 	"github.com/stretchr/testify/assert"
 )
 
 func TestBenchmarkStateErrors(t *testing.T) {
-	state1 := newBenchmarkState()
-	state2 := newBenchmarkState()
+	stats1 := newFakeStatsClient()
+	state1 := newBenchmarkState(stats1)
+	state2 := newBenchmarkState(statsd.Noop)
 
 	for i, ms := range []int{91, 9, 80, 800, 810, 100, 1020} {
 		err := fmt.Errorf("failed after %vms", ms)
@@ -60,19 +63,28 @@ func TestBenchmarkStateErrors(t *testing.T) {
 	for msg, count := range expected {
 		assert.Contains(t, bufStr, fmt.Sprintf("%4d: %v", count, msg), "Error output missing")
 	}
+
+	assert.Equal(t, map[string]int{
+		"error": 4,
+	}, stats1.Counters, "Statsd counters mismatch")
 }
 
 func TestBenchmarkStateNoError(t *testing.T) {
-	state := newBenchmarkState()
+	state := newBenchmarkState(statsd.Noop)
 	buf, out := getOutput(t)
 	state.printErrors(out)
 	assert.Equal(t, 0, buf.Len(), "Expected no output with no errors, got: %s", buf.String())
 }
 
 func TestBenchmarkStateLatencies(t *testing.T) {
-	state := newBenchmarkState()
+	stats := newFakeStatsClient()
+	state := newBenchmarkState(stats)
+
+	var latencies []time.Duration
 	for i := 0; i < 10000; i++ {
-		state.recordLatency(time.Duration(i) * time.Microsecond)
+		latency := time.Duration(i) * time.Microsecond
+		state.recordLatency(latency)
+		latencies = append(latencies, latency)
 	}
 
 	buf, out := getOutput(t)
@@ -90,11 +102,18 @@ func TestBenchmarkStateLatencies(t *testing.T) {
 	for _, msg := range expected {
 		assert.Contains(t, bufStr, msg, "Latency output missing")
 	}
+
+	assert.Equal(t, map[string]int{
+		"success": len(latencies),
+	}, stats.Counters, "Statsd counters mismatch")
+	assert.Equal(t, map[string][]time.Duration{
+		"latency": latencies,
+	}, stats.Timers, "Statsd timers mismatch")
 }
 
 func TestBenchmarkStateMergeLatencies(t *testing.T) {
-	state1 := newBenchmarkState()
-	state2 := newBenchmarkState()
+	state1 := newBenchmarkState(statsd.Noop)
+	state2 := newBenchmarkState(statsd.Noop)
 	for i := 0; i < 10000; i++ {
 		if i%2 == 0 {
 			state1.recordLatency(time.Duration(i) * time.Microsecond)

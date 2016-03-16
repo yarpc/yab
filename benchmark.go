@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/uber/tbench/ratelimit"
+	"github.com/uber/tbench/statsd"
 	"github.com/uber/tbench/transport"
 )
 
@@ -116,10 +117,15 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 		out.Fatalf("Failed to create connections: %v", err)
 	}
 
+	statter, err := statsd.NewClient(opts.StatsdHostPort, allOpts.TOpts.ServiceName, allOpts.ROpts.MethodName)
+	if err != nil {
+		out.Fatalf("Failed to create statsd client: %v", err)
+	}
+
 	var wg sync.WaitGroup
 	states := make([]*benchmarkState, len(connections)*opts.Concurrency)
 	for i := range states {
-		states[i] = newBenchmarkState()
+		states[i] = newBenchmarkState(statter)
 	}
 
 	rt := newRunToken(opts.MaxRequests, opts.RPS, opts.MaxDuration)
