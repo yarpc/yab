@@ -29,6 +29,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
+	"net/url"
 	"os"
 	"strings"
 
@@ -57,6 +58,31 @@ func remapLocalHost(hostPorts []string) {
 	}
 }
 
+func protocolFor(hostPort string) string {
+	// If we get a pure host:port, then we assume tchannel.
+	if _, _, err := net.SplitHostPort(hostPort); err == nil && !strings.Contains(hostPort, "://") {
+		return "tchannel"
+	}
+
+	u, err := url.ParseRequestURI(hostPort)
+	if err != nil {
+		return "unknown"
+	}
+
+	return u.Scheme
+}
+
+// ensureSameProtocol must get at least one host:port.
+func ensureSameProtocol(hostPorts []string) (string, error) {
+	lastProtocol := protocolFor(hostPorts[0])
+	for _, hp := range hostPorts[1:] {
+		if p := protocolFor(hp); lastProtocol != p {
+			return "", fmt.Errorf("found mixed protocols, expected all to be %v, got %v", lastProtocol, p)
+		}
+	}
+	return lastProtocol, nil
+}
+
 func getTransport(opts TransportOptions) (transport.Transport, error) {
 	if opts.ServiceName == "" {
 		return nil, errServiceRequired
@@ -75,16 +101,36 @@ func getTransport(opts TransportOptions) (transport.Transport, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse host file: %v", err)
 		}
+
+		if len(hostPorts) == 0 {
+			return nil, errPeerRequired
+		}
 	}
 
-	remapLocalHost(hostPorts)
+	protocol, err := ensureSameProtocol(hostPorts)
+	if err != nil {
+		return nil, err
+	}
 
-	topts := transport.TChannelOptions{
-		SourceService: "tbench-" + os.Getenv("USER"),
+	sourceService := "tbench-" + os.Getenv("USER")
+
+	if protocol == "tchannel" {
+		remapLocalHost(hostPorts)
+
+		topts := transport.TChannelOptions{
+			SourceService: sourceService,
+			TargetService: opts.ServiceName,
+			HostPorts:     hostPorts,
+		}
+		return transport.TChannel(topts)
+	}
+
+	hopts := transport.HTTPOptions{
+		SourceService: sourceService,
 		TargetService: opts.ServiceName,
-		HostPorts:     hostPorts,
+		URLs:          hostPorts,
 	}
-	return transport.TChannel(topts)
+	return transport.HTTP(hopts)
 }
 
 func parseHostFile(filename string) ([]string, error) {
