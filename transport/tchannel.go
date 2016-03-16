@@ -54,8 +54,11 @@ func TChannel(opts TChannelOptions) (Transport, error) {
 		level = *opts.LogLevel
 	}
 
+	// TODO: set trace sample rate to 1 for the initial request.
+	zero := float64(0)
 	ch, err := tchannel.NewChannel(opts.SourceService, &tchannel.ChannelOptions{
-		Logger: tchannel.NewLevelLogger(tchannel.SimpleLogger, level),
+		Logger:          tchannel.NewLevelLogger(tchannel.SimpleLogger, level),
+		TraceSampleRate: &zero,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create TChannel: %v", err)

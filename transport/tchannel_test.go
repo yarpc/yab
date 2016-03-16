@@ -85,6 +85,7 @@ func TestTChannelCallSuccess(t *testing.T) {
 	defer svr.Close()
 
 	testutils.RegisterFunc(svr, "echo", func(ctx context.Context, args *raw.Args) (*raw.Res, error) {
+		assert.False(t, tchannel.CurrentSpan(ctx).TracingEnabled(), "Tracing should be disabled")
 		return &raw.Res{
 			Arg2: args.Arg2,
 			Arg3: args.Arg3,
