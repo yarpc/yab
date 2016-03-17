@@ -21,6 +21,7 @@
 package main
 
 import (
+	"fmt"
 	"sort"
 	"time"
 
@@ -68,7 +69,7 @@ func (s *benchmarkState) printLatencies(out output) {
 	// TODO JSON output?
 	sort.Sort(byDuration(s.latencies))
 	out.Printf("Latencies:\n")
-	for _, quantile := range []float64{0.5, 0.9, 0.95, 0.99, 0.999, 0.9995} {
+	for _, quantile := range []float64{0.5, 0.9, 0.95, 0.99, 0.999, 0.9995, 1.0} {
 		out.Printf("  %.4f: %v\n", quantile, s.getQuantile(quantile))
 	}
 }
@@ -88,8 +89,31 @@ func (s *benchmarkState) printErrors(out output) {
 }
 
 func (s *benchmarkState) getQuantile(q float64) time.Duration {
-	index := int(q * float64(len(s.latencies)))
-	return s.latencies[index]
+	if q < 0 || q > 1 {
+		panic(fmt.Sprintf("got unexpected quantile: %v, must be in range [0, 1]", q))
+	}
+
+	numLatencies := len(s.latencies)
+	switch numLatencies {
+	case 0:
+		return 0
+	case 1:
+		return s.latencies[0]
+	}
+
+	lastIndex := numLatencies - 1
+
+	exactIdx := q * float64(lastIndex)
+	leftIdx := int(exactIdx)
+	if leftIdx >= lastIndex {
+		return s.latencies[lastIndex]
+	}
+
+	rightIdx := leftIdx + 1
+	rightBias := exactIdx - float64(leftIdx)
+	leftBias := 1 - rightBias
+
+	return time.Duration(float64(s.latencies[leftIdx])*leftBias + float64(s.latencies[rightIdx])*rightBias)
 }
 
 type byDuration []time.Duration
