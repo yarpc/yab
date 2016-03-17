@@ -26,6 +26,68 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestProtocolFor(t *testing.T) {
+	tests := []struct {
+		hostPort string
+		protocol string
+	}{
+		{"1.1.1.1:1", "tchannel"},
+		{"some.host:1234", "tchannel"},
+		{"1.1.1.1", "unknown"},
+		{"ftp://1.1.1.1", "ftp"},
+		{"http://1.1.1.1", "http"},
+		{"https://1.1.1.1", "https"},
+		{"://asd", "unknown"},
+	}
+
+	for _, tt := range tests {
+		got := protocolFor(tt.hostPort)
+		assert.Equal(t, tt.protocol, got, "protocolFor(%v)", tt.hostPort)
+	}
+}
+
+func TestEnsureSameProtocol(t *testing.T) {
+	tests := []struct {
+		hostPorts []string
+		want      string // if want is empty, expect an error.
+	}{
+		{
+			// tchannel host:ports
+			hostPorts: []string{"1.1.1.1:1234", "2.2.2.2:1234"},
+			want:      "tchannel",
+		},
+		{
+			// only hosts without port
+			hostPorts: []string{"1.1.1.1", "2.2.2.2"},
+			want:      "unknown",
+		},
+		{
+			hostPorts: []string{"http://1.1.1.1", "http://2.2.2.2:8080"},
+			want:      "http",
+		},
+		{
+			// mix of http and https
+			hostPorts: []string{"https://1.1.1.1", "http://2.2.2.2:8080"},
+		},
+		{
+			// mix of tchannel and unknown
+			hostPorts: []string{"1.1.1.1:1234", "1.1.1.1"},
+		},
+	}
+
+	for _, tt := range tests {
+		got, err := ensureSameProtocol(tt.hostPorts)
+		if tt.want == "" {
+			assert.Error(t, err, "Expect error for %v", tt.hostPorts)
+			continue
+		}
+
+		if assert.NoError(t, err, "Expect no error for %v", tt.hostPorts) {
+			assert.Equal(t, tt.want, got, "Wrong protocol for %v", tt.hostPorts)
+		}
+	}
+}
+
 func TestGetTransport(t *testing.T) {
 	tests := []struct {
 		opts   TransportOptions
@@ -53,8 +115,19 @@ func TestGetTransport(t *testing.T) {
 			errMsg: errPeerListFile.Error(),
 		},
 		{
+			opts:   TransportOptions{ServiceName: "svc", HostPortFile: "testdata/empty.txt"},
+			errMsg: errPeerRequired.Error(),
+		},
+		{
 			opts:   TransportOptions{ServiceName: "svc", HostPorts: []string{"1.1.1.1:1"}, HostPortFile: "testdata/valid_peerlist.json"},
 			errMsg: errPeerOptions.Error(),
+		},
+		{
+			opts: TransportOptions{ServiceName: "svc", HostPorts: []string{"http://1.1.1.1"}},
+		},
+		{
+			opts:   TransportOptions{ServiceName: "svc", HostPorts: []string{"1.1.1.1:1", "http://1.1.1.1"}},
+			errMsg: "found mixed protocols",
 		},
 	}
 
