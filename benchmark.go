@@ -26,9 +26,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/uber/tbench/ratelimit"
-	"github.com/uber/tbench/statsd"
-	"github.com/uber/tbench/transport"
+	"github.com/yarpc/yab/ratelimit"
+	"github.com/yarpc/yab/statsd"
+	"github.com/yarpc/yab/transport"
 )
 
 // setGoMaxProcs sets runtime.GOMAXPROCS if the option is set

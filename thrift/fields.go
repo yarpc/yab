@@ -23,7 +23,7 @@ package thrift
 import (
 	"sort"
 
-	"github.com/uber/tbench/sorted"
+	"github.com/yarpc/yab/sorted"
 
 	"github.com/thriftrw/thriftrw-go/compile"
 	"github.com/thriftrw/thriftrw-go/wire"

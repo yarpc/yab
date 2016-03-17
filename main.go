@@ -29,8 +29,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/uber/tbench/thrift"
-	"github.com/uber/tbench/transport"
+	"github.com/yarpc/yab/thrift"
+	"github.com/yarpc/yab/transport"
 
 	"github.com/jessevdk/go-flags"
 	"github.com/thriftrw/thriftrw-go/compile"

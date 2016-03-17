@@ -28,7 +28,7 @@ import (
 	"strings"
 
 	"github.com/thriftrw/thriftrw-go/compile"
-	"github.com/uber/tbench/sorted"
+	"github.com/yarpc/yab/sorted"
 )
 
 // getRequestInput parses a JSON user request and returns a map.
