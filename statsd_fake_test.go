@@ -24,7 +24,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/uber/tbench/statsd"
+	"github.com/yarpc/yab/statsd"
 )
 
 type fakeStatsd struct {

@@ -25,8 +25,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/uber/tbench/sorted"
-	"github.com/uber/tbench/statsd"
+	"github.com/yarpc/yab/sorted"
+	"github.com/yarpc/yab/statsd"
 )
 
 type benchmarkState struct {

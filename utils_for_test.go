@@ -28,7 +28,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/uber/tbench/thrift"
+	"github.com/yarpc/yab/thrift"
 
 	"github.com/stretchr/testify/require"
 	"github.com/thriftrw/thriftrw-go/compile"

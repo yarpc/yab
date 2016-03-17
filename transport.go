@@ -33,7 +33,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/uber/tbench/transport"
+	"github.com/yarpc/yab/transport"
 
 	"github.com/uber/tchannel-go"
 )

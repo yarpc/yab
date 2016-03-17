@@ -26,7 +26,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/uber/tbench/statsd"
+	"github.com/yarpc/yab/statsd"
 
 	"github.com/stretchr/testify/assert"
 )
