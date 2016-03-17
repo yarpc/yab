@@ -10,7 +10,7 @@ missing message envelope support.
 `yab` is currently in **alpha** status.
 
 
-## Installing
+### Installing
 
 If you have go installed, simply run the following to install the latest version:
 ```bash
@@ -19,7 +19,7 @@ go get -u -f github.com/yarpc/yab
 
 This will install `yab` to `$GOPATH/bin/yab`.
 
-## Usage
+### Usage
 
 ```
 Usage:
@@ -49,7 +49,7 @@ Help Options:
   -h, --help         Show this help message
   ```
 
-## Making a single request
+### Making a single request
 
 The following examples assume that the Thrift service running looks like:
 ```thrift
