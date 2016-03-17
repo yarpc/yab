@@ -1,5 +1,5 @@
 # Binaries
-/tbench
+/yab
 *.test
 
 # Profiling output

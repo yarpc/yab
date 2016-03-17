@@ -112,7 +112,7 @@ func getTransport(opts TransportOptions) (transport.Transport, error) {
 		return nil, err
 	}
 
-	sourceService := "tbench-" + os.Getenv("USER")
+	sourceService := "yab-" + os.Getenv("USER")
 
 	if protocol == "tchannel" {
 		remapLocalHost(hostPorts)

@@ -66,7 +66,7 @@ func createStatsd(statsdHostPort, service, method string) (statsd.Statter, error
 	method = r.ReplaceAllString(method, "-")
 	user = r.ReplaceAllString(user, "-")
 
-	prefix := fmt.Sprintf("tbench.%v.%v.%v", user, service, method)
+	prefix := fmt.Sprintf("yab.%v.%v.%v", user, service, method)
 	return newStatsD(statsdHostPort, prefix, 300*time.Millisecond, 0)
 }
 

@@ -71,7 +71,7 @@ func TestTChannelConstructor(t *testing.T) {
 func setupServerAndTransport(t *testing.T) (*tchannel.Channel, Transport) {
 	svr := testutils.NewServer(t, testutils.NewOpts().DisableLogVerification())
 	transport, err := TChannel(TChannelOptions{
-		SourceService: "tbench",
+		SourceService: "yab",
 		TargetService: svr.ServiceName(),
 		HostPorts:     []string{svr.PeerInfo().HostPort},
 	})

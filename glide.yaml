@@ -1,4 +1,4 @@
-package: github.com/uber/tbench
+package: github.com/uber/yab
 import:
 - package: github.com/jessevdk/go-flags
 - package: github.com/thriftrw/thriftrw-go

@@ -100,7 +100,7 @@ func TestNewClientCreate(t *testing.T) {
 		os.Setenv("USER", "te.=?ster")
 		newStatsD = func(addr string, prefix string, flushInterval time.Duration, flushBytes int) (statsd.Statter, error) {
 			assert.Equal(t, "1.1.1.1:1", addr, "statsd host:port")
-			assert.Equal(t, "tbench.te---ster.s-v-c.m--ethod", prefix, "statsd prefix")
+			assert.Equal(t, "yab.te---ster.s-v-c.m--ethod", prefix, "statsd prefix")
 			assert.Equal(t, 300*time.Millisecond, flushInterval, "statsd flush interval")
 			return tt.retStatter, tt.retErr
 		}

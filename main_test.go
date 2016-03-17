@@ -251,7 +251,7 @@ func TestMain(t *testing.T) {
 
 	echoAddr := echoServer(t, fooMethod, nil)
 	os.Args = []string{
-		"tbench",
+		"yab",
 		"-t", validThrift,
 		"foo", fooMethod,
 		"-p", echoAddr,
