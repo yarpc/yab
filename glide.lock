@@ -1,14 +1,18 @@
-hash: 9c5ae201877c264f697dbe3f6609ede8f1a8c371507ad520889f8f6bbfc67054
-updated: 2016-03-10T23:02:10.899434856-08:00
+hash: 58a3f270f53fafeaef50923b802499db02ea83060fbe6c65f295811147386e3b
+updated: 2016-04-01T16:25:55.216235387-07:00
 imports:
 - name: github.com/apache/thrift
   version: 23d6746079d7b5fdb38214387c63f987e68a6d8f
   subpackages:
   - lib/go/thrift
+- name: github.com/cactus/go-statsd-client
+  version: 725f76bd0300c1f9562e76fd94c27aa17e41243e
+  subpackages:
+  - statsd
 - name: github.com/jessevdk/go-flags
   version: 6b9493b3cb60367edd942144879646604089e3f7
 - name: github.com/thriftrw/thriftrw-go
-  version: fa2079dcd5e7f71ecd4a1af10a428b1e21f5bf75
+  version: 331b3b5e410ef32ec0513048dc7bb85b65234767
   subpackages:
   - ast
   - compile
@@ -18,9 +22,10 @@ imports:
   - protocol/binary
   - idl/internal
 - name: github.com/uber/tchannel-go
-  version: 5c2734fb6946fdb9b2486e794bcb8f9bdf5b67b9
+  version: 08671e7060a917eaafa2e6fac0a01b0b247eb60b
   subpackages:
   - thrift
+  - atomic
   - tnet
   - typed
   - thrift/gen-go/meta
