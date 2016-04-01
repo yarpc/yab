@@ -187,13 +187,11 @@ func TestValueFromWireSuccess(t *testing.T) {
 			spec: &compile.StructSpec{
 				Name: "S",
 				Type: ast.StructType,
-				Fields: compile.FieldGroup{
-					"s": &compile.FieldSpec{
-						ID:   1,
-						Name: "s",
-						Type: compile.StringSpec,
-					},
-				},
+				Fields: compile.FieldGroup{{
+					ID:   1,
+					Name: "s",
+					Type: compile.StringSpec,
+				}},
 			},
 			v: map[string]interface{}{
 				"s": "foo",
@@ -221,14 +219,12 @@ func TestValueFromWireSuccess(t *testing.T) {
 			spec: &compile.StructSpec{
 				Name: "S",
 				Type: ast.StructType,
-				Fields: compile.FieldGroup{
-					"s": &compile.FieldSpec{
-						ID:      1,
-						Name:    "s",
-						Type:    compile.StringSpec,
-						Default: compile.ConstantString("foo"),
-					},
-				},
+				Fields: compile.FieldGroup{{
+					ID:      1,
+					Name:    "s",
+					Type:    compile.StringSpec,
+					Default: compile.ConstantString("foo"),
+				}},
 			},
 			v: map[string]interface{}{
 				"s": "foo",
@@ -312,13 +308,11 @@ func TestValueFromWireError(t *testing.T) {
 			spec: &compile.StructSpec{
 				Name: "S",
 				Type: ast.StructType,
-				Fields: compile.FieldGroup{
-					"s": &compile.FieldSpec{
-						ID:   1,
-						Name: "s",
-						Type: compile.StringSpec,
-					},
-				},
+				Fields: compile.FieldGroup{{
+					ID:   1,
+					Name: "s",
+					Type: compile.StringSpec,
+				}},
 			},
 			err: specValueMismatch{"S",
 				specStructFieldMismatch{"s", specTypeMismatch{specified: wire.TBinary, got: wire.TI32}},

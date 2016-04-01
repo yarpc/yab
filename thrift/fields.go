@@ -29,8 +29,18 @@ import (
 	"github.com/thriftrw/thriftrw-go/wire"
 )
 
-func fieldGroupToValue(fields compile.FieldGroup, request map[string]interface{}) ([]wire.Field, error) {
+func fieldMap(fields compile.FieldGroup) map[string]*compile.FieldSpec {
+	m := make(map[string]*compile.FieldSpec)
+	for _, f := range fields {
+		m[f.ThriftName()] = f
+	}
+	return m
+}
+
+func fieldGroupToValue(fieldsList compile.FieldGroup, request map[string]interface{}) ([]wire.Field, error) {
 	var (
+		fields = fieldMap(fieldsList)
+
 		err = fieldGroupError{available: sorted.MapKeys(fields)}
 
 		// userFields is the user-specified values by field name.
@@ -73,7 +83,7 @@ func fieldGroupToValue(fields compile.FieldGroup, request map[string]interface{}
 
 // fieldMapToValue converts the userFields to a list of wire.Field.
 // It does not do any error checking.
-func fieldsMapToValue(fields compile.FieldGroup, userFields map[string]interface{}) ([]wire.Field, error) {
+func fieldsMapToValue(fields map[string]*compile.FieldSpec, userFields map[string]interface{}) ([]wire.Field, error) {
 	wireFields := make([]wire.Field, 0, len(userFields))
 	for k, userValue := range userFields {
 		spec := fields[k]
