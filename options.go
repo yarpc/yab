@@ -31,10 +31,11 @@ type Options struct {
 
 // RequestOptions are request related options
 type RequestOptions struct {
-	ThriftFile  string `short:"t" long:"thrift" description:"Path of the .thrift file" required:"true"`
+	ThriftFile  string `short:"t" long:"thrift" description:"Path of the .thrift file"`
 	MethodName  string `short:"m" long:"method" description:"The full Thrift method name (Svc::Method) to invoke"`
 	RequestJSON string `short:"r" long:"request" description:"The request body, in JSON format"`
 	RequestFile string `short:"f" long:"file" description:"Path of a file containing the request body in JSON"`
+	Health      bool   `long:"health" description:"Hit the health endpoint, Meta::health"`
 }
 
 // TransportOptions are transport related options.

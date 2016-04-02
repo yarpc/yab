@@ -26,7 +26,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/yarpc/yab/thrift"
@@ -36,6 +35,8 @@ import (
 	"github.com/thriftrw/thriftrw-go/compile"
 	"github.com/uber/tchannel-go"
 )
+
+var errHealthAndMethod = errors.New("cannot specify method name and use --health")
 
 func findGroup(parser *flags.Parser, group string) *flags.Group {
 	if g := parser.Group.Find(group); g != nil {
@@ -74,10 +75,8 @@ func main() {
 	remaining, err := parser.Parse()
 	if err != nil {
 		if ferr, ok := err.(*flags.Error); ok {
-			if ferr.Type == flags.ErrRequired {
-				log.Fatalf("%v requires the following: Thrift file, peer, service and method",
-					filepath.Base(os.Args[0]))
-			} else if ferr.Type == flags.ErrHelp {
+			if ferr.Type == flags.ErrHelp {
+				// The flag parser will print the help page, so we just need to exit.
 				os.Exit(0)
 			}
 		}
@@ -93,7 +92,7 @@ func main() {
 func runWithOptions(opts Options, out output) {
 	// method represents the Thrift spec for the function being called.
 	// This is used for serialization of the request/response.
-	method, err := getMethodSpec(opts.ROpts)
+	method, err := getMethodSpec(&opts.ROpts)
 	if err != nil {
 		out.Fatalf("Failed while parsing input: %v\n", err)
 	}
@@ -166,7 +165,22 @@ func isFileMissing(f string) bool {
 }
 
 // getMethodSpec returns the thriftrw FunctionSpec for the user specified method.
-func getMethodSpec(opts RequestOptions) (*compile.FunctionSpec, error) {
+func getMethodSpec(opts *RequestOptions) (*compile.FunctionSpec, error) {
+	if opts.Health {
+		if opts.MethodName != "" {
+			return nil, errHealthAndMethod
+		}
+
+		file, err := getMetaFile()
+		if err != nil {
+			return nil, err
+		}
+		defer os.Remove(file)
+
+		opts.ThriftFile = file
+		opts.MethodName = "Meta::health"
+	}
+
 	if opts.ThriftFile == "" {
 		return nil, errors.New("specify a Thrift file using --thrift")
 	}
