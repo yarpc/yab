@@ -84,11 +84,23 @@ func findService(parsed *compile.Module, svcName string) (*compile.ServiceSpec, 
 }
 
 func findMethod(service *compile.ServiceSpec, methodName string) (*compile.FunctionSpec, error) {
-	if method, found := service.Functions[methodName]; found {
+	functions := service.Functions
+
+	if service.Parent != nil {
+		// Generate a list of functions that includes the inherited functions.
+		functions = make(map[string]*compile.FunctionSpec)
+		for cur := service; cur != nil; cur = cur.Parent {
+			for name, f := range cur.Functions {
+				functions[name] = f
+			}
+		}
+	}
+
+	if method, found := functions[methodName]; found {
 		return method, nil
 	}
 
-	available := sorted.MapKeys(service.Functions)
+	available := sorted.MapKeys(functions)
 	errMsg := "no Thrift method specified, specify --method Service::Method"
 	if methodName != "" {
 		errMsg = fmt.Sprintf("could not find method %q in %q", methodName, service.Name)
