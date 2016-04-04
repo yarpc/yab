@@ -144,15 +144,31 @@ func TestFindMethod(t *testing.T) {
       void f1()
       i32 f2(1: i32 i)
     }
+
+		service S1 {
+			void m1()
+		}
+
+		service S2 extends S1 {
+			void m2()
+		}
+
+		service S3 extends S2 {
+			void m3()
+		}
   `)
-	svc, _ := findService(parsed, "Foo")
 
 	tests := []struct {
+		svc    string
 		f      string
 		errMsg string
 	}{
-		{f: "f1"},
-		{f: "f2"},
+		{svc: "Foo", f: "f1"},
+		{svc: "Foo", f: "f2"},
+		{svc: "S2", f: "m1"},
+		{svc: "S3", f: "m1"},
+		{svc: "S3", f: "m2"},
+		{svc: "S3", f: "m3"},
 		{
 			f:      "",
 			errMsg: `no Thrift method specified`,
@@ -161,9 +177,22 @@ func TestFindMethod(t *testing.T) {
 			f:      "f3",
 			errMsg: `could not find method "f3" in "Foo"`,
 		},
+		{
+			svc:    "S1",
+			f:      "m2",
+			errMsg: "could not find method",
+		},
+		{
+			svc: "S3",
+			f: "m4",
+			errMsg: "could not find method",
+		}
 	}
 
 	for _, tt := range tests {
+		svc, err := findService(parsed, "Foo")
+		require.NoError(t, err, "Failed to find service")
+
 		got, err := findMethod(svc, tt.f)
 		if tt.errMsg != "" {
 			if assert.Error(t, err, "findMethod(%v) should fail", tt.f) {
