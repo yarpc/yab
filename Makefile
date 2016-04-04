@@ -5,7 +5,7 @@ export GO15VENDOREXPERIMENT=1
 
 .PHONY: build
 build:
-	go build $(PACKAGES)
+	go build -i $(PACKAGES)
 
 
 .PHONY: install

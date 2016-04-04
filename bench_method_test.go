@@ -36,7 +36,7 @@ func benchmarkMethodForTest(t *testing.T, methodString string) benchmarkMethod {
 		MethodName: methodString,
 	}
 
-	method, err := getMethodSpec(rOpts)
+	method, err := getMethodSpec(&rOpts)
 	require.NoError(t, err, "Failed to get method spec")
 
 	req, err := getRequest(rOpts, method)

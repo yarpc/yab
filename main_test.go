@@ -26,6 +26,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/thriftrw/thriftrw-go/compile"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/uber/tchannel-go/testutils"
 )
@@ -71,10 +73,11 @@ func TestGetRequest(t *testing.T) {
 
 func TestGetMethodSpec(t *testing.T) {
 	tests := []struct {
-		desc    string
-		opts    RequestOptions
-		errMsg  string
-		errMsgs []string
+		desc      string
+		opts      RequestOptions
+		checkSpec func(*compile.FunctionSpec)
+		errMsg    string
+		errMsgs   []string
 	}{
 		{
 			desc:   "No thrift file specified",
@@ -107,6 +110,19 @@ func TestGetMethodSpec(t *testing.T) {
 			errMsg: "could not find method",
 		},
 		{
+			desc:   "Health and method name",
+			opts:   RequestOptions{Health: true, MethodName: "And::Another"},
+			errMsg: errHealthAndMethod.Error(),
+		},
+		{
+			desc: "Health method",
+			opts: RequestOptions{Health: true},
+			checkSpec: func(spec *compile.FunctionSpec) {
+				assert.Equal(t, 0, len(spec.ArgsSpec), "health method should not have arguments")
+				assert.NotNil(t, spec.ResultSpec.ReturnType, "health method should have a return")
+			},
+		},
+		{
 			desc: "Valid Thrift file and method name",
 			opts: RequestOptions{ThriftFile: validThrift, MethodName: fooMethod},
 		},
@@ -118,10 +134,14 @@ func TestGetMethodSpec(t *testing.T) {
 			expectedErrs = append(expectedErrs, tt.errMsg)
 		}
 
-		got, err := getMethodSpec(tt.opts)
+		opts := tt.opts
+		got, err := getMethodSpec(&opts)
 		if len(expectedErrs) == 0 {
 			assert.NoError(t, err, "%v", tt.desc)
 			assert.NotNil(t, got, "%v should have result", tt.desc)
+			if tt.checkSpec != nil {
+				tt.checkSpec(got)
+			}
 			continue
 		}
 
