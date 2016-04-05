@@ -170,10 +170,12 @@ func TestFindMethod(t *testing.T) {
 		{svc: "S3", f: "m2"},
 		{svc: "S3", f: "m3"},
 		{
+			svc:    "S1",
 			f:      "",
 			errMsg: `no Thrift method specified`,
 		},
 		{
+			svc:    "Foo",
 			f:      "f3",
 			errMsg: `could not find method "f3" in "Foo"`,
 		},
@@ -190,7 +192,7 @@ func TestFindMethod(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		svc, err := findService(parsed, "Foo")
+		svc, err := findService(parsed, tt.svc)
 		require.NoError(t, err, "Failed to find service")
 
 		got, err := findMethod(svc, tt.f)
