@@ -22,8 +22,9 @@ package main
 
 import (
 	"fmt"
-	"io"
-	"io/ioutil"
+	"sync"
+
+	"github.com/thriftrw/thriftrw-go/compile"
 )
 
 // _meta_thrift is the meta.thrift file copied from https://github.com/uber/tchannel/blob/master/thrift/meta.thrift
@@ -58,13 +59,38 @@ service Meta {
 }
 `
 
-func getMetaFile() (string, error) {
-	file, err := ioutil.TempFile("", "meta.thrift")
-	if err == nil {
-		_, err = io.WriteString(file, _metaThrift)
-	}
-	if err != nil {
-		return "", fmt.Errorf("failed to write temporary meta.thrift: %v", err)
-	}
-	return file.Name(), nil
+const (
+	metaService  = "Meta"
+	healthMethod = "health"
+)
+
+var (
+	metaModuleOnce sync.Once
+	metaModule     *compile.Module
+)
+
+type metaFS struct{}
+
+func (metaFS) Read(_ string) ([]byte, error) {
+	return []byte(_metaThrift), nil
+}
+
+func (metaFS) Abs(p string) (string, error) {
+	return p, nil
+}
+
+func getMetaService() *compile.ServiceSpec {
+	metaModuleOnce.Do(func() {
+		var err error
+		metaModule, err = compile.Compile("meta.thrift", compile.Filesystem(metaFS{}))
+		if err != nil {
+			panic(fmt.Sprintf("failed to parse embedded meta.thrift: %v", err))
+		}
+	})
+
+	return metaModule.Services[metaService]
+}
+
+func getHealthSpec() (string, *compile.FunctionSpec) {
+	return metaService + "::" + healthMethod, getMetaService().Functions[healthMethod]
 }

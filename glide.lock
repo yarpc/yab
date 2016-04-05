@@ -1,5 +1,5 @@
 hash: 58a3f270f53fafeaef50923b802499db02ea83060fbe6c65f295811147386e3b
-updated: 2016-04-01T16:25:55.216235387-07:00
+updated: 2016-04-05T12:56:58.494783949-07:00
 imports:
 - name: github.com/apache/thrift
   version: 23d6746079d7b5fdb38214387c63f987e68a6d8f
@@ -12,7 +12,7 @@ imports:
 - name: github.com/jessevdk/go-flags
   version: 6b9493b3cb60367edd942144879646604089e3f7
 - name: github.com/thriftrw/thriftrw-go
-  version: 331b3b5e410ef32ec0513048dc7bb85b65234767
+  version: 653f1295612da68d9ce57e01ee1ff94fbb38a835
   subpackages:
   - ast
   - compile
@@ -22,7 +22,7 @@ imports:
   - protocol/binary
   - idl/internal
 - name: github.com/uber/tchannel-go
-  version: 08671e7060a917eaafa2e6fac0a01b0b247eb60b
+  version: 3e3e53962cc103863e644ac84dcda5169ead0467
   subpackages:
   - thrift
   - atomic

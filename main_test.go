@@ -73,11 +73,12 @@ func TestGetRequest(t *testing.T) {
 
 func TestGetMethodSpec(t *testing.T) {
 	tests := []struct {
-		desc      string
-		opts      RequestOptions
-		checkSpec func(*compile.FunctionSpec)
-		errMsg    string
-		errMsgs   []string
+		desc           string
+		opts           RequestOptions
+		overrideMethod string
+		checkSpec      func(*compile.FunctionSpec)
+		errMsg         string
+		errMsgs        []string
 	}{
 		{
 			desc:   "No thrift file specified",
@@ -115,8 +116,9 @@ func TestGetMethodSpec(t *testing.T) {
 			errMsg: errHealthAndMethod.Error(),
 		},
 		{
-			desc: "Health method",
-			opts: RequestOptions{Health: true},
+			desc:           "Health method",
+			opts:           RequestOptions{Health: true},
+			overrideMethod: "Meta::health",
 			checkSpec: func(spec *compile.FunctionSpec) {
 				assert.Equal(t, 0, len(spec.ArgsSpec), "health method should not have arguments")
 				assert.NotNil(t, spec.ResultSpec.ReturnType, "health method should have a return")
@@ -142,6 +144,11 @@ func TestGetMethodSpec(t *testing.T) {
 			if tt.checkSpec != nil {
 				tt.checkSpec(got)
 			}
+			checkMethod := opts.MethodName
+			if tt.overrideMethod != "" {
+				checkMethod = tt.overrideMethod
+			}
+			assert.Equal(t, checkMethod, opts.MethodName, "invalid MethodName")
 			continue
 		}
 
