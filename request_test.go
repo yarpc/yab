@@ -183,10 +183,10 @@ func TestFindMethod(t *testing.T) {
 			errMsg: "could not find method",
 		},
 		{
-			svc: "S3",
-			f: "m4",
+			svc:    "S3",
+			f:      "m4",
 			errMsg: "could not find method",
-		}
+		},
 	}
 
 	for _, tt := range tests {
