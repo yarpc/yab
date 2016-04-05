@@ -30,6 +30,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/uber/tchannel-go/testutils"
+	"github.com/uber/tchannel-go/thrift"
 )
 
 func TestGetRequest(t *testing.T) {
@@ -282,6 +283,25 @@ func TestMain(t *testing.T) {
 		"-t", validThrift,
 		"foo", fooMethod,
 		"-p", echoAddr,
+	}
+
+	main()
+}
+
+func TestHealthIntegration(t *testing.T) {
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+
+	// Create a server with the Meta::health endpoint.
+	server := newServer(t)
+	thrift.NewServer(server.ch)
+	defer server.shutdown()
+
+	os.Args = []string{
+		"yab",
+		"foo",
+		"-p", server.hostPort(),
+		"--health",
 	}
 
 	main()
