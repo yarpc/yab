@@ -171,14 +171,9 @@ func getMethodSpec(opts *RequestOptions) (*compile.FunctionSpec, error) {
 			return nil, errHealthAndMethod
 		}
 
-		file, err := getMetaFile()
-		if err != nil {
-			return nil, err
-		}
-		defer os.Remove(file)
-
-		opts.ThriftFile = file
-		opts.MethodName = "Meta::health"
+		methodName, spec := getHealthSpec()
+		opts.MethodName = methodName
+		return spec, nil
 	}
 
 	if opts.ThriftFile == "" {

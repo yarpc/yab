@@ -21,20 +21,22 @@
 package main
 
 import (
-	"io/ioutil"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetMetaFile(t *testing.T) {
-	f, err := getMetaFile()
-	require.NoError(t, err, "getMetaFile failed")
-	defer os.Remove(f)
+func TestMetaSpec(t *testing.T) {
+	assert.NotPanics(t, func() {
+		spec := getMetaService()
+		assert.NotNil(t, spec, "Meta service spec is nil")
+	}, "Failed to get Meta service")
 
-	contents, err := ioutil.ReadFile(f)
-	require.NoError(t, err, "Failed to read resulting meta file")
-	assert.Equal(t, _metaThrift, string(contents), "Meta file contents wrong")
+	assert.NotPanics(t, func() {
+		name, spec := getHealthSpec()
+		assert.Equal(t, "Meta::health", name, "Method name mismatch")
+		require.NotNil(t, spec, "Got nil health spec")
+		assert.Equal(t, 0, len(spec.ArgsSpec), "Health method")
+	}, "Failed to get health spec")
 }
