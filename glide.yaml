@@ -13,3 +13,9 @@ import:
 - package: golang.org/x/net
   subpackages:
   - context
+# Test dependencies
+- package: github.com/stretchr/testify
+  subpackages:
+  - assert
+  - require
+

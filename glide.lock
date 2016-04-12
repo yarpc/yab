@@ -1,5 +1,5 @@
-hash: 58a3f270f53fafeaef50923b802499db02ea83060fbe6c65f295811147386e3b
-updated: 2016-04-05T12:56:58.494783949-07:00
+hash: 569620797f9eb9da99947210cc0ed3333ffaf206997f6024e4bf2778ef79eeda
+updated: 2016-04-12T14:25:25.137420211-07:00
 imports:
 - name: github.com/apache/thrift
   version: 23d6746079d7b5fdb38214387c63f987e68a6d8f
@@ -11,6 +11,11 @@ imports:
   - statsd
 - name: github.com/jessevdk/go-flags
   version: 6b9493b3cb60367edd942144879646604089e3f7
+- name: github.com/stretchr/testify
+  version: 0744955171b0b6e1871ff9d7366abc2b7a7fcec0
+  subpackages:
+  - assert
+  - require
 - name: github.com/thriftrw/thriftrw-go
   version: 653f1295612da68d9ce57e01ee1ff94fbb38a835
   subpackages:
