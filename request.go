@@ -61,7 +61,7 @@ func unmarshalJSONInput(bs []byte) (map[string]interface{}, error) {
 
 	var data map[string]interface{}
 	if err := decoder.Decode(&data); err != nil {
-		return nil, fmt.Errorf("failed to parse request as JSON: %v", err)
+		return nil, fmt.Errorf("failed to parse JSON: %v", err)
 	}
 
 	return data, nil

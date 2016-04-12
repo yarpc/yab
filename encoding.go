@@ -21,6 +21,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 
@@ -55,6 +56,7 @@ var (
 	errNilEncoding          = errors.New("cannot Unmarshal into nil Encoding")
 	errUnrecognizedEncoding = errors.New("unrecognized encoding, must be one of: json, thrift, raw")
 	errHealthThriftOnly     = errors.New("--health can only be used with Thrift")
+	errMissingMethodName    = errors.New("no method specified, specify --method method")
 )
 
 func (e Encoding) String() string {
@@ -104,14 +106,74 @@ func (e Encoding) NewSerializer(opts RequestOptions) (Serializer, error) {
 		return thriftEncoding{method, spec}, nil
 	}
 
+	if strings.Contains(opts.MethodName, "::") {
+		e = Thrift
+	}
+
+	if opts.MethodName == "" {
+		return nil, errMissingMethodName
+	}
+
 	switch e {
 	case Thrift:
 		return newThriftEncoding(opts.ThriftFile, opts.MethodName)
 	case JSON:
-	// TODO
+		return jsonEncoding{opts.MethodName}, nil
 	case Raw:
-		// TODO
+		return rawEncoding{opts.MethodName}, nil
 	}
 
 	return nil, errUnrecognizedEncoding
+}
+
+type jsonEncoding struct {
+	methodName string
+}
+
+// Request unmarshals the input to make sure it's valid JSON, and then
+// Marshals the map to produce consistent output with whiteespace removed
+// and sorted field order.
+func (e jsonEncoding) Request(input []byte) (*transport.Request, error) {
+	data, err := unmarshalJSONInput(input)
+	if err != nil {
+		return nil, err
+	}
+
+	bs, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return &transport.Request{
+		Method: e.methodName,
+		Body:   bs,
+	}, nil
+}
+
+func (e jsonEncoding) Response(res *transport.Response) (interface{}, error) {
+	return unmarshalJSONInput(res.Body)
+}
+
+func (e jsonEncoding) IsSuccess(res *transport.Response) error {
+	_, err := e.Response(res)
+	return err
+}
+
+type rawEncoding struct {
+	methodName string
+}
+
+func (e rawEncoding) Request(input []byte) (*transport.Request, error) {
+	return &transport.Request{
+		Method: e.methodName,
+		Body:   input,
+	}, nil
+}
+
+func (e rawEncoding) Response(res *transport.Response) (interface{}, error) {
+	return res.Body, nil
+}
+
+func (e rawEncoding) IsSuccess(res *transport.Response) error {
+	return nil
 }
