@@ -31,12 +31,12 @@ import (
 	"github.com/thriftrw/thriftrw-go/compile"
 )
 
-type thriftEncoding struct {
+type thriftSerializer struct {
 	methodName string
 	spec       *compile.FunctionSpec
 }
 
-func newThriftEncoding(thriftFile, methodName string) (Serializer, error) {
+func newThriftSerializer(thriftFile, methodName string) (Serializer, error) {
 	if thriftFile == "" {
 		return nil, errors.New("specify a Thrift file using --thrift")
 	}
@@ -64,14 +64,14 @@ func newThriftEncoding(thriftFile, methodName string) (Serializer, error) {
 		return nil, err
 	}
 
-	return thriftEncoding{methodName, spec}, nil
+	return thriftSerializer{methodName, spec}, nil
 }
 
-func (e thriftEncoding) Encoding() Encoding {
+func (e thriftSerializer) Encoding() Encoding {
 	return Thrift
 }
 
-func (e thriftEncoding) Request(input []byte) (*transport.Request, error) {
+func (e thriftSerializer) Request(input []byte) (*transport.Request, error) {
 	reqMap, err := unmarshalJSONInput(input)
 	if err != nil {
 		return nil, err
@@ -88,7 +88,7 @@ func (e thriftEncoding) Request(input []byte) (*transport.Request, error) {
 	}, nil
 }
 
-func (e thriftEncoding) Response(res *transport.Response) (interface{}, error) {
+func (e thriftSerializer) Response(res *transport.Response) (interface{}, error) {
 	return thrift.ResponseBytesToMap(e.spec, res.Body)
 }
 
@@ -105,7 +105,7 @@ func findService(parsed *compile.Module, svcName string) (*compile.ServiceSpec, 
 	return nil, notFoundError{errMsg + ", available services:", available}
 }
 
-func (e thriftEncoding) IsSuccess(res *transport.Response) error {
+func (e thriftSerializer) CheckSuccess(res *transport.Response) error {
 	return thrift.CheckSuccess(e.spec, res.Body)
 }
 

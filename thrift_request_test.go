@@ -27,7 +27,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewThriftEncoding(t *testing.T) {
+func TestNewThriftSerializer(t *testing.T) {
 	tests := []struct {
 		desc         string
 		file, method string
@@ -74,7 +74,7 @@ func TestNewThriftEncoding(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got, err := newThriftEncoding(tt.file, tt.method)
+		got, err := newThriftSerializer(tt.file, tt.method)
 		if tt.errMsg == "" {
 			assert.NoError(t, err, "%v", tt.desc)
 			assert.NotNil(t, got, "%v: Invalid request")
@@ -89,7 +89,7 @@ func TestNewThriftEncoding(t *testing.T) {
 }
 
 func TestRequest(t *testing.T) {
-	serializer, err := newThriftEncoding(validThrift, "Simple::foo")
+	serializer, err := newThriftSerializer(validThrift, "Simple::foo")
 	require.NoError(t, err, "Failed to create serializer")
 
 	tests := []struct {

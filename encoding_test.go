@@ -160,7 +160,7 @@ func TestRawEncoding(t *testing.T) {
 	require.NoError(t, err, "raw.Response failed")
 	assert.Equal(t, []byte("123"), data, "raw.Response output mismatch")
 
-	assert.NoError(t, serializer.IsSuccess(nil), "IsSuccess failed")
+	assert.NoError(t, serializer.CheckSuccess(nil), "CheckSuccess failed")
 }
 
 func TestJSONEncodingRequest(t *testing.T) {
@@ -232,8 +232,8 @@ func TestJSONEncodingResponse(t *testing.T) {
 		res := &transport.Response{Body: []byte(tt.data)}
 
 		got, err := serializer.Response(res)
-		isSuccessErr := serializer.IsSuccess(res)
-		assert.Equal(t, err, isSuccessErr, "IsSuccess error should match Response")
+		CheckSuccessErr := serializer.CheckSuccess(res)
+		assert.Equal(t, err, CheckSuccessErr, "CheckSuccess error should match Response")
 
 		if tt.errMsg == "" {
 			assert.NoError(t, err, "Response(%s) failed", tt.data)

@@ -58,7 +58,7 @@ func (m benchmarkMethod) call(t transport.Transport) (time.Duration, error) {
 	duration := time.Since(start)
 
 	if err == nil {
-		err = m.serializer.IsSuccess(res)
+		err = m.serializer.CheckSuccess(res)
 	}
 	return duration, err
 }

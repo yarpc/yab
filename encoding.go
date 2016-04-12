@@ -43,8 +43,9 @@ type Serializer interface {
 	// For non-raw encodings, this is typically a map[string]interface{}.
 	Response(body *transport.Response) (interface{}, error)
 
-	// IsSuccess returns whether the given body is considered a successful response.
-	IsSuccess(body *transport.Response) error
+	// CheckSuccess checks whether the response body is a success, and if not, returns an
+	// error with the failure reason.
+	CheckSuccess(body *transport.Response) error
 }
 
 // The list of supported encodings.
@@ -108,7 +109,7 @@ func NewSerializer(opts RequestOptions) (Serializer, error) {
 		}
 
 		method, spec := getHealthSpec()
-		return thriftEncoding{method, spec}, nil
+		return thriftSerializer{method, spec}, nil
 	}
 
 	if opts.MethodName == "" {
@@ -121,28 +122,28 @@ func NewSerializer(opts RequestOptions) (Serializer, error) {
 
 	switch e {
 	case Thrift:
-		return newThriftEncoding(opts.ThriftFile, opts.MethodName)
+		return newThriftSerializer(opts.ThriftFile, opts.MethodName)
 	case JSON:
-		return jsonEncoding{opts.MethodName}, nil
+		return jsonSerializer{opts.MethodName}, nil
 	case Raw:
-		return rawEncoding{opts.MethodName}, nil
+		return rawSerializer{opts.MethodName}, nil
 	}
 
 	return nil, errUnrecognizedEncoding
 }
 
-type jsonEncoding struct {
+type jsonSerializer struct {
 	methodName string
 }
 
-func (e jsonEncoding) Encoding() Encoding {
+func (e jsonSerializer) Encoding() Encoding {
 	return JSON
 }
 
 // Request unmarshals the input to make sure it's valid JSON, and then
 // Marshals the map to produce consistent output with whiteespace removed
 // and sorted field order.
-func (e jsonEncoding) Request(input []byte) (*transport.Request, error) {
+func (e jsonSerializer) Request(input []byte) (*transport.Request, error) {
 	data, err := unmarshalJSONInput(input)
 	if err != nil {
 		return nil, err
@@ -159,34 +160,34 @@ func (e jsonEncoding) Request(input []byte) (*transport.Request, error) {
 	}, nil
 }
 
-func (e jsonEncoding) Response(res *transport.Response) (interface{}, error) {
+func (e jsonSerializer) Response(res *transport.Response) (interface{}, error) {
 	return unmarshalJSONInput(res.Body)
 }
 
-func (e jsonEncoding) IsSuccess(res *transport.Response) error {
+func (e jsonSerializer) CheckSuccess(res *transport.Response) error {
 	_, err := e.Response(res)
 	return err
 }
 
-type rawEncoding struct {
+type rawSerializer struct {
 	methodName string
 }
 
-func (e rawEncoding) Encoding() Encoding {
+func (e rawSerializer) Encoding() Encoding {
 	return Raw
 }
 
-func (e rawEncoding) Request(input []byte) (*transport.Request, error) {
+func (e rawSerializer) Request(input []byte) (*transport.Request, error) {
 	return &transport.Request{
 		Method: e.methodName,
 		Body:   input,
 	}, nil
 }
 
-func (e rawEncoding) Response(res *transport.Response) (interface{}, error) {
+func (e rawSerializer) Response(res *transport.Response) (interface{}, error) {
 	return res.Body, nil
 }
 
-func (e rawEncoding) IsSuccess(res *transport.Response) error {
+func (e rawSerializer) CheckSuccess(res *transport.Response) error {
 	return nil
 }
