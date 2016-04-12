@@ -141,7 +141,7 @@ func (e jsonSerializer) Encoding() Encoding {
 }
 
 // Request unmarshals the input to make sure it's valid JSON, and then
-// Marshals the map to produce consistent output with whiteespace removed
+// Marshals the map to produce consistent output with whitespace removed
 // and sorted field order.
 func (e jsonSerializer) Request(input []byte) (*transport.Request, error) {
 	data, err := unmarshalJSONInput(input)
