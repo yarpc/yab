@@ -33,6 +33,9 @@ type Encoding string
 
 // Serializer serializes and deserializes data for a specific encoding and method.
 type Serializer interface {
+	// Encoding returns the encoding for this serializer.
+	Encoding() Encoding
+
 	// Request creates a transport.Request from the given []byte input.
 	Request(body []byte) (*transport.Request, error)
 
@@ -46,10 +49,10 @@ type Serializer interface {
 
 // The list of supported encodings.
 const (
-	UnknownEncoding Encoding = ""
-	JSON            Encoding = "json"
-	Thrift          Encoding = "thrift"
-	Raw             Encoding = "raw"
+	UnspecifiedEncoding Encoding = ""
+	JSON                Encoding = "json"
+	Thrift              Encoding = "thrift"
+	Raw                 Encoding = "raw"
 )
 
 var (
@@ -85,7 +88,7 @@ func (e *Encoding) UnmarshalFlag(s string) error {
 
 func (e Encoding) supportsHealth() bool {
 	switch e {
-	case UnknownEncoding, Thrift:
+	case UnspecifiedEncoding, Thrift:
 		return true
 	default:
 		return false
@@ -93,7 +96,9 @@ func (e Encoding) supportsHealth() bool {
 }
 
 // NewSerializer creates a Serializer for the specific encoding.
-func (e Encoding) NewSerializer(opts RequestOptions) (Serializer, error) {
+func NewSerializer(opts RequestOptions) (Serializer, error) {
+	e := opts.Encoding
+
 	if opts.Health {
 		if !e.supportsHealth() {
 			return nil, errHealthThriftOnly
@@ -106,12 +111,12 @@ func (e Encoding) NewSerializer(opts RequestOptions) (Serializer, error) {
 		return thriftEncoding{method, spec}, nil
 	}
 
-	if strings.Contains(opts.MethodName, "::") {
-		e = Thrift
-	}
-
 	if opts.MethodName == "" {
 		return nil, errMissingMethodName
+	}
+
+	if e == UnspecifiedEncoding && strings.Contains(opts.MethodName, "::") {
+		e = Thrift
 	}
 
 	switch e {
@@ -128,6 +133,10 @@ func (e Encoding) NewSerializer(opts RequestOptions) (Serializer, error) {
 
 type jsonEncoding struct {
 	methodName string
+}
+
+func (e jsonEncoding) Encoding() Encoding {
+	return JSON
 }
 
 // Request unmarshals the input to make sure it's valid JSON, and then
@@ -161,6 +170,10 @@ func (e jsonEncoding) IsSuccess(res *transport.Response) error {
 
 type rawEncoding struct {
 	methodName string
+}
+
+func (e rawEncoding) Encoding() Encoding {
+	return Raw
 }
 
 func (e rawEncoding) Request(input []byte) (*transport.Request, error) {

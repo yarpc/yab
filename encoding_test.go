@@ -17,7 +17,7 @@ func TestEncodingUnmarshal(t *testing.T) {
 	}{
 		{
 			input: "",
-			want:  UnknownEncoding,
+			want:  UnspecifiedEncoding,
 		},
 		{
 			input: "json",
@@ -59,6 +59,7 @@ func TestNewSerializer(t *testing.T) {
 	tests := []struct {
 		encoding Encoding
 		opts     RequestOptions
+		want     Encoding
 		wantErr  error
 	}{
 		{
@@ -74,6 +75,7 @@ func TestNewSerializer(t *testing.T) {
 		{
 			encoding: Thrift,
 			opts:     RequestOptions{Health: true},
+			want:     Thrift,
 		},
 		{
 			encoding: Thrift,
@@ -89,8 +91,19 @@ func TestNewSerializer(t *testing.T) {
 			wantErr:  errUnrecognizedEncoding,
 		},
 		{
-			encoding: UnknownEncoding,
+			encoding: UnspecifiedEncoding,
 			opts:     RequestOptions{Health: true},
+			want:     Thrift,
+		},
+		{
+			encoding: UnspecifiedEncoding,
+			opts:     RequestOptions{ThriftFile: validThrift, MethodName: "Simple::foo"},
+			want:     Thrift,
+		},
+		{
+			encoding: JSON,
+			opts:     RequestOptions{MethodName: "Test::foo"},
+			want:     JSON,
 		},
 		{
 			encoding: JSON,
@@ -107,26 +120,31 @@ func TestNewSerializer(t *testing.T) {
 		{
 			encoding: JSON,
 			opts:     RequestOptions{MethodName: "method"},
+			want:     JSON,
 		},
 		{
 			encoding: Raw,
 			opts:     RequestOptions{MethodName: "method"},
+			want:     Raw,
 		},
 	}
 
 	for _, tt := range tests {
-		got, err := tt.encoding.NewSerializer(tt.opts)
-		assert.Equal(t, tt.wantErr, err, "%v.NewSerializer(%v) error", tt.encoding, tt.opts)
+		tt.opts.Encoding = tt.encoding
+		got, err := NewSerializer(tt.opts)
+		assert.Equal(t, tt.wantErr, err, "NewSerializer(%+v) error", tt.opts)
 		if err != nil {
 			continue
 		}
 
-		assert.NotNil(t, got, "%v.NewSerializer missing serializer", tt.encoding, tt.opts)
+		if assert.NotNil(t, got, "NewSerializer(%+v) missing serializer", tt.opts) {
+			assert.Equal(t, tt.want, got.Encoding(), "NewSerializer(%+v) wrong encoding", tt.opts)
+		}
 	}
 }
 
 func TestRawEncoding(t *testing.T) {
-	serializer, err := Raw.NewSerializer(RequestOptions{MethodName: "method"})
+	serializer, err := NewSerializer(RequestOptions{Encoding: Raw, MethodName: "method"})
 	require.NoError(t, err, "Failed to create raw serializer")
 
 	got, err := serializer.Request([]byte("asd"))
@@ -146,7 +164,7 @@ func TestRawEncoding(t *testing.T) {
 }
 
 func TestJSONEncodingRequest(t *testing.T) {
-	serializer, err := JSON.NewSerializer(RequestOptions{MethodName: "method"})
+	serializer, err := NewSerializer(RequestOptions{Encoding: JSON, MethodName: "method"})
 	require.NoError(t, err, "Failed to create JSON serializer")
 
 	tests := []struct {
@@ -186,7 +204,7 @@ func TestJSONEncodingRequest(t *testing.T) {
 }
 
 func TestJSONEncodingResponse(t *testing.T) {
-	serializer, err := JSON.NewSerializer(RequestOptions{MethodName: "method"})
+	serializer, err := NewSerializer(RequestOptions{Encoding: JSON, MethodName: "method"})
 	require.NoError(t, err, "Failed to create JSON serializer")
 
 	tests := []struct {

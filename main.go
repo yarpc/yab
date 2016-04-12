@@ -87,14 +87,12 @@ func main() {
 }
 
 func runWithOptions(opts Options, out output) {
-	encoding := Thrift
-
 	reqInput, err := getRequestInput(opts.ROpts)
 	if err != nil {
 		out.Fatalf("Failed while loading input: %v\n", err)
 	}
 
-	serializer, err := encoding.NewSerializer(opts.ROpts)
+	serializer, err := NewSerializer(opts.ROpts)
 	if err != nil {
 		out.Fatalf("Failed while parsing input: %v\n", err)
 	}

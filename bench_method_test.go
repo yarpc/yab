@@ -32,10 +32,11 @@ import (
 
 func benchmarkMethodForTest(t *testing.T, methodString string) benchmarkMethod {
 	rOpts := RequestOptions{
+		Encoding: Thrift,
 		ThriftFile: validThrift,
 		MethodName: methodString,
 	}
-	serializer, err := Thrift.NewSerializer(rOpts)
+	serializer, err := NewSerializer(rOpts)
 	require.NoError(t, err, "Failed to create Thrift serializer")
 
 	input, err := getRequestInput(rOpts)

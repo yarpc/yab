@@ -67,6 +67,10 @@ func newThriftEncoding(thriftFile, methodName string) (Serializer, error) {
 	return thriftEncoding{methodName, spec}, nil
 }
 
+func (e thriftEncoding) Encoding() Encoding {
+	return Thrift
+}
+
 func (e thriftEncoding) Request(input []byte) (*transport.Request, error) {
 	reqMap, err := unmarshalJSONInput(input)
 	if err != nil {
@@ -102,7 +106,7 @@ func findService(parsed *compile.Module, svcName string) (*compile.ServiceSpec, 
 }
 
 func (e thriftEncoding) IsSuccess(res *transport.Response) error {
-return thrift.CheckSuccess(e.spec, res.Body)
+	return thrift.CheckSuccess(e.spec, res.Body)
 }
 
 func findMethod(service *compile.ServiceSpec, methodName string) (*compile.FunctionSpec, error) {
