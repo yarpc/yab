@@ -21,11 +21,12 @@ test:
 
 .PHONY: install_ci
 install_ci: install
-	go get github.com/axw/gocov/gocov
-	go get github.com/mattn/goveralls
-	go get golang.org/x/tools/cmd/cover
+		go get github.com/wadey/gocovmerge
+		go get github.com/mattn/goveralls
+		go get golang.org/x/tools/cmd/cover
 
 
 .PHONY: test_ci
-test_ci:
-	goveralls -service=travis-ci -v $(PACKAGES)
+test_ci: install_ci build
+	./scripts/cover.sh $(shell go list $(PACKAGES))
+
