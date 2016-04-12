@@ -24,17 +24,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yarpc/yab/thrift"
 	"github.com/yarpc/yab/transport"
-
-	"github.com/thriftrw/thriftrw-go/compile"
 )
 
 const warmupRequests = 10
 
 type benchmarkMethod struct {
-	method *compile.FunctionSpec
-	req    *transport.Request
+	serializer Serializer
+	req        *transport.Request
 }
 
 // WarmTransport warms up a transport and returns it. The transport is warmed
@@ -61,7 +58,7 @@ func (m benchmarkMethod) call(t transport.Transport) (time.Duration, error) {
 	duration := time.Since(start)
 
 	if err == nil {
-		err = thrift.CheckSuccess(m.method, res.Body)
+		err = m.serializer.CheckSuccess(res)
 	}
 	return duration, err
 }

@@ -21,89 +21,48 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"os"
-	"strings"
-
-	"github.com/thriftrw/thriftrw-go/compile"
-	"github.com/yarpc/yab/sorted"
 )
 
-// getRequestInput parses a JSON user request and returns a map.
-func getRequestInput(opts RequestOptions) (map[string]interface{}, error) {
-	if opts.RequestFile != "" {
-		if opts.RequestFile == "-" {
-			return unmarshalReader(os.Stdin)
-		}
+// getRequestInput gets the byte body passed in by the user via flags or through a file.
+func getRequestInput(opts RequestOptions) ([]byte, error) {
+	if opts.RequestFile == "-" || opts.RequestJSON == "-" {
+		return ioutil.ReadAll(os.Stdin)
+	}
 
-		f, err := os.Open(opts.RequestFile)
-		defer f.Close()
+	if opts.RequestFile != "" {
+		bs, err := ioutil.ReadFile(opts.RequestFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open request file: %v", err)
 		}
-
-		return unmarshalReader(f)
+		return bs, nil
 	}
 
-	if opts.RequestJSON == "-" {
-		return unmarshalReader(os.Stdin)
-	}
 	if opts.RequestJSON != "" {
-		return unmarshalReader(strings.NewReader(opts.RequestJSON))
+		return []byte(opts.RequestJSON), nil
 	}
 
 	// It is valid to have an empty body.
 	return nil, nil
 }
 
-func unmarshalReader(r io.Reader) (map[string]interface{}, error) {
-	decoder := json.NewDecoder(r)
+func unmarshalJSONInput(bs []byte) (map[string]interface{}, error) {
+	// An empty body should produce an empty input map.
+	if bs == nil {
+		return make(map[string]interface{}), nil
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(bs))
 	decoder.UseNumber()
 
 	var data map[string]interface{}
 	if err := decoder.Decode(&data); err != nil {
-		return nil, fmt.Errorf("failed to parse request as JSON: %v", err)
+		return nil, fmt.Errorf("failed to parse JSON: %v", err)
 	}
 
 	return data, nil
-}
-
-func findService(parsed *compile.Module, svcName string) (*compile.ServiceSpec, error) {
-	if service, err := parsed.LookupService(svcName); err == nil {
-		return service, nil
-	}
-
-	available := sorted.MapKeys(parsed.Services)
-	errMsg := "no Thrift service specified, specify --method Service::Method"
-	if svcName != "" {
-		errMsg = fmt.Sprintf("could not find service %q", svcName)
-	}
-	return nil, notFoundError{errMsg + ", available services:", available}
-}
-
-func findMethod(service *compile.ServiceSpec, methodName string) (*compile.FunctionSpec, error) {
-	functions := service.Functions
-
-	if service.Parent != nil {
-		// Generate a list of functions that includes the inherited functions.
-		functions = make(map[string]*compile.FunctionSpec)
-		for cur := service; cur != nil; cur = cur.Parent {
-			for name, f := range cur.Functions {
-				functions[name] = f
-			}
-		}
-	}
-
-	if method, found := functions[methodName]; found {
-		return method, nil
-	}
-
-	available := sorted.MapKeys(functions)
-	errMsg := "no Thrift method specified, specify --method Service::Method"
-	if methodName != "" {
-		errMsg = fmt.Sprintf("could not find method %q in %q", methodName, service.Name)
-	}
-	return nil, notFoundError{errMsg + ", available methods:", available}
 }

@@ -32,17 +32,20 @@ import (
 
 func benchmarkMethodForTest(t *testing.T, methodString string) benchmarkMethod {
 	rOpts := RequestOptions{
+		Encoding: Thrift,
 		ThriftFile: validThrift,
 		MethodName: methodString,
 	}
+	serializer, err := NewSerializer(rOpts)
+	require.NoError(t, err, "Failed to create Thrift serializer")
 
-	method, err := getMethodSpec(&rOpts)
-	require.NoError(t, err, "Failed to get method spec")
+	input, err := getRequestInput(rOpts)
+	require.NoError(t, err, "Failed to get request input")
 
-	req, err := getRequest(rOpts, method)
-	require.NoError(t, err, "Failed to get request")
+	req, err := serializer.Request(input)
+	require.NoError(t, err, "Failed to serialize Thrift body")
 
-	return benchmarkMethod{method, req}
+	return benchmarkMethod{serializer, req}
 }
 
 func TestBenchmarkMethodWarmTransport(t *testing.T) {
