@@ -1,4 +1,4 @@
-yab
+# yab [![Build Status][ci-img]][ci] [![Coverage Status][cov-img]][cov]
 ======
 
 `yab` (Yet Another Benchmarker) is tool to benchmark YARPC services. It currently
@@ -100,3 +100,8 @@ connection (`--concurrency`).
 ```bash
 yab -t ~/keyvalue.thrift -p localhost:12345 keyvalue KeyValue::get -r '{"key": "hello"}' -d 5s --rps 100 --connections 4
 ```
+
+[ci-img]: https://travis-ci.org/yarpc/yab.svg?branch=master
+[ci]: https://travis-ci.org/yarpc/yab
+[cov-img]: https://coveralls.io/repos/github/yarpc/yab/badge.svg?branch=master
+[cov]: https://coveralls.io/github/yarpc/yab?branch=master
