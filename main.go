@@ -23,16 +23,13 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"os"
 	"time"
 
-	"github.com/yarpc/yab/thrift"
 	"github.com/yarpc/yab/transport"
 
 	"github.com/jessevdk/go-flags"
-	"github.com/thriftrw/thriftrw-go/compile"
 	"github.com/uber/tchannel-go"
 )
 
@@ -90,9 +87,14 @@ func main() {
 }
 
 func runWithOptions(opts Options, out output) {
-	// method represents the Thrift spec for the function being called.
-	// This is used for serialization of the request/response.
-	method, err := getMethodSpec(&opts.ROpts)
+	encoding := Thrift
+
+	reqInput, err := getRequestInput(opts.ROpts)
+	if err != nil {
+		out.Fatalf("Failed while loading input: %v\n", err)
+	}
+
+	serializer, err := encoding.NewSerializer(opts.ROpts)
 	if err != nil {
 		out.Fatalf("Failed while parsing input: %v\n", err)
 	}
@@ -104,7 +106,7 @@ func runWithOptions(opts Options, out output) {
 	}
 
 	// req is the transport.Request that will be used to make a call.
-	req, err := getRequest(opts.ROpts, method)
+	req, err := serializer.Request(reqInput)
 	if err != nil {
 		out.Fatalf("Failed while parsing request input: %v\n", err)
 	}
@@ -115,7 +117,7 @@ func runWithOptions(opts Options, out output) {
 	}
 
 	// responseMap converts the Thrift bytes response to a map.
-	responseMap, err := thrift.ResponseBytesToMap(method, response.Body)
+	responseMap, err := serializer.Response(response)
 	if err != nil {
 		out.Fatalf("Failed while parsing response: %v\n", err)
 	}
@@ -128,27 +130,9 @@ func runWithOptions(opts Options, out output) {
 	out.Printf("%s\n\n", bs)
 
 	runBenchmark(out, opts, benchmarkMethod{
-		method: method,
-		req:    req,
+		serializer: serializer,
+		req:        req,
 	})
-}
-
-// getRequest returns a transport.Request.
-func getRequest(opts RequestOptions, method *compile.FunctionSpec) (*transport.Request, error) {
-	reqInput, err := getRequestInput(opts)
-	if err != nil {
-		return nil, err
-	}
-
-	requestBytes, err := thrift.RequestToBytes(method, reqInput)
-	if err != nil {
-		return nil, err
-	}
-
-	return &transport.Request{
-		Method: opts.MethodName,
-		Body:   requestBytes,
-	}, nil
 }
 
 // makeRequest makes a request using the given transport.
@@ -162,46 +146,4 @@ func makeRequest(t transport.Transport, request *transport.Request) (*transport.
 func isFileMissing(f string) bool {
 	_, err := os.Stat(f)
 	return os.IsNotExist(err)
-}
-
-// getMethodSpec returns the thriftrw FunctionSpec for the user specified method.
-func getMethodSpec(opts *RequestOptions) (*compile.FunctionSpec, error) {
-	if opts.Health {
-		if opts.MethodName != "" {
-			return nil, errHealthAndMethod
-		}
-
-		methodName, spec := getHealthSpec()
-		opts.MethodName = methodName
-		return spec, nil
-	}
-
-	if opts.ThriftFile == "" {
-		return nil, errors.New("specify a Thrift file using --thrift")
-	}
-	if isFileMissing(opts.ThriftFile) {
-		return nil, fmt.Errorf("cannot find Thrift file: %q", opts.ThriftFile)
-	}
-
-	parsed, err := thrift.Parse(opts.ThriftFile)
-	if err != nil {
-		return nil, fmt.Errorf("could not parse Thrift file: %v", err)
-	}
-
-	thriftSvc, thriftMethod, err := thrift.SplitMethod(opts.MethodName)
-	if err != nil {
-		return nil, err
-	}
-
-	service, err := findService(parsed, thriftSvc)
-	if err != nil {
-		return nil, err
-	}
-
-	method, err := findMethod(service, thriftMethod)
-	if err != nil {
-		return nil, err
-	}
-
-	return method, nil
 }
