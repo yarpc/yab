@@ -269,6 +269,10 @@ func TestParseBinary(t *testing.T) {
 			want:  []byte("ab"),
 		},
 		{
+			value: map[string]interface{}{"file": "../testdata/valid.json"},
+			want:  []byte(`{"k1": "v1", "k2": 5}` + "\n"),
+		},
+		{
 			value:  []interface{}{""},
 			errMsg: "not a valid character",
 		},
@@ -295,6 +299,14 @@ func TestParseBinary(t *testing.T) {
 		{
 			value:  map[string]interface{}{"unsupported": "ab"},
 			errMsg: errBinaryObjectOptions.Error(),
+		},
+		{
+			value:  map[string]interface{}{"file": true},
+			errMsg: "file requires filename as string",
+		},
+		{
+			value:  map[string]interface{}{"file": "not-found.json"},
+			errMsg: "no such file or directory",
 		},
 		{
 			value:  json.Number("3.14159"),

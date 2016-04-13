@@ -25,11 +25,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"strconv"
 	"strings"
 )
 
-var errBinaryObjectOptions = errors.New("object input for binary/string must have one of the following keys: base64")
+var errBinaryObjectOptions = errors.New(
+	"object input for binary/string must have one of the following keys: base64, file")
 
 func parseBoolNumber(v json.Number) (bool, error) {
 	i64, err := v.Int64()
@@ -140,6 +142,15 @@ func parseBinaryMap(v map[string]interface{}) ([]byte, error) {
 		// all "=" characters out, and use RawStdEncoding (which does not need padding).
 		str = strings.TrimRight(str, "=")
 		return base64.RawStdEncoding.DecodeString(str)
+	}
+
+	if v, ok := v["file"]; ok {
+		str, ok := v.(string)
+		if !ok {
+			return nil, fmt.Errorf("file requires filename as string, got %T", v)
+		}
+
+		return ioutil.ReadFile(str)
 	}
 
 	return nil, errBinaryObjectOptions
