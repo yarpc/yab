@@ -100,14 +100,40 @@ func parseDouble(value interface{}) (float64, error) {
 	return f64, nil
 }
 
+// parseBinaryList will try to parse a list of numbers
+// or a list of strings.
+func parseBinaryList(vl []interface{}) ([]byte, error) {
+	bs := make([]byte, 0, len(vl))
+	for _, v := range vl {
+		switch v := v.(type) {
+		case json.Number:
+			vInt, err := strconv.ParseInt(v.String(), 10, 8)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse list of bytes: %v", err)
+			}
+			bs = append(bs, byte(vInt))
+		case string:
+			if len(v) != 1 {
+				return nil, fmt.Errorf("not a valid character in list of characters: %q", v)
+			}
+			bs = append(bs, v[0])
+		default:
+			return nil, fmt.Errorf("can only parse list of bytes or characters, invalid element: %q", v)
+		}
+	}
+
+	return bs, nil
+}
+
 // parseBinary can parse a string or binary.
 // If a string is given, it is used as the binary value directly.
-// TODO: Handle a list of bytes.
 // TODO: Allow the user to use base64 encoded strings.
 func parseBinary(value interface{}) ([]byte, error) {
 	switch v := value.(type) {
 	case string:
 		return []byte(v), nil
+	case []interface{}:
+		return parseBinaryList(v)
 	default:
 		return nil, fmt.Errorf("cannot parse string from: type %T, value %v", value, v)
 	}

@@ -240,9 +240,9 @@ func TestParseDouble(t *testing.T) {
 
 func TestParseBinary(t *testing.T) {
 	tests := []struct {
-		value   interface{}
-		want    []byte
-		wantErr bool
+		value  interface{}
+		want   []byte
+		errMsg string
 	}{
 		{
 			value: "",
@@ -253,27 +253,53 @@ func TestParseBinary(t *testing.T) {
 			want:  []byte("asd"),
 		},
 		{
-			value:   json.Number("3.14159"),
-			wantErr: true,
+			value: []interface{}{"a", "s", "d"},
+			want:  []byte("asd"),
 		},
 		{
-			value:   true,
-			wantErr: true,
+			value: []interface{}{json.Number("65"), json.Number("66")},
+			want:  []byte("AB"),
 		},
 		{
-			value:   1,
-			wantErr: true,
+			value:  []interface{}{""},
+			errMsg: "not a valid character",
 		},
 		{
-			value:   []interface{}{0, 0, 0},
-			wantErr: true,
+			value:  []interface{}{"a", "too long"},
+			errMsg: "not a valid character",
+		},
+		{
+			value:  []interface{}{json.Number("256")},
+			errMsg: "failed to parse list of bytes",
+		},
+		{
+			value:  []interface{}{json.Number("1.5")},
+			errMsg: "failed to parse list of bytes",
+		},
+		{
+			value:  json.Number("3.14159"),
+			errMsg: "cannot parse string",
+		},
+		{
+			value:  true,
+			errMsg: "cannot parse string",
+		},
+		{
+			value:  1,
+			errMsg: "cannot parse string",
+		},
+		{
+			value:  []interface{}{0, 0, 0},
+			errMsg: "can only parse list of bytes or characters",
 		},
 	}
 
 	for _, tt := range tests {
 		got, err := parseBinary(tt.value)
-		if tt.wantErr {
-			assert.Error(t, err, "parseBinary(%v) should fail", tt.value)
+		if tt.errMsg != "" {
+			if assert.Error(t, err, "parseBinary(%v) should fail", tt.value) {
+				assert.Contains(t, err.Error(), tt.errMsg, "parseBinary(%v) unexpected error", tt.value)
+			}
 			continue
 		}
 		if assert.NoError(t, err, "parseBinary(%v) should not fail", tt.value) {
