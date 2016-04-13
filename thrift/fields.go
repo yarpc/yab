@@ -22,6 +22,7 @@ package thrift
 
 import (
 	"sort"
+	"strconv"
 
 	"github.com/yarpc/yab/sorted"
 
@@ -29,15 +30,35 @@ import (
 	"github.com/thriftrw/thriftrw-go/wire"
 )
 
+type fields struct {
+	exact, fieldIDs, fuzzy map[string]*compile.FieldSpec
+}
+
+func (fs fields) getField(name string) (*compile.FieldSpec, bool) {
+	if f, ok := fs.exact[name]; ok {
+		return f, true
+	}
+	if f, ok := fs.fieldIDs[name]; ok {
+		return f, true
+	}
+	if f, ok := fs.fuzzy[fuzz(name)]; ok {
+		return f, true
+	}
+
+	return nil, false
+}
+
 // fieldMap returns maps from string to the field spec.
 // The first map is an exact map, which uses the name as specified in the Thrift file.
 // The second map is a fuzzy map, which will ignore case, and ignore
 // any non-alphanumberic characters.
-func fieldMap(fields compile.FieldGroup) (exact, fuzzy map[string]*compile.FieldSpec) {
-	exact = make(map[string]*compile.FieldSpec)
-	fuzzy = make(map[string]*compile.FieldSpec)
-	for _, f := range fields {
+func getFields(spec compile.FieldGroup) fields {
+	exact := make(map[string]*compile.FieldSpec)
+	fieldIDs := make(map[string]*compile.FieldSpec)
+	fuzzy := make(map[string]*compile.FieldSpec)
+	for _, f := range spec {
 		exact[f.ThriftName()] = f
+		fieldIDs[strconv.Itoa(int(f.ID))] = f
 		fuzzy[fuzz(f.ThriftName())] = f
 	}
 
@@ -46,36 +67,34 @@ func fieldMap(fields compile.FieldGroup) (exact, fuzzy map[string]*compile.Field
 		fuzzy = nil
 	}
 
-	return exact, fuzzy
+	return fields{
+		exact:    exact,
+		fieldIDs: fieldIDs,
+		fuzzy:    fuzzy,
+	}
 }
 
 func fieldGroupToValue(fieldsList compile.FieldGroup, request map[string]interface{}) ([]wire.Field, error) {
 	var (
-		exactFields, fuzzyFields = fieldMap(fieldsList)
+		fields = getFields(fieldsList)
 
-		err = fieldGroupError{available: sorted.MapKeys(exactFields)}
+		err = fieldGroupError{available: sorted.MapKeys(fields.exact)}
 
 		// userFields is the user-specified values by field name.
 		userFields = make(map[string]interface{})
 	)
 
 	for k, v := range request {
-		_, ok := exactFields[k]
+		field, ok := fields.getField(k)
 		if !ok {
-			// Try a fuzzy match
-			field, ok := fuzzyFields[fuzz(k)]
-			if !ok {
-				err.addNotFound(k)
-				continue
-			}
-
-			k = field.ThriftName()
+			err.addNotFound(k)
+			continue
 		}
 
-		userFields[k] = v
+		userFields[field.ThriftName()] = v
 	}
 
-	for k, arg := range exactFields {
+	for k, arg := range fields.exact {
 		if !arg.Required {
 			continue
 		}
@@ -96,7 +115,7 @@ func fieldGroupToValue(fieldsList compile.FieldGroup, request map[string]interfa
 		return nil, err
 	}
 
-	return fieldsMapToValue(exactFields, userFields)
+	return fieldsMapToValue(fields.exact, userFields)
 }
 
 // fieldMapToValue converts the userFields to a list of wire.Field.
