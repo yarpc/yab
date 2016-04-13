@@ -261,6 +261,14 @@ func TestParseBinary(t *testing.T) {
 			want:  []byte("AB"),
 		},
 		{
+			value: map[string]interface{}{"base64": "YWI="},
+			want:  []byte("ab"),
+		},
+		{
+			value: map[string]interface{}{"base64": "YWI"},
+			want:  []byte("ab"),
+		},
+		{
 			value:  []interface{}{""},
 			errMsg: "not a valid character",
 		},
@@ -277,16 +285,28 @@ func TestParseBinary(t *testing.T) {
 			errMsg: "failed to parse list of bytes",
 		},
 		{
+			value:  map[string]interface{}{"base64": true},
+			errMsg: "base64 must be specified as string",
+		},
+		{
+			value:  map[string]interface{}{"base64": "a_b"},
+			errMsg: "illegal base64 data",
+		},
+		{
+			value:  map[string]interface{}{"unsupported": "ab"},
+			errMsg: errBinaryObjectOptions.Error(),
+		},
+		{
 			value:  json.Number("3.14159"),
-			errMsg: "cannot parse string",
+			errMsg: "cannot parse binary/string",
 		},
 		{
 			value:  true,
-			errMsg: "cannot parse string",
+			errMsg: "cannot parse binary/string",
 		},
 		{
 			value:  1,
-			errMsg: "cannot parse string",
+			errMsg: "cannot parse binary/string",
 		},
 		{
 			value:  []interface{}{0, 0, 0},

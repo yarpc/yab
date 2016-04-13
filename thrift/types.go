@@ -21,11 +21,15 @@
 package thrift
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 )
+
+var errBinaryObjectOptions = errors.New("object input for binary/string must have one of the following keys: base64")
 
 func parseBoolNumber(v json.Number) (bool, error) {
 	i64, err := v.Int64()
@@ -125,16 +129,33 @@ func parseBinaryList(vl []interface{}) ([]byte, error) {
 	return bs, nil
 }
 
+func parseBinaryMap(v map[string]interface{}) ([]byte, error) {
+	if v, ok := v["base64"]; ok {
+		str, ok := v.(string)
+		if !ok {
+			return nil, fmt.Errorf("base64 must be specified as string, got: %T", v)
+		}
+
+		// Since we don't know whether the user's input is padded or not, we strip
+		// all "=" characters out, and use RawStdEncoding (which does not need padding).
+		str = strings.TrimRight(str, "=")
+		return base64.RawStdEncoding.DecodeString(str)
+	}
+
+	return nil, errBinaryObjectOptions
+}
+
 // parseBinary can parse a string or binary.
 // If a string is given, it is used as the binary value directly.
-// TODO: Allow the user to use base64 encoded strings.
 func parseBinary(value interface{}) ([]byte, error) {
 	switch v := value.(type) {
 	case string:
 		return []byte(v), nil
 	case []interface{}:
 		return parseBinaryList(v)
+	case map[string]interface{}:
+		return parseBinaryMap(v)
 	default:
-		return nil, fmt.Errorf("cannot parse string from: type %T, value %v", value, v)
+		return nil, fmt.Errorf("cannot parse binary/string from: type %T, value %v", value, v)
 	}
 }
