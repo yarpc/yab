@@ -261,6 +261,10 @@ func TestParseBinary(t *testing.T) {
 			want:  []byte("AB"),
 		},
 		{
+			value: []interface{}{json.Number("104"), "ello", "", " ", "world"},
+			want:  []byte("hello world"),
+		},
+		{
 			value: map[string]interface{}{"base64": "YWI="},
 			want:  []byte("ab"),
 		},
@@ -271,14 +275,6 @@ func TestParseBinary(t *testing.T) {
 		{
 			value: map[string]interface{}{"file": "../testdata/valid.json"},
 			want:  []byte(`{"k1": "v1", "k2": 5}` + "\n"),
-		},
-		{
-			value:  []interface{}{""},
-			errMsg: "not a valid character",
-		},
-		{
-			value:  []interface{}{"a", "too long"},
-			errMsg: "not a valid character",
 		},
 		{
 			value:  []interface{}{json.Number("256")},

@@ -119,10 +119,7 @@ func parseBinaryList(vl []interface{}) ([]byte, error) {
 			}
 			bs = append(bs, byte(vInt))
 		case string:
-			if len(v) != 1 {
-				return nil, fmt.Errorf("not a valid character in list of characters: %q", v)
-			}
-			bs = append(bs, v[0])
+			bs = append(bs, v...)
 		default:
 			return nil, fmt.Errorf("can only parse list of bytes or characters, invalid element: %q", v)
 		}
