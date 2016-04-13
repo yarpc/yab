@@ -21,11 +21,17 @@
 package thrift
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/ioutil"
 	"strconv"
 	"strings"
 )
+
+var errBinaryObjectOptions = errors.New(
+	"object input for binary/string must have one of the following keys: base64, file")
 
 func parseBoolNumber(v json.Number) (bool, error) {
 	i64, err := v.Int64()
@@ -100,15 +106,64 @@ func parseDouble(value interface{}) (float64, error) {
 	return f64, nil
 }
 
+// parseBinaryList will try to parse a list of numbers
+// or a list of strings.
+func parseBinaryList(vl []interface{}) ([]byte, error) {
+	bs := make([]byte, 0, len(vl))
+	for _, v := range vl {
+		switch v := v.(type) {
+		case json.Number:
+			vInt, err := strconv.ParseInt(v.String(), 10, 8)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse list of bytes: %v", err)
+			}
+			bs = append(bs, byte(vInt))
+		case string:
+			bs = append(bs, v...)
+		default:
+			return nil, fmt.Errorf("can only parse list of bytes or characters, invalid element: %q", v)
+		}
+	}
+
+	return bs, nil
+}
+
+func parseBinaryMap(v map[string]interface{}) ([]byte, error) {
+	if v, ok := v["base64"]; ok {
+		str, ok := v.(string)
+		if !ok {
+			return nil, fmt.Errorf("base64 must be specified as string, got: %T", v)
+		}
+
+		// Since we don't know whether the user's input is padded or not, we strip
+		// all "=" characters out, and use RawStdEncoding (which does not need padding).
+		str = strings.TrimRight(str, "=")
+		return base64.RawStdEncoding.DecodeString(str)
+	}
+
+	if v, ok := v["file"]; ok {
+		str, ok := v.(string)
+		if !ok {
+			return nil, fmt.Errorf("file requires filename as string, got %T", v)
+		}
+
+		return ioutil.ReadFile(str)
+	}
+
+	return nil, errBinaryObjectOptions
+}
+
 // parseBinary can parse a string or binary.
 // If a string is given, it is used as the binary value directly.
-// TODO: Handle a list of bytes.
-// TODO: Allow the user to use base64 encoded strings.
 func parseBinary(value interface{}) ([]byte, error) {
 	switch v := value.(type) {
 	case string:
 		return []byte(v), nil
+	case []interface{}:
+		return parseBinaryList(v)
+	case map[string]interface{}:
+		return parseBinaryMap(v)
 	default:
-		return nil, fmt.Errorf("cannot parse string from: type %T, value %v", value, v)
+		return nil, fmt.Errorf("cannot parse binary/string from: type %T, value %v", value, v)
 	}
 }
