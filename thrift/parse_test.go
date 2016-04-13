@@ -398,6 +398,26 @@ func TestParseRequest(t *testing.T) {
 			},
 			errMsg: fieldGroupError{notFound: []string{"NS"}}.Error(),
 		},
+		{
+			// allow specifying fields by field ID
+			request: map[string]interface{}{
+				"1":  json.Number("1"),
+				"9":  json.Number("3"),
+				"11": true,
+			},
+			want: []wire.Field{
+				{ID: 1, Value: wire.NewValueI8(1)},
+				{ID: 9, Value: wire.NewValueI16(3)},
+				{ID: 11, Value: wire.NewValueBool(true)},
+			},
+		},
+		{
+			// invalid field IDs should report an error though.
+			request: map[string]interface{}{
+				"999": json.Number("1"),
+			},
+			errMsg: fieldGroupError{notFound: []string{"999"}}.Error(),
+		},
 	}
 
 	for _, tt := range tests {
