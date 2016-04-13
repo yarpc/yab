@@ -29,35 +29,53 @@ import (
 	"github.com/thriftrw/thriftrw-go/wire"
 )
 
-func fieldMap(fields compile.FieldGroup) map[string]*compile.FieldSpec {
-	m := make(map[string]*compile.FieldSpec)
+// fieldMap returns maps from string to the field spec.
+// The first map is an exact map, which uses the name as specified in the Thrift file.
+// The second map is a fuzzy map, which will ignore case, and ignore
+// any non-alphanumberic characters.
+func fieldMap(fields compile.FieldGroup) (exact, fuzzy map[string]*compile.FieldSpec) {
+	exact = make(map[string]*compile.FieldSpec)
+	fuzzy = make(map[string]*compile.FieldSpec)
 	for _, f := range fields {
-		m[f.ThriftName()] = f
+		exact[f.ThriftName()] = f
+		fuzzy[fuzz(f.ThriftName())] = f
 	}
-	return m
+
+	// If there's any field clashes in the fuzzy map, skip fuzzy matching.
+	if len(exact) != len(fuzzy) {
+		fuzzy = nil
+	}
+
+	return exact, fuzzy
 }
 
 func fieldGroupToValue(fieldsList compile.FieldGroup, request map[string]interface{}) ([]wire.Field, error) {
 	var (
-		fields = fieldMap(fieldsList)
+		exactFields, fuzzyFields = fieldMap(fieldsList)
 
-		err = fieldGroupError{available: sorted.MapKeys(fields)}
+		err = fieldGroupError{available: sorted.MapKeys(exactFields)}
 
 		// userFields is the user-specified values by field name.
 		userFields = make(map[string]interface{})
 	)
 
 	for k, v := range request {
-		_, ok := fields[k]
+		_, ok := exactFields[k]
 		if !ok {
-			err.addNotFound(k)
-			continue
+			// Try a fuzzy match
+			field, ok := fuzzyFields[fuzz(k)]
+			if !ok {
+				err.addNotFound(k)
+				continue
+			}
+
+			k = field.ThriftName()
 		}
 
 		userFields[k] = v
 	}
 
-	for k, arg := range fields {
+	for k, arg := range exactFields {
 		if !arg.Required {
 			continue
 		}
@@ -78,7 +96,7 @@ func fieldGroupToValue(fieldsList compile.FieldGroup, request map[string]interfa
 		return nil, err
 	}
 
-	return fieldsMapToValue(fields, userFields)
+	return fieldsMapToValue(exactFields, userFields)
 }
 
 // fieldMapToValue converts the userFields to a list of wire.Field.
@@ -101,6 +119,25 @@ func fieldsMapToValue(fields map[string]*compile.FieldSpec, userFields map[strin
 	// Sort the fields so that we generate consistent data.
 	sort.Sort(byFieldID(wireFields))
 	return wireFields, nil
+}
+
+const upperToLower = 'a' - 'A'
+
+// fuzz returns a copy of fieldName that is suitable for fuzzy matching.
+// It lowercases the string, and removes non-alphanumeric characters.
+func fuzz(fieldName string) string {
+	newField := make([]byte, 0, len(fieldName))
+	for i := 0; i < len(fieldName); i++ {
+		c := fieldName[i]
+		switch {
+		case c >= 'A' && c <= 'Z':
+			newField = append(newField, c+upperToLower)
+		case c >= 'a' && c <= 'z', c >= '0' && c <= '9':
+			newField = append(newField, c)
+		}
+	}
+
+	return string(newField)
 }
 
 type byFieldID []wire.Field
