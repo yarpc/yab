@@ -64,6 +64,7 @@ func TestParseRequest(t *testing.T) {
     struct S {
       1: required string f1,
       2: optional NS ns,
+      3: optional NS ns_,
     }
 
 		union U {
@@ -371,6 +372,31 @@ func TestParseRequest(t *testing.T) {
 				},
 			},
 			errMsg: "map value (asd) for key (true) failed",
+		},
+		{
+			// use fuzzy matching to set fields.
+			request: map[string]interface{}{
+				"Arg1":    json.Number("1"),
+				"argi16_": json.Number("3"),
+				"ARGi32":  json.Number("4"),
+				"ArgBool": true,
+			},
+			want: []wire.Field{
+				{ID: 1, Value: wire.NewValueI8(1)},
+				{ID: 9, Value: wire.NewValueI16(3)},
+				{ID: 10, Value: wire.NewValueI32(4)},
+				{ID: 11, Value: wire.NewValueBool(true)},
+			},
+		},
+		{
+			// fuzzy matching is disabled on any name clashes.
+			request: map[string]interface{}{
+				"s": map[string]interface{}{
+					"f1": "foo",
+					"NS": "asd",
+				},
+			},
+			errMsg: fieldGroupError{notFound: []string{"NS"}}.Error(),
 		},
 	}
 
