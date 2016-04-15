@@ -18,30 +18,50 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package transport
+package main
 
 import (
+	"testing"
 	"time"
 
-	"golang.org/x/net/context"
+	"github.com/stretchr/testify/assert"
 )
 
-// Request is the fields used to make an RPC.
-type Request struct {
-	Method  string
-	Timeout time.Duration
-	Headers map[string]string
-	Body    []byte
-}
+func TestTimeMillisFlag(t *testing.T) {
+	tests := []struct {
+		value   string
+		want    time.Duration
+		wantErr bool
+	}{
+		{
+			// values without a unit should be treated as milliseconds
+			value: "100",
+			want:  100 * time.Millisecond,
+		},
+		{
+			value: "0.1s",
+			want:  100 * time.Millisecond,
+		},
+		{
+			value:   "0.1",
+			wantErr: true,
+		},
+		{
+			value:   "notanumber",
+			wantErr: true,
+		},
+	}
 
-// Response represents the result of an RPC.
-type Response struct {
-	Headers map[string]string
-	Body    []byte
-}
+	for _, tt := range tests {
+		var timeMillis timeMillisFlag
 
-// Transport defines the interface for the underlying transport over which
-// calls are made.
-type Transport interface {
-	Call(ctx context.Context, request *Request) (*Response, error)
+		err := timeMillis.UnmarshalFlag(tt.value)
+		if tt.wantErr {
+			assert.Error(t, err, "UnmarshalFlag(%v) should fail", tt.value)
+			continue
+		}
+
+		assert.NoError(t, err, "UnmarshalFlag(%v) should not fail", tt.value)
+		assert.Equal(t, tt.want, timeMillis.Duration(), "UnmarshalFlag(%v) expected %v", tt.value, tt.want)
+	}
 }

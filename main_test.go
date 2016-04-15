@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/uber/tchannel-go/testutils"
@@ -91,6 +92,21 @@ func TestRunWithOptions(t *testing.T) {
 				},
 			},
 			errMsg: "Failed while parsing response",
+		},
+		{
+			desc: "Fail due to timeout",
+			opts: Options{
+				ROpts: RequestOptions{
+					ThriftFile: validThrift,
+					MethodName: fooMethod,
+					Timeout:    timeMillisFlag(time.Nanosecond),
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+					HostPorts:   []string{echoServer(t, fooMethod, nil)},
+				},
+			},
+			errMsg: "timeout",
 		},
 		{
 			desc: "Success",

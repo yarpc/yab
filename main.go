@@ -109,6 +109,11 @@ func runWithOptions(opts Options, out output) {
 		out.Fatalf("Failed while parsing request input: %v\n", err)
 	}
 
+	req.Timeout = opts.ROpts.Timeout.Duration()
+	if req.Timeout == 0 {
+		req.Timeout = time.Second
+	}
+
 	response, err := makeRequest(transport, req)
 	if err != nil {
 		out.Fatalf("Failed while making call: %v\n", err)
@@ -135,7 +140,11 @@ func runWithOptions(opts Options, out output) {
 
 // makeRequest makes a request using the given transport.
 func makeRequest(t transport.Transport, request *transport.Request) (*transport.Response, error) {
-	ctx, cancel := tchannel.NewContext(time.Second)
+	if request.Timeout == 0 {
+		request.Timeout = time.Second
+	}
+
+	ctx, cancel := tchannel.NewContext(request.Timeout)
 	defer cancel()
 
 	return t.Call(ctx, request)

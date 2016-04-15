@@ -20,7 +20,10 @@
 
 package main
 
-import "time"
+import (
+	"strconv"
+	"time"
+)
 
 // Options are parsed from flags using go-flags.
 type Options struct {
@@ -31,12 +34,13 @@ type Options struct {
 
 // RequestOptions are request related options
 type RequestOptions struct {
-	Encoding    Encoding `short:"e" long:"encoding" description:"The encoding of the data, options are: Thrift, JSON, raw. Defaults to Thrift if the method contains '::' or a Thrift file is specified"`
-	ThriftFile  string   `short:"t" long:"thrift" description:"Path of the .thrift file"`
-	MethodName  string   `short:"m" long:"method" description:"The full Thrift method name (Svc::Method) to invoke"`
-	RequestJSON string   `short:"r" long:"request" description:"The request body, in JSON format"`
-	RequestFile string   `short:"f" long:"file" description:"Path of a file containing the request body in JSON"`
-	Health      bool     `long:"health" description:"Hit the health endpoint, Meta::health"`
+	Encoding    Encoding       `short:"e" long:"encoding" description:"The encoding of the data, options are: Thrift, JSON, raw. Defaults to Thrift if the method contains '::' or a Thrift file is specified"`
+	ThriftFile  string         `short:"t" long:"thrift" description:"Path of the .thrift file"`
+	MethodName  string         `short:"m" long:"method" description:"The full Thrift method name (Svc::Method) to invoke"`
+	RequestJSON string         `short:"r" long:"request" description:"The request body, in JSON format"`
+	RequestFile string         `short:"f" long:"file" description:"Path of a file containing the request body in JSON"`
+	Health      bool           `long:"health" description:"Hit the health endpoint, Meta::health"`
+	Timeout     timeMillisFlag `long:"timeout" default:"1s" description:"The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds are assumed."`
 }
 
 // TransportOptions are transport related options.
@@ -60,4 +64,31 @@ type BenchmarkOptions struct {
 
 	// Benchmark metrics can optionally be reported via statsd.
 	StatsdHostPort string `long:"statsd" description:"Optional host:port of a StatsD server to report metrics"`
+}
+
+type timeMillisFlag time.Duration
+
+func (t *timeMillisFlag) setDuration(d time.Duration) {
+	*t = timeMillisFlag(d)
+}
+
+func (t timeMillisFlag) Duration() time.Duration {
+	return time.Duration(t)
+}
+
+func (t *timeMillisFlag) UnmarshalFlag(value string) error {
+	valueInt, err := strconv.Atoi(value)
+	if err == nil {
+		// We received a number without a unit, assume milliseconds.
+		t.setDuration(time.Duration(valueInt) * time.Millisecond)
+		return nil
+	}
+
+	d, err := time.ParseDuration(value)
+	if err != nil {
+		return err
+	}
+
+	t.setDuration(d)
+	return nil
 }
