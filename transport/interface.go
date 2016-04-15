@@ -20,11 +20,16 @@
 
 package transport
 
-import "golang.org/x/net/context"
+import (
+	"time"
+
+	"golang.org/x/net/context"
+)
 
 // Request is the fields used to make an RPC.
 type Request struct {
 	Method  string
+	Timeout time.Duration
 	Headers map[string]string
 	Body    []byte
 }
