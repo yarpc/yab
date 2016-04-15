@@ -157,6 +157,7 @@ func TestHTTPCall(t *testing.T) {
 			return
 		}
 
+		w.Header().Set("Custom-Header", "ok")
 		io.WriteString(w, "ok")
 	}))
 	defer svr.Close()
@@ -197,6 +198,7 @@ func TestHTTPCall(t *testing.T) {
 				"Got TTL %v out of range [%v,%v]", gotTTL, tt.ttlMin, tt.ttlMax)
 		}
 
+		assert.Equal(t, "ok", got.Headers["Custom-Header"], "Header mismatch")
 		assert.Equal(t, lastReq.body, tt.r.Body, "Body mismatch")
 	}
 }

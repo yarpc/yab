@@ -45,7 +45,8 @@ func TestGetRequestInput(t *testing.T) {
 	}()
 
 	tests := []struct {
-		opts   RequestOptions
+		inline string
+		file   string
 		stdin  string
 		errMsg string
 		want   []byte
@@ -54,34 +55,34 @@ func TestGetRequestInput(t *testing.T) {
 			want: nil,
 		},
 		{
-			opts:   RequestOptions{RequestFile: "/fake/file"},
+			file:   "/fake/file",
 			errMsg: "failed to open request file",
 		},
 		{
-			opts:  RequestOptions{RequestFile: "-"},
+			file:  "-",
 			stdin: "{}",
 			want:  []byte("{}"),
 		},
 		{
-			opts: RequestOptions{RequestFile: "testdata/valid.json"},
+			file: "testdata/valid.json",
 			want: mustRead("testdata/valid.json"),
 		},
 		{
-			opts: RequestOptions{RequestFile: "testdata/invalid.json"},
+			file: "testdata/invalid.json",
 			want: mustRead("testdata/invalid.json"),
 		},
 		{
-			opts:  RequestOptions{RequestJSON: "-"},
-			stdin: "{}",
-			want:  []byte("{}"),
+			inline: "-",
+			stdin:  "{}",
+			want:   []byte("{}"),
 		},
 		{
-			opts: RequestOptions{RequestJSON: "{}"},
-			want: []byte("{}"),
+			inline: "{}",
+			want:   []byte("{}"),
 		},
 		{
-			opts: RequestOptions{RequestJSON: "{"},
-			want: []byte("{"),
+			inline: "{",
+			want:   []byte("{"),
 		},
 	}
 
@@ -96,16 +97,56 @@ func TestGetRequestInput(t *testing.T) {
 			os.Stdin = f
 		}
 
-		got, err := getRequestInput(tt.opts)
+		got, err := getRequestInput(tt.inline, tt.file)
 		if tt.errMsg != "" {
-			if assert.Error(t, err, "getRequestInput(%+v) should fail", tt.opts) {
-				assert.Contains(t, err.Error(), tt.errMsg, "getRequestInput(%+v) got unexpected error", tt.opts)
+			if assert.Error(t, err, "getRequestInput(%v, %v) should fail", tt.inline, tt.file) {
+				assert.Contains(t, err.Error(), tt.errMsg, "getRequestInput(%v, %v) got unexpected error", tt.inline, tt.file)
 			}
 			continue
 		}
 
-		if assert.NoError(t, err, "getRequestInput(%+v) should not fail", tt.opts) {
-			assert.Equal(t, tt.want, got, "getRequestInput(%+v) mismatch", tt.opts)
+		if assert.NoError(t, err, "getRequestInput(%v, %v) should not fail", tt.inline, tt.file) {
+			assert.Equal(t, tt.want, got, "getRequestInput(%v, %v) mismatch", tt.inline, tt.file)
+		}
+	}
+}
+
+func TestGetHeaders(t *testing.T) {
+	tests := []struct {
+		inline string
+		file   string
+		want   map[string]string
+		errMsg string
+	}{
+		{
+			file:   "/fake/file",
+			errMsg: "failed to open request file",
+		},
+		{
+			inline: "",
+			want:   nil,
+		},
+		{
+			inline: `}`,
+			errMsg: "unmarshal headers failed",
+		},
+		{
+			inline: `{"k": "v"}`,
+			want:   map[string]string{"k": "v"},
+		},
+	}
+
+	for _, tt := range tests {
+		got, err := getHeaders(tt.inline, tt.file)
+		if tt.errMsg != "" {
+			if assert.Error(t, err, "getHeaders(%v, %v) should fail", tt.inline, tt.file) {
+				assert.Contains(t, err.Error(), tt.errMsg, "getHeaders(%v, %v) got unexpected error", tt.inline, tt.file)
+			}
+			continue
+		}
+
+		if assert.NoError(t, err, "getHeaders(%v, %v) should not fail", tt.inline, tt.file) {
+			assert.Equal(t, tt.want, got, "getHeaders(%v, %v) mismatch", tt.inline, tt.file)
 		}
 	}
 }

@@ -157,7 +157,7 @@ func TestRunWithOptions(t *testing.T) {
 	}
 }
 
-func TestMain(t *testing.T) {
+func TestMainNoHeaders(t *testing.T) {
 	origArgs := os.Args
 	defer func() { os.Args = origArgs }()
 
@@ -166,6 +166,23 @@ func TestMain(t *testing.T) {
 		"yab",
 		"-t", validThrift,
 		"foo", fooMethod,
+		"-p", echoAddr,
+	}
+
+	main()
+}
+
+func TestMainWithHeaders(t *testing.T) {
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+
+	echoAddr := echoServer(t, fooMethod, nil)
+	os.Args = []string{
+		"yab",
+		"-t", validThrift,
+		"foo", fooMethod,
+		`{"header": "values"}`,
+		`{}`,
 		"-p", echoAddr,
 	}
 

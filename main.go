@@ -43,14 +43,16 @@ func findGroup(parser *flags.Parser, group string) *flags.Group {
 	panic("no group called " + group + " found.")
 }
 
-func fromPositional(args []string, index int, s *string) {
+func fromPositional(args []string, index int, s *string) bool {
 	if len(args) <= index {
-		return
+		return false
 	}
 
-	if args[index] != "" && *s == "" {
+	if args[index] != "" {
 		*s = args[index]
 	}
+
+	return true
 }
 
 func main() {
@@ -82,14 +84,28 @@ func main() {
 
 	fromPositional(remaining, 0, &opts.TOpts.ServiceName)
 	fromPositional(remaining, 1, &opts.ROpts.MethodName)
-	fromPositional(remaining, 2, &opts.ROpts.RequestJSON)
+
+	// We support both:
+	// [service] [method] [request]
+	// [service] [method] [headers] [request]
+	if fromPositional(remaining, 3, &opts.ROpts.RequestJSON) {
+		fromPositional(remaining, 2, &opts.ROpts.HeadersJSON)
+	} else {
+		fromPositional(remaining, 2, &opts.ROpts.RequestJSON)
+	}
+
 	runWithOptions(opts, consoleOutput{})
 }
 
 func runWithOptions(opts Options, out output) {
-	reqInput, err := getRequestInput(opts.ROpts)
+	reqInput, err := getRequestInput(opts.ROpts.RequestJSON, opts.ROpts.RequestFile)
 	if err != nil {
-		out.Fatalf("Failed while loading input: %v\n", err)
+		out.Fatalf("Failed while loading body input: %v\n", err)
+	}
+
+	headers, err := getHeaders(opts.ROpts.HeadersJSON, opts.ROpts.HeadersFile)
+	if err != nil {
+		out.Fatalf("Failed while loading headers input: %v\n", err)
 	}
 
 	serializer, err := NewSerializer(opts.ROpts)
@@ -98,7 +114,7 @@ func runWithOptions(opts Options, out output) {
 	}
 
 	// transport abstracts the underlying wire protocol used to make the call.
-	transport, err := getTransport(opts.TOpts)
+	transport, err := getTransport(opts.TOpts, serializer.Encoding())
 	if err != nil {
 		out.Fatalf("Failed while parsing options: %v\n", err)
 	}
@@ -109,6 +125,7 @@ func runWithOptions(opts Options, out output) {
 		out.Fatalf("Failed while parsing request input: %v\n", err)
 	}
 
+	req.Headers = headers
 	req.Timeout = opts.ROpts.Timeout.Duration()
 	if req.Timeout == 0 {
 		req.Timeout = time.Second
@@ -126,7 +143,11 @@ func runWithOptions(opts Options, out output) {
 	}
 
 	// Print the initial output body.
-	bs, err := json.MarshalIndent(responseMap, "", "  ")
+	outSerialized := map[string]interface{}{
+		"body":    responseMap,
+		"headers": response.Headers,
+	}
+	bs, err := json.MarshalIndent(outSerialized, "", "  ")
 	if err != nil {
 		out.Fatalf("Failed to convert map to JSON: %v\nMap: %+v\n", err, responseMap)
 	}

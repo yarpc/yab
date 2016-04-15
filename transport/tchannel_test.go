@@ -21,14 +21,18 @@
 package transport
 
 import (
+	"bytes"
+	"encoding/json"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/uber/tchannel-go"
+	tjson "github.com/uber/tchannel-go/json"
 	"github.com/uber/tchannel-go/raw"
 	"github.com/uber/tchannel-go/testutils"
+	"github.com/uber/tchannel-go/thrift"
 	"golang.org/x/net/context"
 )
 
@@ -68,45 +72,121 @@ func TestTChannelConstructor(t *testing.T) {
 	}
 }
 
-func setupServerAndTransport(t *testing.T) (*tchannel.Channel, Transport) {
+func setupServerAndTransport(t *testing.T, changeOpts ...func(*TChannelOptions)) (*tchannel.Channel, Transport) {
 	svr := testutils.NewServer(t, testutils.NewOpts().DisableLogVerification())
-	transport, err := TChannel(TChannelOptions{
+
+	opts := TChannelOptions{
 		SourceService: "yab",
 		TargetService: svr.ServiceName(),
 		HostPorts:     []string{svr.PeerInfo().HostPort},
-	})
+		Encoding:      "raw",
+	}
+
+	for _, changeFn := range changeOpts {
+		changeFn(&opts)
+	}
+
+	transport, err := TChannel(opts)
 	require.NoError(t, err, "Failed to create TChannel transport")
 
 	return svr, transport
 }
 
-func TestTChannelCallSuccess(t *testing.T) {
-	svr, transport := setupServerAndTransport(t)
+func setEncoding(encoding string) func(*TChannelOptions) {
+	return func(opts *TChannelOptions) {
+		opts.Encoding = encoding
+	}
+}
+
+func TestTChannelCallSuccessJSON(t *testing.T) {
+	svr, transport := setupServerAndTransport(t, setEncoding("json"))
 	defer svr.Close()
 
-	testutils.RegisterFunc(svr, "echo", func(ctx context.Context, args *raw.Args) (*raw.Res, error) {
-		assert.False(t, tchannel.CurrentSpan(ctx).TracingEnabled(), "Tracing should be disabled")
-		return &raw.Res{
-			Arg2: args.Arg2,
-			Arg3: args.Arg3,
-		}, nil
+	headers := map[string]string{
+		"k": "v",
+	}
+	body := map[string]interface{}{
+		"bodyk": "bodyv",
+	}
+
+	echoFunc := func(ctx tjson.Context, args map[string]interface{}) (map[string]interface{}, error) {
+		ctx.SetResponseHeaders(ctx.Headers())
+		assert.Equal(t, headers, ctx.Headers(), "Headers mismatch")
+		assert.Equal(t, body, args, "Args mismatch")
+		return body, nil
+	}
+
+	tjson.Register(svr, tjson.Handlers{"echo": echoFunc}, func(ctx context.Context, err error) {
+		t.Errorf("OnError called: %v", err)
 	})
+
+	bodyBytes, err := json.Marshal(body)
+	require.NoError(t, err, "Failed to marshal json args")
 
 	ctx, cancel := tchannel.NewContext(time.Second)
 	defer cancel()
 
 	req := &Request{
-		Method: "echo",
-		Headers: map[string]string{
-			"k": "v",
-		},
-		Body: []byte{1, 2, 3, 4},
+		Method:  "echo",
+		Headers: headers,
+		Body:    bodyBytes,
 	}
 	res, err := transport.Call(ctx, req)
 	require.NoError(t, err, "Call failed")
 
-	assert.Equal(t, req.Headers, res.Headers, "Response headers mismatch")
-	assert.Equal(t, req.Body, res.Body, "Response body mismatch")
+	// We use TrimSpace to trim any newlines at the end which can be ignored.
+	assert.Equal(t, headers, res.Headers, "Response headers mismatch")
+	assert.Equal(t, req.Body, bytes.TrimSpace(res.Body), "Response body mismatch")
+}
+
+func TestTChannelCallSuccessRaw(t *testing.T) {
+	svr, transport := setupServerAndTransport(t)
+	defer svr.Close()
+
+	headers := map[string]string{"k": "v"}
+
+	tests := []struct {
+		headers         map[string]string
+		arg2            []byte
+		responseHeaders map[string]string
+	}{
+		{
+			headers:         headers,
+			arg2:            thriftEncodedHeaders(t, headers),
+			responseHeaders: headers,
+		},
+		{
+			headers:         map[string]string{rawHeadersKey: "no encoding"},
+			arg2:            []byte("no encoding"),
+			responseHeaders: map[string]string{rawHeadersKey: "no encoding"},
+		},
+	}
+
+	for _, tt := range tests {
+		testutils.RegisterFunc(svr, "echo", func(ctx context.Context, args *raw.Args) (*raw.Res, error) {
+			assert.False(t, tchannel.CurrentSpan(ctx).TracingEnabled(), "Tracing should be disabled")
+
+			assert.Equal(t, tt.arg2, args.Arg2, "Arg2 mismatch")
+			return &raw.Res{
+				Arg2: args.Arg2,
+				Arg3: args.Arg3,
+			}, nil
+		})
+
+		ctx, cancel := tchannel.NewContext(time.Second)
+		defer cancel()
+
+		req := &Request{
+			Method:  "echo",
+			Headers: tt.headers,
+			Body:    []byte{1, 2, 3, 4},
+		}
+		res, err := transport.Call(ctx, req)
+		require.NoError(t, err, "Call failed")
+
+		assert.Equal(t, req.Headers, res.Headers, "Response headers mismatch")
+		assert.Equal(t, req.Body, res.Body, "Response body mismatch")
+	}
 }
 
 func TestTChannelCallError(t *testing.T) {
@@ -135,4 +215,10 @@ func TestTChannelCallError(t *testing.T) {
 		require.Error(t, err, "Call should fail")
 		assert.Contains(t, err.Error(), tt.errMsg)
 	}
+}
+
+func thriftEncodedHeaders(t *testing.T, headers map[string]string) []byte {
+	var buf bytes.Buffer
+	require.NoError(t, thrift.WriteHeaders(&buf, headers), "WriteHeaders failed")
+	return buf.Bytes()
 }

@@ -21,15 +21,24 @@
 package transport
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 
 	"github.com/uber/tchannel-go"
 	"github.com/uber/tchannel-go/thrift"
 	"golang.org/x/net/context"
 )
 
+// rawHeadersKey is a hack to specify a raw payload via the headers map.
+// If this key is used, then the headers are sent as is.
+const rawHeadersKey = "_raw_"
+
 type tchan struct {
-	sc *tchannel.SubChannel
+	sc          *tchannel.SubChannel
+	callOptions *tchannel.CallOptions
 }
 
 // TChannelOptions are used to create a TChannel transport.
@@ -45,6 +54,9 @@ type TChannelOptions struct {
 
 	// HostPorts is a list of host:ports to add to the channel.
 	HostPorts []string
+
+	// Encoding is used to set the TChannel format ("as" header).
+	Encoding string
 }
 
 // TChannel returns a Transport that calls a TChannel service.
@@ -68,20 +80,23 @@ func TChannel(opts TChannelOptions) (Transport, error) {
 		ch.Peers().Add(hp)
 	}
 
+	callOpts := &tchannel.CallOptions{
+		Format: tchannel.Format(opts.Encoding),
+	}
+
 	return &tchan{
-		sc: ch.GetSubChannel(opts.TargetService),
+		sc:          ch.GetSubChannel(opts.TargetService),
+		callOptions: callOpts,
 	}, nil
 }
 
 func (t *tchan) Call(ctx context.Context, r *Request) (*Response, error) {
-	call, err := t.sc.BeginCall(ctx, r.Method, &tchannel.CallOptions{
-		Format: tchannel.Thrift,
-	})
+	call, err := t.sc.BeginCall(ctx, r.Method, t.callOptions)
 	if err != nil {
 		return nil, fmt.Errorf("begin call failed: %v", err)
 	}
 
-	if err := t.writeArgs(call, r.Headers, r.Body); err != nil {
+	if err := t.writeArgs(call, r); err != nil {
 		return nil, err
 	}
 
@@ -100,8 +115,27 @@ func (t *tchan) readResponse(call *tchannel.OutboundCall) (*Response, error) {
 
 	var headers map[string]string
 	if err := readHelper(response.Arg2Reader, func(r tchannel.ArgReader) error {
-		var err error
-		headers, err = thrift.ReadHeaders(r)
+		headerBytes, err := ioutil.ReadAll(r)
+		if err != nil {
+			return err
+		}
+
+		if len(headerBytes) == 0 {
+			return nil
+		}
+
+		if t.callOptions.Format == tchannel.JSON {
+			return json.Unmarshal(headerBytes, &headers)
+		}
+
+		headers, err = thrift.ReadHeaders(bytes.NewReader(headerBytes))
+		if err != nil && t.callOptions.Format == tchannel.Raw {
+			headers = map[string]string{
+				rawHeadersKey: string(headerBytes),
+			}
+			err = nil
+		}
+
 		return err
 	}); err != nil {
 		return nil, annotateError("failed to read response headers", err)
@@ -118,15 +152,28 @@ func (t *tchan) readResponse(call *tchannel.OutboundCall) (*Response, error) {
 	}, nil
 }
 
-func (t *tchan) writeArgs(call *tchannel.OutboundCall, headers map[string]string, body []byte) error {
+func (t *tchan) writeArgs(call *tchannel.OutboundCall, r *Request) error {
 	if err := writeHelper(call.Arg2Writer, func(writer tchannel.ArgWriter) error {
-		return thrift.WriteHeaders(writer, headers)
+		switch t.callOptions.Format {
+		case tchannel.JSON:
+			encoder := json.NewEncoder(writer)
+			return encoder.Encode(r.Headers)
+		case tchannel.Raw:
+			if v, ok := r.Headers[rawHeadersKey]; ok {
+				_, err := io.WriteString(writer, v)
+				return err
+			}
+
+			fallthrough
+		default:
+			return thrift.WriteHeaders(writer, r.Headers)
+		}
 	}); err != nil {
 		return fmt.Errorf("failed to write headers: %v", err)
 	}
 
 	if err := writeHelper(call.Arg3Writer, func(writer tchannel.ArgWriter) error {
-		_, err := writer.Write(body)
+		_, err := writer.Write(r.Body)
 		return err
 	}); err != nil {
 		return fmt.Errorf("failed to write body: %v", err)
