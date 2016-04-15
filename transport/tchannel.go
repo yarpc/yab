@@ -57,6 +57,10 @@ type TChannelOptions struct {
 
 	// Encoding is used to set the TChannel format ("as" header).
 	Encoding string
+
+	// TransportOpts are a list of options, mostly used to add or override
+	// TChannel's transport headers.
+	TransportOpts map[string]string
 }
 
 // TChannel returns a Transport that calls a TChannel service.
@@ -66,9 +70,14 @@ func TChannel(opts TChannelOptions) (Transport, error) {
 		level = *opts.LogLevel
 	}
 
+	callerName := opts.SourceService
+	if cn, ok := opts.TransportOpts["cn"]; ok {
+		callerName = cn
+	}
+
 	// TODO: set trace sample rate to 1 for the initial request.
 	zero := float64(0)
-	ch, err := tchannel.NewChannel(opts.SourceService, &tchannel.ChannelOptions{
+	ch, err := tchannel.NewChannel(callerName, &tchannel.ChannelOptions{
 		Logger:          tchannel.NewLevelLogger(tchannel.SimpleLogger, level),
 		TraceSampleRate: &zero,
 	})
@@ -83,6 +92,7 @@ func TChannel(opts TChannelOptions) (Transport, error) {
 	callOpts := &tchannel.CallOptions{
 		Format: tchannel.Format(opts.Encoding),
 	}
+	applyTChanOptions(callOpts, opts.TransportOpts)
 
 	return &tchan{
 		sc:          ch.GetSubChannel(opts.TargetService),
@@ -180,6 +190,18 @@ func (t *tchan) writeArgs(call *tchannel.OutboundCall, r *Request) error {
 	}
 
 	return nil
+}
+
+func applyTChanOptions(callOpts *tchannel.CallOptions, opts map[string]string) {
+	if format, ok := opts["as"]; ok {
+		callOpts.Format = tchannel.Format(format)
+	}
+	if rd, ok := opts["rd"]; ok {
+		callOpts.RoutingDelegate = rd
+	}
+	if sk, ok := opts["sk"]; ok {
+		callOpts.ShardKey = sk
+	}
 }
 
 func readHelper(readerFn func() (tchannel.ArgReader, error), f func(tchannel.ArgReader) error) error {

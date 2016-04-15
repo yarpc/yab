@@ -47,9 +47,10 @@ type RequestOptions struct {
 
 // TransportOptions are transport related options.
 type TransportOptions struct {
-	ServiceName  string   `short:"s" long:"service" description:"The TChannel/Hyperbahn service name"`
-	HostPorts    []string `short:"p" long:"peer" description:"The host:port of the service to call"`
-	HostPortFile string   `short:"P" long:"peer-list" description:"Path of a JSON file containing a list of host:ports"`
+	ServiceName      string            `short:"s" long:"service" description:"The TChannel/Hyperbahn service name"`
+	HostPorts        []string          `short:"p" long:"peer" description:"The host:port of the service to call"`
+	HostPortFile     string            `short:"P" long:"peer-list" description:"Path of a JSON file containing a list of host:ports"`
+	TransportOptions map[string]string `long:"topt" description:"Custom options for the specific transport being used"`
 }
 
 // BenchmarkOptions are benchmark-specific options

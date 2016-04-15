@@ -98,6 +98,12 @@ func setEncoding(encoding string) func(*TChannelOptions) {
 	}
 }
 
+func setOptions(options map[string]string) func(*TChannelOptions) {
+	return func(opts *TChannelOptions) {
+		opts.TransportOpts = options
+	}
+}
+
 func TestTChannelCallSuccessJSON(t *testing.T) {
 	svr, transport := setupServerAndTransport(t, setEncoding("json"))
 	defer svr.Close()
@@ -215,6 +221,88 @@ func TestTChannelCallError(t *testing.T) {
 		require.Error(t, err, "Call should fail")
 		assert.Contains(t, err.Error(), tt.errMsg)
 	}
+}
+
+func TestTChannelCallOptions(t *testing.T) {
+	tests := []struct {
+		opts       map[string]string
+		wantCaller string
+		wantSK     string
+		wantRD     string
+		wantFormat tchannel.Format
+	}{
+		{
+			opts: nil,
+			// Nil map uses the defaults
+		},
+		{
+			opts: map[string]string{},
+			// Empty map uses the defaults
+		},
+		{
+			opts:       map[string]string{"cn": "custom-cn"},
+			wantCaller: "custom-cn",
+		},
+		{
+			opts:       map[string]string{"as": "proto3"},
+			wantFormat: tchannel.Format("proto3"),
+		},
+		{
+			opts:   map[string]string{"sk": "shard-key"},
+			wantSK: "shard-key",
+		},
+		{
+			opts:   map[string]string{"rd": "routing-delegate"},
+			wantRD: "routing-delegate",
+		},
+		{
+			opts:       map[string]string{"cn": "pv", "as": "proto3", "sk": "sk", "rd": "rd"},
+			wantCaller: "pv",
+			wantFormat: tchannel.Format("proto3"),
+			wantSK:     "sk",
+			wantRD:     "rd",
+		},
+	}
+
+	for _, tt := range tests {
+		svr, transport := setupServerAndTransport(t, setOptions(tt.opts))
+		defer svr.Close()
+
+		wantCaller := "yab"
+		if tt.wantCaller != "" {
+			wantCaller = tt.wantCaller
+		}
+		wantFormat := tchannel.Raw
+		if tt.wantFormat != "" {
+			wantFormat = tt.wantFormat
+		}
+
+		testutils.RegisterFunc(svr, "echo", func(ctx context.Context, args *raw.Args) (*raw.Res, error) {
+			call := tchannel.CurrentCall(ctx)
+			assert.Equal(t, wantCaller, call.CallerName(), "Caller name mismatch")
+			assert.Equal(t, wantFormat, call.(*tchannel.InboundCall).Format(), "Format mismatch")
+			assert.Equal(t, tt.wantSK, call.ShardKey(), "Shard key mismatch")
+			assert.Equal(t, tt.wantRD, call.RoutingDelegate(), "Routing delegate mismatch")
+
+			return &raw.Res{
+				Arg2: args.Arg2,
+				Arg3: args.Arg3,
+			}, nil
+		})
+
+		ctx, cancel := tchannel.NewContext(time.Second)
+		defer cancel()
+
+		req := &Request{
+			Method: "echo",
+			Body:   []byte{1, 2, 3, 4},
+		}
+		res, err := transport.Call(ctx, req)
+		require.NoError(t, err, "Call failed")
+
+		assert.Equal(t, req.Body, res.Body, "Response body mismatch")
+	}
+
 }
 
 func thriftEncodedHeaders(t *testing.T, headers map[string]string) []byte {

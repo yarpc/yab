@@ -122,6 +122,7 @@ func getTransport(opts TransportOptions, encoding Encoding) (transport.Transport
 			TargetService: opts.ServiceName,
 			HostPorts:     hostPorts,
 			Encoding:      encoding.String(),
+			TransportOpts: opts.TransportOptions,
 		}
 		return transport.TChannel(topts)
 	}
