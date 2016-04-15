@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 
 	"github.com/uber/tchannel-go"
 	"github.com/uber/tchannel-go/thrift"
@@ -75,10 +76,17 @@ func TChannel(opts TChannelOptions) (Transport, error) {
 		callerName = cn
 	}
 
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "unknown-host"
+	}
+	processName := fmt.Sprintf("%v@%v:%v[%v]", os.Getenv("USER"), hostname, os.Args[0], os.Getpid())
+
 	// TODO: set trace sample rate to 1 for the initial request.
 	zero := float64(0)
 	ch, err := tchannel.NewChannel(callerName, &tchannel.ChannelOptions{
 		Logger:          tchannel.NewLevelLogger(tchannel.SimpleLogger, level),
+		ProcessName:     processName,
 		TraceSampleRate: &zero,
 	})
 	if err != nil {
