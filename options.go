@@ -50,7 +50,11 @@ type TransportOptions struct {
 	ServiceName      string            `short:"s" long:"service" description:"The TChannel/Hyperbahn service name"`
 	HostPorts        []string          `short:"p" long:"peer" description:"The host:port of the service to call"`
 	HostPortFile     string            `short:"P" long:"peer-list" description:"Path of a JSON file containing a list of host:ports"`
+	CallerOverride   string            `long:"caller" description:"Caller will override the default caller name (which is yab-$USER)."`
 	TransportOptions map[string]string `long:"topt" description:"Custom options for the specific transport being used"`
+
+	// benchmarking is a private flag set when a transport is required for benchmarking.
+	benchmarking bool
 }
 
 // BenchmarkOptions are benchmark-specific options

@@ -52,15 +52,30 @@ func TestBenchmarkMethodWarmTransport(t *testing.T) {
 	s.register(fooMethod, methods.echo())
 
 	tests := []struct {
-		hostPort string
-		method   string
-		wantErr  string
+		hostPort       string
+		callerOverride string
+		method         string
+		wantErr        string
 	}{
-		{s.hostPort(), "", ""},
+		{
+			hostPort: s.hostPort(),
+		},
+		{
+			hostPort:       s.hostPort(),
+			callerOverride: "caller",
+			wantErr:        errCallerForBenchmark.Error(),
+		},
 		// getTransport error
-		{testutils.GetClosedHostPort(t), "", "connection refused"},
+		{
+			hostPort: testutils.GetClosedHostPort(t),
+			wantErr:  "connection refused",
+		},
 		// makeRequest error
-		{s.hostPort(), "Simple::unknown", "no handler for service"},
+		{
+			hostPort: s.hostPort(),
+			method:   "Simple::unknown",
+			wantErr:  "no handler for service",
+		},
 	}
 
 	for _, tt := range tests {
@@ -70,8 +85,9 @@ func TestBenchmarkMethodWarmTransport(t *testing.T) {
 		}
 
 		tOpts := TransportOptions{
-			ServiceName: "foo",
-			HostPorts:   []string{tt.hostPort},
+			ServiceName:    "foo",
+			HostPorts:      []string{tt.hostPort},
+			CallerOverride: tt.callerOverride,
 		}
 
 		transport, err := m.WarmTransport(tOpts)

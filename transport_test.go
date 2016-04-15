@@ -21,9 +21,16 @@
 package main
 
 import (
+	"os"
 	"testing"
+	"time"
+
+	"golang.org/x/net/context"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/uber/tchannel-go"
+	"github.com/uber/tchannel-go/raw"
+	"github.com/yarpc/yab/transport"
 )
 
 func TestProtocolFor(t *testing.T) {
@@ -143,6 +150,67 @@ func TestGetTransport(t *testing.T) {
 		if assert.NoError(t, err, "getTransport(%v) should not fail", tt.opts) {
 			assert.NotNil(t, transport, "getTransport(%v) didn't get transport", tt.opts)
 		}
+	}
+}
+
+func TestGetTransportCallerName(t *testing.T) {
+	tests := []struct {
+		callerOverride string
+		want           string
+		benchmark      bool
+		wantErr        bool
+	}{
+		{
+			callerOverride: "",
+			want:           "yab-" + os.Getenv("USER"),
+		},
+		{
+			callerOverride: "override",
+			want:           "override",
+		},
+		{
+			benchmark:      true,
+			callerOverride: "",
+			want:           "yab-" + os.Getenv("USER"),
+		},
+		{
+			benchmark:      true,
+			callerOverride: "override",
+			wantErr:        true,
+		},
+	}
+
+	for _, tt := range tests {
+		server := newServer(t)
+		defer server.shutdown()
+
+		server.register("test", func(ctx context.Context, args *raw.Args) (*raw.Res, error) {
+			assert.Equal(t, tt.want, tchannel.CurrentCall(ctx).CallerName(), "Caller name mismatch")
+			return &raw.Res{}, nil
+		})
+
+		opts := TransportOptions{
+			ServiceName:    server.ch.ServiceName(),
+			HostPorts:      []string{server.hostPort()},
+			CallerOverride: tt.callerOverride,
+			benchmarking:   tt.benchmark,
+		}
+		tchan, err := getTransport(opts, Raw)
+		if tt.wantErr {
+			assert.Error(t, err, "Expect fail: %+v", tt)
+			continue
+		}
+		if err != nil {
+			continue
+		}
+
+		ctx, cancel := tchannel.NewContext(time.Second)
+		defer cancel()
+
+		_, err = tchan.Call(ctx, &transport.Request{
+			Method: "test",
+		})
+		assert.NoError(t, err, "Expect to succeed: %+v", tt)
 	}
 }
 
