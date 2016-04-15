@@ -32,7 +32,7 @@ import (
 
 func benchmarkMethodForTest(t *testing.T, methodString string) benchmarkMethod {
 	rOpts := RequestOptions{
-		Encoding: Thrift,
+		Encoding:   Thrift,
 		ThriftFile: validThrift,
 		MethodName: methodString,
 	}
@@ -45,6 +45,7 @@ func benchmarkMethodForTest(t *testing.T, methodString string) benchmarkMethod {
 	req, err := serializer.Request(input)
 	require.NoError(t, err, "Failed to serialize Thrift body")
 
+	req.Timeout = time.Second
 	return benchmarkMethod{serializer, req}
 }
 

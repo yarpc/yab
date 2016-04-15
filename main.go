@@ -140,10 +140,6 @@ func runWithOptions(opts Options, out output) {
 
 // makeRequest makes a request using the given transport.
 func makeRequest(t transport.Transport, request *transport.Request) (*transport.Response, error) {
-	if request.Timeout == 0 {
-		request.Timeout = time.Second
-	}
-
 	ctx, cancel := tchannel.NewContext(request.Timeout)
 	defer cancel()
 
