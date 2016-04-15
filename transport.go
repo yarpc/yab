@@ -83,7 +83,7 @@ func ensureSameProtocol(hostPorts []string) (string, error) {
 	return lastProtocol, nil
 }
 
-func getTransport(opts TransportOptions) (transport.Transport, error) {
+func getTransport(opts TransportOptions, encoding Encoding) (transport.Transport, error) {
 	if opts.ServiceName == "" {
 		return nil, errServiceRequired
 	}
@@ -121,6 +121,7 @@ func getTransport(opts TransportOptions) (transport.Transport, error) {
 			SourceService: sourceService,
 			TargetService: opts.ServiceName,
 			HostPorts:     hostPorts,
+			Encoding:      encoding.String(),
 		}
 		return transport.TChannel(topts)
 	}

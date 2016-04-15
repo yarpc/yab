@@ -39,10 +39,7 @@ func benchmarkMethodForTest(t *testing.T, methodString string) benchmarkMethod {
 	serializer, err := NewSerializer(rOpts)
 	require.NoError(t, err, "Failed to create Thrift serializer")
 
-	input, err := getRequestInput(rOpts)
-	require.NoError(t, err, "Failed to get request input")
-
-	req, err := serializer.Request(input)
+	req, err := serializer.Request(nil)
 	require.NoError(t, err, "Failed to serialize Thrift body")
 
 	req.Timeout = time.Second
@@ -127,7 +124,7 @@ func TestBenchmarkMethodCall(t *testing.T) {
 		ServiceName: "foo",
 		HostPorts:   []string{s.hostPort()},
 	}
-	transport, err := getTransport(tOpts)
+	transport, err := getTransport(tOpts, Thrift)
 	require.NoError(t, err, "Failed to get transport")
 
 	for _, tt := range tests {

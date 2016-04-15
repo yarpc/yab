@@ -118,8 +118,13 @@ func (h *httpTransport) Call(ctx context.Context, r *Request) (*Response, error)
 		return nil, err
 	}
 
+	headers := make(map[string]string)
+	for headerKey := range resp.Header {
+		headers[headerKey] = resp.Header.Get(headerKey)
+	}
+
 	return &Response{
-		Headers: nil,
+		Headers: headers,
 		Body:    body,
 	}, nil
 }

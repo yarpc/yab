@@ -41,7 +41,7 @@ type Serializer interface {
 
 	// Response converts a transport.Response into something that can be displayed to a user.
 	// For non-raw encodings, this is typically a map[string]interface{}.
-	Response(body *transport.Response) (interface{}, error)
+	Response(body *transport.Response) (response interface{}, err error)
 
 	// CheckSuccess checks whether the response body is a success, and if not, returns an
 	// error with the failure reason.

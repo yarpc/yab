@@ -29,30 +29,48 @@ import (
 )
 
 // getRequestInput gets the byte body passed in by the user via flags or through a file.
-func getRequestInput(opts RequestOptions) ([]byte, error) {
-	if opts.RequestFile == "-" || opts.RequestJSON == "-" {
+func getRequestInput(inline, file string) ([]byte, error) {
+	if file == "-" || inline == "-" {
 		return ioutil.ReadAll(os.Stdin)
 	}
 
-	if opts.RequestFile != "" {
-		bs, err := ioutil.ReadFile(opts.RequestFile)
+	if file != "" {
+		bs, err := ioutil.ReadFile(file)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open request file: %v", err)
 		}
 		return bs, nil
 	}
 
-	if opts.RequestJSON != "" {
-		return []byte(opts.RequestJSON), nil
+	if inline != "" {
+		return []byte(inline), nil
 	}
 
 	// It is valid to have an empty body.
 	return nil, nil
 }
 
+func getHeaders(inline, file string) (map[string]string, error) {
+	contents, err := getRequestInput(inline, file)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(contents) == 0 {
+		return nil, nil
+	}
+
+	var headers map[string]string
+	if err := json.Unmarshal(contents, &headers); err != nil {
+		return nil, fmt.Errorf("unmarshal headers failed: %v", err)
+	}
+
+	return headers, nil
+}
+
 func unmarshalJSONInput(bs []byte) (map[string]interface{}, error) {
 	// An empty body should produce an empty input map.
-	if bs == nil {
+	if len(bs) == 0 {
 		return make(map[string]interface{}), nil
 	}
 

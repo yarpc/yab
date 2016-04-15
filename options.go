@@ -39,6 +39,8 @@ type RequestOptions struct {
 	MethodName  string         `short:"m" long:"method" description:"The full Thrift method name (Svc::Method) to invoke"`
 	RequestJSON string         `short:"r" long:"request" description:"The request body, in JSON format"`
 	RequestFile string         `short:"f" long:"file" description:"Path of a file containing the request body in JSON"`
+	HeadersJSON string         `long:"headers" description:"The headers in JSON format"`
+	HeadersFile string         `long:"headers-file" description:"Path of a file containing the headers in JSON"`
 	Health      bool           `long:"health" description:"Hit the health endpoint, Meta::health"`
 	Timeout     timeMillisFlag `long:"timeout" default:"1s" description:"The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds are assumed."`
 }

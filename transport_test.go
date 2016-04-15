@@ -132,7 +132,7 @@ func TestGetTransport(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		transport, err := getTransport(tt.opts)
+		transport, err := getTransport(tt.opts, Thrift)
 		if tt.errMsg != "" {
 			if assert.Error(t, err, "getTransport(%v) should fail", tt.opts) {
 				assert.Contains(t, err.Error(), tt.errMsg, "Unexpected error for getTransport(%v)", tt.opts)
