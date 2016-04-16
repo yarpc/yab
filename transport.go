@@ -124,12 +124,18 @@ func getTransport(opts TransportOptions, encoding Encoding) (transport.Transport
 	if protocol == "tchannel" {
 		remapLocalHost(hostPorts)
 
+		traceSampleRate := 1.0
+		if opts.benchmarking {
+			traceSampleRate = 0
+		}
+
 		topts := transport.TChannelOptions{
-			SourceService: sourceService,
-			TargetService: opts.ServiceName,
-			HostPorts:     hostPorts,
-			Encoding:      encoding.String(),
-			TransportOpts: opts.TransportOptions,
+			SourceService:   sourceService,
+			TargetService:   opts.ServiceName,
+			HostPorts:       hostPorts,
+			Encoding:        encoding.String(),
+			TransportOpts:   opts.TransportOptions,
+			TraceSampleRate: traceSampleRate,
 		}
 		return transport.TChannel(topts)
 	}
