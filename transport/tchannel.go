@@ -120,7 +120,14 @@ func (t *tchan) Call(ctx context.Context, r *Request) (*Response, error) {
 		return nil, err
 	}
 
-	return t.readResponse(call)
+	res, err := t.readResponse(call)
+	if err != nil {
+		return nil, err
+	}
+
+	span := tchannel.CurrentSpan(ctx)
+	res.Trace = fmt.Sprintf("%x", span.TraceID())
+	return res, nil
 }
 
 func (t *tchan) readResponse(call *tchannel.OutboundCall) (*Response, error) {

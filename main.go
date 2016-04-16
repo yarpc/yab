@@ -144,8 +144,13 @@ func runWithOptions(opts Options, out output) {
 
 	// Print the initial output body.
 	outSerialized := map[string]interface{}{
-		"body":    responseMap,
-		"headers": response.Headers,
+		"body": responseMap,
+	}
+	if len(response.Headers) > 0 {
+		outSerialized["headers"] = response.Headers
+	}
+	if response.Trace != "" {
+		outSerialized["trace"] = response.Trace
 	}
 	bs, err := json.MarshalIndent(outSerialized, "", "  ")
 	if err != nil {
