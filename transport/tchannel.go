@@ -59,6 +59,9 @@ type TChannelOptions struct {
 	// Encoding is used to set the TChannel format ("as" header).
 	Encoding string
 
+	// TraceSampleRate sets the sample rate for tracing.
+	TraceSampleRate float64
+
 	// TransportOpts are a list of options, mostly used to add or override
 	// TChannel's transport headers.
 	TransportOpts map[string]string
@@ -83,11 +86,10 @@ func TChannel(opts TChannelOptions) (Transport, error) {
 	processName := fmt.Sprintf("%v@%v:%v[%v]", os.Getenv("USER"), hostname, os.Args[0], os.Getpid())
 
 	// TODO: set trace sample rate to 1 for the initial request.
-	zero := float64(0)
 	ch, err := tchannel.NewChannel(callerName, &tchannel.ChannelOptions{
 		Logger:          tchannel.NewLevelLogger(tchannel.SimpleLogger, level),
 		ProcessName:     processName,
-		TraceSampleRate: &zero,
+		TraceSampleRate: &opts.TraceSampleRate,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create TChannel: %v", err)
@@ -118,7 +120,14 @@ func (t *tchan) Call(ctx context.Context, r *Request) (*Response, error) {
 		return nil, err
 	}
 
-	return t.readResponse(call)
+	res, err := t.readResponse(call)
+	if err != nil {
+		return nil, err
+	}
+
+	span := tchannel.CurrentSpan(ctx)
+	res.Trace = fmt.Sprintf("%x", span.TraceID())
+	return res, nil
 }
 
 func (t *tchan) readResponse(call *tchannel.OutboundCall) (*Response, error) {

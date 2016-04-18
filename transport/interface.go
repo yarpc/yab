@@ -38,6 +38,7 @@ type Request struct {
 type Response struct {
 	Headers map[string]string
 	Body    []byte
+	Trace   string
 }
 
 // Transport defines the interface for the underlying transport over which

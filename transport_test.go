@@ -28,6 +28,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/uber/tchannel-go"
 	"github.com/uber/tchannel-go/raw"
 	"github.com/yarpc/yab/transport"
@@ -211,6 +212,39 @@ func TestGetTransportCallerName(t *testing.T) {
 			Method: "test",
 		})
 		assert.NoError(t, err, "Expect to succeed: %+v", tt)
+	}
+}
+
+func TestGetTransportTraceEnabled(t *testing.T) {
+	s := newServer(t)
+	defer s.shutdown()
+	s.register("test", methods.traceEnabled())
+
+	tests := []struct {
+		benchmarking bool
+		traceEnabled byte
+	}{
+		{true, 0},
+		{false, 1},
+	}
+
+	opts := TransportOptions{
+		ServiceName: s.ch.ServiceName(),
+		HostPorts:   []string{s.hostPort()},
+	}
+
+	for _, tt := range tests {
+		opts.benchmarking = tt.benchmarking
+
+		ctx, cancel := tchannel.NewContext(time.Second)
+		defer cancel()
+
+		tchan, err := getTransport(opts, Raw)
+		require.NoError(t, err, "getTransport failed")
+		res, err := tchan.Call(ctx, &transport.Request{Method: "test"})
+		require.NoError(t, err, "transport.Call failed")
+
+		assert.Equal(t, tt.traceEnabled, res.Body[0], "TraceEnabled mismatch")
 	}
 }
 
