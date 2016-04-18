@@ -39,10 +39,11 @@ import (
 )
 
 var (
-	errServiceRequired = errors.New("specify a target service using --service")
-	errPeerRequired    = errors.New("specify at least one peer using --peer or using --hostfile")
-	errPeerOptions     = errors.New("do not specify peers using --peer and --hostfile")
-	errPeerListFile    = errors.New("peer list should be a JSON file with a list of strings")
+	errServiceRequired    = errors.New("specify a target service using --service")
+	errPeerRequired       = errors.New("specify at least one peer using --peer or using --hostfile")
+	errPeerOptions        = errors.New("do not specify peers using --peer and --hostfile")
+	errPeerListFile       = errors.New("peer list should be a JSON file with a list of strings")
+	errCallerForBenchmark = errors.New("cannot override caller name when running benchmarks")
 )
 
 func remapLocalHost(hostPorts []string) {
@@ -113,6 +114,12 @@ func getTransport(opts TransportOptions, encoding Encoding) (transport.Transport
 	}
 
 	sourceService := "yab-" + os.Getenv("USER")
+	if opts.CallerOverride != "" {
+		if opts.benchmarking {
+			return nil, errCallerForBenchmark
+		}
+		sourceService = opts.CallerOverride
+	}
 
 	if protocol == "tchannel" {
 		remapLocalHost(hostPorts)
@@ -122,6 +129,7 @@ func getTransport(opts TransportOptions, encoding Encoding) (transport.Transport
 			TargetService: opts.ServiceName,
 			HostPorts:     hostPorts,
 			Encoding:      encoding.String(),
+			TransportOpts: opts.TransportOptions,
 		}
 		return transport.TChannel(topts)
 	}
