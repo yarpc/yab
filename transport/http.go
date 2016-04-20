@@ -86,10 +86,10 @@ func (h *httpTransport) newReq(ctx context.Context, r *Request) (*http.Request, 
 	}
 
 	// TODO: We shouldn't always set YARPC headers, bit maybe have a flag to enable these.
-	req.Header.Add("YARPC-Service", h.target)
-	req.Header.Add("YARPC-Procedure", r.Method)
-	req.Header.Add("YARPC-TTLms", strconv.Itoa(int(timeout/time.Millisecond)))
-	req.Header.Add("YARPC-Caller", h.source)
+	req.Header.Add("RPC-Service", h.target)
+	req.Header.Add("RPC-Procedure", r.Method)
+	req.Header.Add("RPC-Caller", h.source)
+	req.Header.Add("Context-TTL-MS", strconv.Itoa(int(timeout/time.Millisecond)))
 
 	for hdr, val := range r.Headers {
 		req.Header.Add(hdr, val)

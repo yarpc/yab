@@ -187,11 +187,11 @@ func TestHTTPCall(t *testing.T) {
 		}
 
 		assert.Equal(t, lastReq.url.Path, "/rpc", "Path mismatch")
-		assert.Equal(t, lastReq.headers.Get("YARPC-Service"), "target", "Service header mismatch")
-		assert.Equal(t, lastReq.headers.Get("YARPC-Caller"), "source", "Caller header mismatch")
-		assert.Equal(t, lastReq.headers.Get("YARPC-Procedure"), tt.r.Method, "Method header mismatch")
+		assert.Equal(t, lastReq.headers.Get("RPC-Service"), "target", "Service header mismatch")
+		assert.Equal(t, lastReq.headers.Get("RPC-Caller"), "source", "Caller header mismatch")
+		assert.Equal(t, lastReq.headers.Get("RPC-Procedure"), tt.r.Method, "Method header mismatch")
 
-		ttlMS, err := strconv.Atoi(lastReq.headers.Get("YARPC-TTLms"))
+		ttlMS, err := strconv.Atoi(lastReq.headers.Get("Context-TTL-MS"))
 		if assert.NoError(t, err, "Failed to parse TTLms header: %v", lastReq.headers.Get("YARPC-TTLms")) {
 			gotTTL := time.Duration(ttlMS) * time.Millisecond
 			assert.True(t, gotTTL >= tt.ttlMin && gotTTL <= tt.ttlMax,
