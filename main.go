@@ -57,9 +57,13 @@ func fromPositional(args []string, index int, s *string) bool {
 
 func main() {
 	log.SetFlags(0)
+	parseAndRun(consoleOutput{os.Stdout})
+}
 
+// parseAndRun is like main, but uses the given output.
+func parseAndRun(out output) {
 	var opts Options
-	parser := flags.NewParser(&opts, flags.Default)
+	parser := flags.NewParser(&opts, flags.HelpFlag|flags.PassDoubleDash)
 	parser.Usage = "[<service> <method> <body>] [OPTIONS]"
 	findGroup(parser, "transport").ShortDescription = "Transport Options"
 	findGroup(parser, "request").ShortDescription = "Request Options"
@@ -67,7 +71,7 @@ func main() {
 
 	// If there are no arguments specified, write the help.
 	if len(os.Args) <= 1 {
-		parser.WriteHelp(os.Stdout)
+		parser.WriteHelp(out)
 		return
 	}
 
@@ -75,11 +79,16 @@ func main() {
 	if err != nil {
 		if ferr, ok := err.(*flags.Error); ok {
 			if ferr.Type == flags.ErrHelp {
-				// The flag parser will print the help page, so we just need to exit.
-				os.Exit(0)
+				parser.WriteHelp(out)
+				return
 			}
 		}
-		log.Fatalf("Failed to parse flags: %v", err)
+		out.Fatalf("Failed to parse flags: %v", err)
+	}
+
+	if opts.DisplayVersion {
+		out.Printf("yab version %v\n", versionString)
+		return
 	}
 
 	fromPositional(remaining, 0, &opts.TOpts.ServiceName)
@@ -94,7 +103,8 @@ func main() {
 		fromPositional(remaining, 2, &opts.ROpts.RequestJSON)
 	}
 
-	runWithOptions(opts, consoleOutput{})
+	runWithOptions(opts, out)
+	return
 }
 
 func runWithOptions(opts Options, out output) {

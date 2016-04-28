@@ -20,28 +20,6 @@
 
 package main
 
-import (
-	"fmt"
-	"io"
-	"log"
-	"os"
-)
-
-type output interface {
-	io.Writer
-
-	Fatalf(format string, args ...interface{})
-	Printf(format string, args ...interface{})
-}
-
-type consoleOutput struct {
-	*os.File
-}
-
-func (consoleOutput) Fatalf(format string, args ...interface{}) {
-	log.Fatalf(format, args...)
-}
-
-func (consoleOutput) Printf(format string, args ...interface{}) {
-	fmt.Printf(format, args...)
-}
+// versionString is the sem-ver version string for yab.
+// It will be bumped explicitly on releases.
+var versionString = "0.1.0"
