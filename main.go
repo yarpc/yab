@@ -23,7 +23,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"log"
 	"os"
 	"time"
 
@@ -56,8 +55,11 @@ func fromPositional(args []string, index int, s *string) bool {
 }
 
 func main() {
-	log.SetFlags(0)
+	parseAndRun(consoleOutput{})
+}
 
+// parseAndRun is like main, but uses the given output.
+func parseAndRun(out output) {
 	var opts Options
 	parser := flags.NewParser(&opts, flags.Default)
 	parser.Usage = "[<service> <method> <body>] [OPTIONS]"
@@ -75,11 +77,15 @@ func main() {
 	if err != nil {
 		if ferr, ok := err.(*flags.Error); ok {
 			if ferr.Type == flags.ErrHelp {
-				// The flag parser will print the help page, so we just need to exit.
-				os.Exit(0)
+				return
 			}
 		}
-		log.Fatalf("Failed to parse flags: %v", err)
+		out.Fatalf("Failed to parse flags: %v", err)
+	}
+
+	if opts.DisplayVersion {
+		out.Printf("yab version %v\n", versionString)
+		return
 	}
 
 	fromPositional(remaining, 0, &opts.TOpts.ServiceName)
@@ -94,7 +100,8 @@ func main() {
 		fromPositional(remaining, 2, &opts.ROpts.RequestJSON)
 	}
 
-	runWithOptions(opts, consoleOutput{})
+	runWithOptions(opts, out)
+	return
 }
 
 func runWithOptions(opts Options, out output) {

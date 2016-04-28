@@ -27,9 +27,10 @@ import (
 
 // Options are parsed from flags using go-flags.
 type Options struct {
-	ROpts RequestOptions   `group:"request"`
-	TOpts TransportOptions `group:"transport"`
-	BOpts BenchmarkOptions `group:"benchmark"`
+	ROpts          RequestOptions   `group:"request"`
+	TOpts          TransportOptions `group:"transport"`
+	BOpts          BenchmarkOptions `group:"benchmark"`
+	DisplayVersion bool             `long:"version" description:"Displays the application version"`
 }
 
 // RequestOptions are request related options

@@ -207,3 +207,17 @@ func TestHealthIntegration(t *testing.T) {
 
 	main()
 }
+
+func TestVersion(t *testing.T) {
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+
+	os.Args = []string{
+		"yab",
+		"--version",
+	}
+
+	buf, out := getOutput(t)
+	parseAndRun(out)
+	assert.Equal(t, "yab version "+versionString+"\n", buf.String(), "Version output mismatch")
+}
