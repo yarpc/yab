@@ -124,11 +124,9 @@ func TestRunWithOptions(t *testing.T) {
 	var errBuf bytes.Buffer
 	var outBuf bytes.Buffer
 	out := testOutput{
+		Buffer: &outBuf,
 		fatalf: func(format string, args ...interface{}) {
 			errBuf.WriteString(fmt.Sprintf(format, args...))
-		},
-		printf: func(format string, args ...interface{}) {
-			outBuf.WriteString(fmt.Sprintf(format, args...))
 		},
 	}
 
@@ -206,6 +204,25 @@ func TestHealthIntegration(t *testing.T) {
 	}
 
 	main()
+}
+
+func TestHelpOutput(t *testing.T) {
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+
+	tests := [][]string{
+		nil,
+		{"-h"},
+		{"--help"},
+	}
+
+	for _, args := range tests {
+		os.Args = append([]string{"yab"}, args...)
+
+		buf, out := getOutput(t)
+		parseAndRun(out)
+		assert.Contains(t, buf.String(), "Usage:", "Expected help output")
+	}
 }
 
 func TestVersion(t *testing.T) {

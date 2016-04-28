@@ -23,6 +23,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"os"
 	"time"
 
@@ -55,13 +56,14 @@ func fromPositional(args []string, index int, s *string) bool {
 }
 
 func main() {
-	parseAndRun(consoleOutput{})
+	log.SetFlags(0)
+	parseAndRun(consoleOutput{os.Stdout})
 }
 
 // parseAndRun is like main, but uses the given output.
 func parseAndRun(out output) {
 	var opts Options
-	parser := flags.NewParser(&opts, flags.Default)
+	parser := flags.NewParser(&opts, flags.HelpFlag|flags.PassDoubleDash)
 	parser.Usage = "[<service> <method> <body>] [OPTIONS]"
 	findGroup(parser, "transport").ShortDescription = "Transport Options"
 	findGroup(parser, "request").ShortDescription = "Request Options"
@@ -69,7 +71,7 @@ func parseAndRun(out output) {
 
 	// If there are no arguments specified, write the help.
 	if len(os.Args) <= 1 {
-		parser.WriteHelp(os.Stdout)
+		parser.WriteHelp(out)
 		return
 	}
 
@@ -77,6 +79,7 @@ func parseAndRun(out output) {
 	if err != nil {
 		if ferr, ok := err.(*flags.Error); ok {
 			if ferr.Type == flags.ErrHelp {
+				parser.WriteHelp(out)
 				return
 			}
 		}

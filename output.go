@@ -22,15 +22,21 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
+	"os"
 )
 
 type output interface {
+	io.Writer
+
 	Fatalf(format string, args ...interface{})
 	Printf(format string, args ...interface{})
 }
 
-type consoleOutput struct{}
+type consoleOutput struct {
+	*os.File
+}
 
 func (consoleOutput) Fatalf(format string, args ...interface{}) {
 	log.Fatalf(format, args...)
