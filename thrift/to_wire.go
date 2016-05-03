@@ -109,7 +109,7 @@ func convertStringMap(m map[string]interface{}) map[interface{}]interface{} {
 func convertMapKey(keySpec compile.TypeSpec, value interface{}) interface{} {
 	vStr, ok := value.(string)
 	if !ok {
-		// The user isn't using JSON here, can ignore.
+		// The user isn't nesting values inside of a string, ignore.
 		return value
 	}
 	if keySpec.TypeCode() == wire.TBinary {
