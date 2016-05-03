@@ -1,21 +1,26 @@
-package: github.com/uber/yab
+package: github.com/yarpc/yab
 import:
 - package: github.com/jessevdk/go-flags
+  version: master
 - package: github.com/thriftrw/thriftrw-go
+  version: master
   subpackages:
   - ast
   - compile
   - protocol
   - wire
 - package: github.com/uber/tchannel-go
+  version: master
   subpackages:
   - thrift
 - package: golang.org/x/net
+  version: master
   subpackages:
   - context
+- package: gopkg.in/yaml.v2
+  version: master
 # Test dependencies
 - package: github.com/stretchr/testify
   subpackages:
   - assert
   - require
-
