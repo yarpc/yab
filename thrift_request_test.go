@@ -100,7 +100,7 @@ func TestRequest(t *testing.T) {
 		{
 			desc:   "Invalid JSON",
 			bs:     []byte("{"),
-			errMsg: "parse",
+			errMsg: "yaml",
 		},
 		{
 			desc:   "Invalid field in request input",

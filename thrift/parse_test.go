@@ -21,7 +21,6 @@
 package thrift
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -122,12 +121,12 @@ func TestParseRequest(t *testing.T) {
 		{
 			// Set numbers and bools
 			request: map[string]interface{}{
-				"arg1":       json.Number("1"),
-				"arg2":       json.Number("2"),
-				"arg_i16":    json.Number("3"),
-				"arg_i32":    json.Number("4"),
+				"arg1":       1,
+				"arg2":       2,
+				"arg_i16":    3,
+				"arg_i32":    4,
 				"arg_bool":   true,
-				"arg_double": json.Number("5.6"),
+				"arg_double": 5.6,
 			},
 			want: []wire.Field{
 				{ID: 1, Value: wire.NewValueI8(1)},
@@ -143,12 +142,12 @@ func TestParseRequest(t *testing.T) {
 			request: map[string]interface{}{
 				"arg1": "asd",
 			},
-			errMsg: `field "byte" cannot parse int8 from "asd" of type string`,
+			errMsg: `field "byte" cannot parse int8 from string: asd`,
 		},
 		{
 			// Set the typedef
 			request: map[string]interface{}{
-				"foo": json.Number("3"),
+				"foo": 3,
 			},
 			want: []wire.Field{
 				{ID: 6, Value: wire.NewValueI32(3)},
@@ -236,7 +235,7 @@ func TestParseRequest(t *testing.T) {
 			request: map[string]interface{}{
 				"u": map[string]interface{}{
 					"s": "foo",
-					"i": json.Number("1"),
+					"i": 1,
 				},
 			},
 			errMsg: errUsingSingleField.Error(),
@@ -309,9 +308,9 @@ func TestParseRequest(t *testing.T) {
 		{
 			request: map[string]interface{}{
 				"s_i_map": map[string]interface{}{
-					"a": json.Number("1"),
-					"b": json.Number("2"),
-					"c": json.Number("3"),
+					"a": 1,
+					"b": 2,
+					"c": 3,
 				},
 			},
 			want: []wire.Field{{
@@ -330,9 +329,29 @@ func TestParseRequest(t *testing.T) {
 		},
 		{
 			request: map[string]interface{}{
-				"i_i_map": map[string]interface{}{
-					"2": json.Number("1"),
-					"1": json.Number("2"),
+				"i_i_map": map[interface{}]interface{}{
+					2: 1,
+					1: 2,
+				},
+			},
+			want: []wire.Field{{
+				ID: 16,
+				Value: wire.NewValueMap(wire.Map{
+					KeyType:   wire.TI32,
+					ValueType: wire.TI32,
+					Size:      2,
+					Items: wire.MapItemListFromSlice([]wire.MapItem{
+						{wire.NewValueI32(2), wire.NewValueI32(1)},
+						{wire.NewValueI32(1), wire.NewValueI32(2)},
+					}),
+				}),
+			}},
+		},
+		{
+			request: map[string]interface{}{
+				"i_i_map": map[interface{}]interface{}{
+					"2": 1,
+					"1": 2,
 				},
 			},
 			want: []wire.Field{{
@@ -353,13 +372,13 @@ func TestParseRequest(t *testing.T) {
 			request: map[string]interface{}{
 				"s_i_map": "asd",
 			},
-			errMsg: "map must be specified using map[string]*",
+			errMsg: errMapUnknownType.Error(),
 		},
 		{
 			// map key type is wrong.
 			request: map[string]interface{}{
 				"b_i_map": map[string]interface{}{
-					"asd": json.Number("1"),
+					"asd": 1,
 				},
 			},
 			errMsg: "map key (asd) failed",
@@ -376,9 +395,9 @@ func TestParseRequest(t *testing.T) {
 		{
 			// use fuzzy matching to set fields.
 			request: map[string]interface{}{
-				"Arg1":    json.Number("1"),
-				"argi16_": json.Number("3"),
-				"ARGi32":  json.Number("4"),
+				"Arg1":    1,
+				"argi16_": 3,
+				"ARGi32":  4,
 				"ArgBool": true,
 			},
 			want: []wire.Field{
@@ -401,8 +420,8 @@ func TestParseRequest(t *testing.T) {
 		{
 			// allow specifying fields by field ID
 			request: map[string]interface{}{
-				"1":  json.Number("1"),
-				"9":  json.Number("3"),
+				"1":  1,
+				"9":  3,
 				"11": true,
 			},
 			want: []wire.Field{
@@ -414,7 +433,7 @@ func TestParseRequest(t *testing.T) {
 		{
 			// invalid field IDs should report an error though.
 			request: map[string]interface{}{
-				"999": json.Number("1"),
+				"999": 1,
 			},
 			errMsg: fieldGroupError{notFound: []string{"999"}}.Error(),
 		},

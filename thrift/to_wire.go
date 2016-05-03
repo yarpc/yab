@@ -21,10 +21,10 @@
 package thrift
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
+
+	"gopkg.in/yaml.v2"
 
 	"github.com/thriftrw/thriftrw-go/ast"
 	"github.com/thriftrw/thriftrw-go/compile"
@@ -34,6 +34,7 @@ import (
 var (
 	errUsingSingleField   = errors.New("union value must only have a single value")
 	errStructUseMapString = errors.New("struct must be specified using map[string]*")
+	errMapUnknownType     = errors.New("map must be specified as a mapping")
 )
 
 func structValueMap(value interface{}) (map[string]interface{}, bool) {
@@ -94,18 +95,29 @@ func listToValue(t string, spec compile.TypeSpec, value interface{}) (wire.List,
 	}, nil
 }
 
-// JSON only allows keys to be strings, but the Thrift type may declare
-// a non-string type as the key. If the Thrift key type is not string or binary,
-// try to unmarshal the string as JSON and use wireToValue.
-func convertMapKey(keySpec compile.TypeSpec, value string) interface{} {
+func convertStringMap(m map[string]interface{}) map[interface{}]interface{} {
+	res := make(map[interface{}]interface{})
+	for k, v := range m {
+		res[k] = v
+	}
+	return res
+}
+
+// We want to support JSON, which doesn't allow non-string keys.
+// So if we receive a string key and the underlying Thrift type is not a string
+// then we try to unmarshal the JSON within the string.
+func convertMapKey(keySpec compile.TypeSpec, value interface{}) interface{} {
+	vStr, ok := value.(string)
+	if !ok {
+		// The user isn't using JSON here, can ignore.
+		return value
+	}
 	if keySpec.TypeCode() == wire.TBinary {
 		return value
 	}
 
 	var data interface{}
-	decoder := json.NewDecoder(strings.NewReader(value))
-	decoder.UseNumber()
-	if err := decoder.Decode(&data); err == nil {
+	if err := yaml.Unmarshal([]byte(vStr), &data); err == nil {
 		return data
 	}
 
@@ -117,9 +129,13 @@ func convertMapKey(keySpec compile.TypeSpec, value string) interface{} {
 // TODO: Allow specifying maps using a []MapItem form so the user
 // can cleanly use non-string/int keys.
 func mapToValue(keySpec, valueSpec compile.TypeSpec, value interface{}) (wire.Map, error) {
-	valueMap, ok := value.(map[string]interface{})
-	if !ok {
-		return wire.Map{}, fmt.Errorf("map must be specified using map[string]*")
+	var valueMap map[interface{}]interface{}
+	if vm, ok := value.(map[interface{}]interface{}); ok {
+		valueMap = vm
+	} else if vm, ok := value.(map[string]interface{}); ok {
+		valueMap = convertStringMap(vm)
+	} else {
+		return wire.Map{}, errMapUnknownType
 	}
 
 	items := make([]wire.MapItem, 0, len(valueMap))

@@ -72,7 +72,7 @@ func (e thriftSerializer) Encoding() Encoding {
 }
 
 func (e thriftSerializer) Request(input []byte) (*transport.Request, error) {
-	reqMap, err := unmarshalJSONInput(input)
+	reqMap, err := unmarshalYAMLInput(input)
 	if err != nil {
 		return nil, err
 	}
