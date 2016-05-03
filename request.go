@@ -63,7 +63,7 @@ func getHeaders(inline, file string) (map[string]string, error) {
 	}
 
 	var headers map[string]string
-	if err := json.Unmarshal(contents, &headers); err != nil {
+	if err := yaml.Unmarshal(contents, &headers); err != nil {
 		return nil, fmt.Errorf("unmarshal headers failed: %v", err)
 	}
 

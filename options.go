@@ -38,10 +38,10 @@ type RequestOptions struct {
 	Encoding    Encoding       `short:"e" long:"encoding" description:"The encoding of the data, options are: Thrift, JSON, raw. Defaults to Thrift if the method contains '::' or a Thrift file is specified"`
 	ThriftFile  string         `short:"t" long:"thrift" description:"Path of the .thrift file"`
 	MethodName  string         `short:"m" long:"method" description:"The full Thrift method name (Svc::Method) to invoke"`
-	RequestJSON string         `short:"r" long:"request" description:"The request body, in JSON format"`
-	RequestFile string         `short:"f" long:"file" description:"Path of a file containing the request body in JSON"`
-	HeadersJSON string         `long:"headers" description:"The headers in JSON format"`
-	HeadersFile string         `long:"headers-file" description:"Path of a file containing the headers in JSON"`
+	RequestJSON string         `short:"r" long:"request" description:"The request body, in JSON or YAML format"`
+	RequestFile string         `short:"f" long:"file" description:"Path of a file containing the request body in JSON or YAML"`
+	HeadersJSON string         `long:"headers" description:"The headers in JSON or YAML format"`
+	HeadersFile string         `long:"headers-file" description:"Path of a file containing the headers in JSON or YAML"`
 	Health      bool           `long:"health" description:"Hit the health endpoint, Meta::health"`
 	Timeout     timeMillisFlag `long:"timeout" default:"1s" description:"The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds are assumed."`
 }
@@ -50,7 +50,7 @@ type RequestOptions struct {
 type TransportOptions struct {
 	ServiceName      string            `short:"s" long:"service" description:"The TChannel/Hyperbahn service name"`
 	HostPorts        []string          `short:"p" long:"peer" description:"The host:port of the service to call"`
-	HostPortFile     string            `short:"P" long:"peer-list" description:"Path of a JSON file containing a list of host:ports"`
+	HostPortFile     string            `short:"P" long:"peer-list" description:"Path of a JSON or YAML file containing a list of host:ports"`
 	CallerOverride   string            `long:"caller" description:"Caller will override the default caller name (which is yab-$USER)."`
 	TransportOptions map[string]string `long:"topt" description:"Custom options for the specific transport being used"`
 

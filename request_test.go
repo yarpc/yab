@@ -134,6 +134,10 @@ func TestGetHeaders(t *testing.T) {
 			inline: `{"k": "v"}`,
 			want:   map[string]string{"k": "v"},
 		},
+		{
+			inline: `k: v`,
+			want:   map[string]string{"k": "v"},
+		},
 	}
 
 	for _, tt := range tests {

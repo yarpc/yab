@@ -23,7 +23,6 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -32,6 +31,8 @@ import (
 	"net/url"
 	"os"
 	"strings"
+
+	"gopkg.in/yaml.v2"
 
 	"github.com/yarpc/yab/transport"
 
@@ -155,7 +156,7 @@ func parseHostFile(filename string) ([]string, error) {
 	}
 
 	// Try as JSON.
-	hosts, err := parseHostFileJSON(bytes.NewReader(contents))
+	hosts, err := parseHostFileYAML(contents)
 	if err != nil {
 		hosts, err = parseHostsFileNewLines(bytes.NewReader(contents))
 	}
@@ -166,9 +167,9 @@ func parseHostFile(filename string) ([]string, error) {
 	return hosts, nil
 }
 
-func parseHostFileJSON(r io.Reader) ([]string, error) {
+func parseHostFileYAML(contents []byte) ([]string, error) {
 	var hosts []string
-	return hosts, json.NewDecoder(r).Decode(&hosts)
+	return hosts, yaml.Unmarshal(contents, &hosts)
 }
 
 func parseHostsFileNewLines(r io.Reader) ([]string, error) {
