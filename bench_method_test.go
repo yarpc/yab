@@ -25,6 +25,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/yarpc/yab/encoding"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/uber/tchannel-go/testutils"
@@ -32,7 +34,7 @@ import (
 
 func benchmarkMethodForTest(t *testing.T, methodString string) benchmarkMethod {
 	rOpts := RequestOptions{
-		Encoding:   Thrift,
+		Encoding:   encoding.Thrift,
 		ThriftFile: validThrift,
 		MethodName: methodString,
 	}
@@ -140,7 +142,7 @@ func TestBenchmarkMethodCall(t *testing.T) {
 		ServiceName: "foo",
 		HostPorts:   []string{s.hostPort()},
 	}
-	transport, err := getTransport(tOpts, Thrift)
+	transport, err := getTransport(tOpts, encoding.Thrift)
 	require.NoError(t, err, "Failed to get transport")
 
 	for _, tt := range tests {

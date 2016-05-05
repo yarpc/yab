@@ -18,15 +18,17 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package main
+package encoding
 
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/yarpc/yab/sorted"
 	"github.com/yarpc/yab/thrift"
 	"github.com/yarpc/yab/transport"
+	"github.com/yarpc/yab/unmarshal"
 
 	"github.com/thriftrw/thriftrw-go/compile"
 )
@@ -36,7 +38,8 @@ type thriftSerializer struct {
 	spec       *compile.FunctionSpec
 }
 
-func newThriftSerializer(thriftFile, methodName string) (Serializer, error) {
+// NewThrift returns a Thrift serializer.
+func NewThrift(thriftFile, methodName string) (Serializer, error) {
 	if thriftFile == "" {
 		return nil, errors.New("specify a Thrift file using --thrift")
 	}
@@ -72,7 +75,7 @@ func (e thriftSerializer) Encoding() Encoding {
 }
 
 func (e thriftSerializer) Request(input []byte) (*transport.Request, error) {
-	reqMap, err := unmarshalYAMLInput(input)
+	reqMap, err := unmarshal.YAML(input)
 	if err != nil {
 		return nil, err
 	}
@@ -132,4 +135,9 @@ func findMethod(service *compile.ServiceSpec, methodName string) (*compile.Funct
 		errMsg = fmt.Sprintf("could not find method %q in %q", methodName, service.Name)
 	}
 	return nil, notFoundError{errMsg + ", available methods:", available}
+}
+
+func isFileMissing(f string) bool {
+	_, err := os.Stat(f)
+	return os.IsNotExist(err)
 }

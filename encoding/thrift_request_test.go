@@ -18,13 +18,22 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package main
+package encoding
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thriftrw/thriftrw-go/compile"
+	"github.com/yarpc/yab/thrift"
+)
+
+const (
+	fooMethod   = "Simple::foo"
+	validThrift = "../testdata/simple.thrift"
 )
 
 func TestNewThriftSerializer(t *testing.T) {
@@ -45,7 +54,7 @@ func TestNewThriftSerializer(t *testing.T) {
 		},
 		{
 			desc:   "Thrift file can't be parsed",
-			file:   "testdata/invalid.json",
+			file:   "../testdata/invalid.json",
 			errMsg: "could not parse Thrift",
 		},
 		{
@@ -74,10 +83,12 @@ func TestNewThriftSerializer(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got, err := newThriftSerializer(tt.file, tt.method)
+		got, err := NewThrift(tt.file, tt.method)
 		if tt.errMsg == "" {
 			assert.NoError(t, err, "%v", tt.desc)
-			assert.NotNil(t, got, "%v: Invalid request")
+			if assert.NotNil(t, got, "%v: Invalid request") {
+				assert.Equal(t, Thrift, got.Encoding(), "Encoding mismatch")
+			}
 			continue
 		}
 
@@ -89,7 +100,7 @@ func TestNewThriftSerializer(t *testing.T) {
 }
 
 func TestRequest(t *testing.T) {
-	serializer, err := newThriftSerializer(validThrift, "Simple::foo")
+	serializer, err := NewThrift(validThrift, "Simple::foo")
 	require.NoError(t, err, "Failed to create serializer")
 
 	tests := []struct {
@@ -233,4 +244,28 @@ func TestFindMethod(t *testing.T) {
 			assert.Equal(t, tt.f, got.Name, "Method name mismatch")
 		}
 	}
+}
+
+func writeFile(t *testing.T, prefix, contents string) string {
+	f, err := ioutil.TempFile("", prefix)
+	require.NoError(t, err, "TempFile failed")
+	_, err = f.WriteString(contents)
+	require.NoError(t, err, "Write to temp file failed")
+	require.NoError(t, f.Close(), "Close temp file failed")
+	return f.Name()
+}
+
+// TODO use fake filesystem for compile.Compile
+
+func mustParse(t *testing.T, contents string) *compile.Module {
+	f := writeFile(t, "thrift", contents)
+	defer os.Remove(f)
+
+	return mustParseFile(t, f)
+}
+
+func mustParseFile(t *testing.T, filename string) *compile.Module {
+	parsed, err := thrift.Parse(filename)
+	require.NoError(t, err, "thrift.Parse failed")
+	return parsed
 }

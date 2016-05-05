@@ -21,13 +21,20 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
+
+	"github.com/yarpc/yab/encoding"
 
 	"gopkg.in/yaml.v2"
+)
+
+var (
+	errUnrecognizedEncoding = errors.New("unrecognized encoding, must be one of: json, thrift, raw")
+	errMissingMethodName    = errors.New("no method specified, specify --method method")
 )
 
 // getRequestInput gets the byte body passed in by the user via flags or through a file.
@@ -70,28 +77,34 @@ func getHeaders(inline, file string) (map[string]string, error) {
 	return headers, nil
 }
 
-func unmarshalYAMLInput(bs []byte) (map[string]interface{}, error) {
-	var m map[string]interface{}
-	if err := yaml.Unmarshal(bs, &m); err != nil {
-		return nil, err
+// NewSerializer creates a Serializer for the specific encoding.
+func NewSerializer(opts RequestOptions) (encoding.Serializer, error) {
+	e := opts.Encoding
+
+	if opts.Health {
+		if opts.MethodName != "" {
+			return nil, errHealthAndMethod
+		}
+
+		return e.GetHealth()
 	}
 
-	return m, nil
-}
-
-func unmarshalJSONInput(bs []byte) (map[string]interface{}, error) {
-	// An empty body should produce an empty input map.
-	if len(bs) == 0 {
-		return make(map[string]interface{}), nil
+	if opts.MethodName == "" {
+		return nil, errMissingMethodName
 	}
 
-	decoder := json.NewDecoder(bytes.NewReader(bs))
-	decoder.UseNumber()
-
-	var data map[string]interface{}
-	if err := decoder.Decode(&data); err != nil {
-		return nil, fmt.Errorf("failed to parse JSON: %v", err)
+	if e == encoding.UnspecifiedEncoding && strings.Contains(opts.MethodName, "::") {
+		e = encoding.Thrift
 	}
 
-	return data, nil
+	switch e {
+	case encoding.Thrift:
+		return encoding.NewThrift(opts.ThriftFile, opts.MethodName)
+	case encoding.JSON:
+		return encoding.NewJSON(opts.MethodName), nil
+	case encoding.Raw:
+		return encoding.NewRaw(opts.MethodName), nil
+	}
+
+	return nil, errUnrecognizedEncoding
 }
