@@ -181,8 +181,3 @@ func makeRequest(t transport.Transport, request *transport.Request) (*transport.
 
 	return t.Call(ctx, request)
 }
-
-func isFileMissing(f string) bool {
-	_, err := os.Stat(f)
-	return os.IsNotExist(err)
-}

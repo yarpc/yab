@@ -34,6 +34,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
+	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
 
 	"github.com/uber/tchannel-go"
@@ -85,7 +86,7 @@ func ensureSameProtocol(hostPorts []string) (string, error) {
 	return lastProtocol, nil
 }
 
-func getTransport(opts TransportOptions, encoding Encoding) (transport.Transport, error) {
+func getTransport(opts TransportOptions, encoding encoding.Encoding) (transport.Transport, error) {
 	if opts.ServiceName == "" {
 		return nil, errServiceRequired
 	}

@@ -21,13 +21,13 @@
 package main
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/yarpc/yab/encoding"
 )
 
 func mustRead(fname string) []byte {
@@ -155,140 +155,90 @@ func TestGetHeaders(t *testing.T) {
 	}
 }
 
-func TestUnmarshalJSONInput(t *testing.T) {
+func TestNewSerializer(t *testing.T) {
 	tests := []struct {
-		input   []byte
-		want    map[string]interface{}
-		wantErr bool
+		encoding encoding.Encoding
+		opts     RequestOptions
+		want     encoding.Encoding
+		wantErr  error
 	}{
 		{
-			input: []byte("{}"),
-			want:  map[string]interface{}{},
+			encoding: encoding.JSON,
+			opts:     RequestOptions{Health: true},
+			wantErr:  encoding.ErrHealthThriftOnly,
 		},
 		{
-			input: mustRead("testdata/valid.json"),
-			want: map[string]interface{}{
-				"k1": "v1",
-				"k2": json.Number("5"),
+			encoding: encoding.Raw,
+			opts:     RequestOptions{Health: true},
+			wantErr:  encoding.ErrHealthThriftOnly,
+		},
+		{
+			encoding: encoding.Thrift,
+			opts:     RequestOptions{Health: true},
+			want:     encoding.Thrift,
+		},
+		{
+			encoding: encoding.Thrift,
+			opts: RequestOptions{
+				Health:     true,
+				MethodName: "method",
 			},
+			wantErr: errHealthAndMethod,
+		},
+		{
+			encoding: encoding.Encoding("asd"),
+			opts:     RequestOptions{MethodName: "method"},
+			wantErr:  errUnrecognizedEncoding,
+		},
+		{
+			encoding: encoding.UnspecifiedEncoding,
+			opts:     RequestOptions{Health: true},
+			want:     encoding.Thrift,
+		},
+		{
+			encoding: encoding.UnspecifiedEncoding,
+			opts:     RequestOptions{ThriftFile: validThrift, MethodName: "Simple::foo"},
+			want:     encoding.Thrift,
+		},
+		{
+			encoding: encoding.JSON,
+			opts:     RequestOptions{MethodName: "Test::foo"},
+			want:     encoding.JSON,
+		},
+		{
+			encoding: encoding.JSON,
+			wantErr:  errMissingMethodName,
+		},
+		{
+			encoding: encoding.Raw,
+			wantErr:  errMissingMethodName,
+		},
+		{
+			encoding: encoding.Thrift,
+			wantErr:  errMissingMethodName,
+		},
+		{
+			encoding: encoding.JSON,
+			opts:     RequestOptions{MethodName: "method"},
+			want:     encoding.JSON,
+		},
+		{
+			encoding: encoding.Raw,
+			opts:     RequestOptions{MethodName: "method"},
+			want:     encoding.Raw,
 		},
 	}
 
 	for _, tt := range tests {
-		got, err := unmarshalJSONInput(tt.input)
-		if tt.wantErr {
-			assert.Error(t, err, "unmarshalJSON(%s) should fail", tt.input)
+		tt.opts.Encoding = tt.encoding
+		got, err := NewSerializer(tt.opts)
+		assert.Equal(t, tt.wantErr, err, "NewSerializer(%+v) error", tt.opts)
+		if err != nil {
 			continue
 		}
 
-		if assert.NoError(t, err, "unmarshalJSON(%s) should not fail", tt.input) {
-			assert.Equal(t, tt.want, got, "unmarshalJSON(%s) unexpected result", tt.input)
+		if assert.NotNil(t, got, "NewSerializer(%+v) missing serializer", tt.opts) {
+			assert.Equal(t, tt.want, got.Encoding(), "NewSerializer(%+v) wrong encoding", tt.opts)
 		}
-	}
-}
-
-func TestUnmarshalYAMLInput(t *testing.T) {
-	tests := []struct {
-		msg       string
-		input     string
-		jsonInput string
-		want      map[string]interface{}
-		wantErr   bool
-	}{
-		{
-			msg: "basic types",
-			input: `
-str: v1
-int: 5
-bool: true
-int64: 9223372036854775807
-uint64: 18446744073709551615
-float: 6.5`,
-			want: map[string]interface{}{
-				"str":    "v1",
-				"int":    5,
-				"bool":   true,
-				"int64":  9223372036854775807,
-				"uint64": uint64(18446744073709551615),
-				"float":  6.5,
-			},
-		},
-		{
-			msg: "inline objects",
-			input: `
-obj:
-  1: 2
-  3: 5.6`,
-			want: map[string]interface{}{
-				"obj": map[interface{}]interface{}{
-					1: 2,
-					3: 5.6,
-				},
-			},
-		},
-		{
-			msg: "json is yaml",
-			input: `{
-				"str": "v1",
-				"int": 5,
-				"bool": true,
-				"int64": 9223372036854775807,
-				"uint64": 18446744073709551615,
-				"float": 6.5,
-				"obj": {"k1": "v1"}
-			}`,
-			want: map[string]interface{}{
-				"str":    "v1",
-				"int":    5,
-				"bool":   true,
-				"int64":  9223372036854775807,
-				"uint64": uint64(18446744073709551615),
-				"float":  6.5,
-				"obj": map[interface{}]interface{}{
-					"k1": "v1",
-				},
-			},
-		},
-		{
-			msg: "json with trailing comma",
-			input: `{
-				"str": "v1",
-			}`,
-			want: map[string]interface{}{
-				"str": "v1",
-			},
-		},
-		{
-			msg: "json with map[int]int",
-			input: `{
-				"obj": {
-					1: 2,
-					3: 4,
-				}
-			}`,
-			want: map[string]interface{}{
-				"obj": map[interface{}]interface{}{
-					1: 2,
-					3: 4,
-				},
-			},
-		},
-		{
-			msg:     "invalid yaml",
-			input:   `{"str" "asd"}`,
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		got, err := unmarshalYAMLInput([]byte(tt.input))
-		if tt.wantErr {
-			assert.Error(t, err, "%v: should fail", tt.msg)
-			continue
-		}
-		if !assert.NoError(t, err, "%v: should succeed", tt.msg) {
-			continue
-		}
-		assert.Equal(t, tt.want, got, "%v: mismatch", tt.msg)
 	}
 }

@@ -23,6 +23,8 @@ package main
 import (
 	"strconv"
 	"time"
+
+	"github.com/yarpc/yab/encoding"
 )
 
 // Options are parsed from flags using go-flags.
@@ -35,15 +37,15 @@ type Options struct {
 
 // RequestOptions are request related options
 type RequestOptions struct {
-	Encoding    Encoding       `short:"e" long:"encoding" description:"The encoding of the data, options are: Thrift, JSON, raw. Defaults to Thrift if the method contains '::' or a Thrift file is specified"`
-	ThriftFile  string         `short:"t" long:"thrift" description:"Path of the .thrift file"`
-	MethodName  string         `short:"m" long:"method" description:"The full Thrift method name (Svc::Method) to invoke"`
-	RequestJSON string         `short:"r" long:"request" description:"The request body, in JSON or YAML format"`
-	RequestFile string         `short:"f" long:"file" description:"Path of a file containing the request body in JSON or YAML"`
-	HeadersJSON string         `long:"headers" description:"The headers in JSON or YAML format"`
-	HeadersFile string         `long:"headers-file" description:"Path of a file containing the headers in JSON or YAML"`
-	Health      bool           `long:"health" description:"Hit the health endpoint, Meta::health"`
-	Timeout     timeMillisFlag `long:"timeout" default:"1s" description:"The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds are assumed."`
+	Encoding    encoding.Encoding `short:"e" long:"encoding" description:"The encoding of the data, options are: Thrift, JSON, raw. Defaults to Thrift if the method contains '::' or a Thrift file is specified"`
+	ThriftFile  string            `short:"t" long:"thrift" description:"Path of the .thrift file"`
+	MethodName  string            `short:"m" long:"method" description:"The full Thrift method name (Svc::Method) to invoke"`
+	RequestJSON string            `short:"r" long:"request" description:"The request body, in JSON or YAML format"`
+	RequestFile string            `short:"f" long:"file" description:"Path of a file containing the request body in JSON or YAML"`
+	HeadersJSON string            `long:"headers" description:"The headers in JSON or YAML format"`
+	HeadersFile string            `long:"headers-file" description:"Path of a file containing the headers in JSON or YAML"`
+	Health      bool              `long:"health" description:"Hit the health endpoint, Meta::health"`
+	Timeout     timeMillisFlag    `long:"timeout" default:"1s" description:"The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds are assumed."`
 }
 
 // TransportOptions are transport related options.

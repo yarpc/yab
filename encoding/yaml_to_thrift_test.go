@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package main
+package encoding
 
 import (
 	"io/ioutil"
@@ -66,7 +66,7 @@ func getSerializer(typeSpec compile.TypeSpec) thriftSerializer {
 }
 
 func TestYAMLToThrift(t *testing.T) {
-	const testDir = "testdata/yamltothrift/"
+	const testDir = "../testdata/yamltothrift/"
 
 	files, err := ioutil.ReadDir(testDir)
 	require.NoError(t, err, "Failed to read test directory %v: %v", testDir, err)

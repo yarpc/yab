@@ -18,14 +18,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package main
+package encoding
 
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/yarpc/yab/transport"
+	"github.com/yarpc/yab/unmarshal"
 )
 
 // Encoding is the representation of the data on the wire.
@@ -57,10 +59,9 @@ const (
 )
 
 var (
-	errNilEncoding          = errors.New("cannot Unmarshal into nil Encoding")
-	errUnrecognizedEncoding = errors.New("unrecognized encoding, must be one of: json, thrift, raw")
-	errHealthThriftOnly     = errors.New("--health can only be used with Thrift")
-	errMissingMethodName    = errors.New("no method specified, specify --method method")
+	errNilEncoding = errors.New("cannot Unmarshal into nil Encoding")
+	// ErrHealthThriftOnly is returned if the user specifies an unsupported encoding with --health.
+	ErrHealthThriftOnly = errors.New("--health can only be used with Thrift")
 )
 
 func (e Encoding) String() string {
@@ -78,7 +79,7 @@ func (e *Encoding) UnmarshalText(text []byte) error {
 		*e = Encoding(s)
 		return nil
 	default:
-		return errUnrecognizedEncoding
+		return fmt.Errorf("unknown encoding: %q", s)
 	}
 }
 
@@ -87,53 +88,24 @@ func (e *Encoding) UnmarshalFlag(s string) error {
 	return e.UnmarshalText([]byte(s))
 }
 
-func (e Encoding) supportsHealth() bool {
+// GetHealth returns a serializer for the Health endpoint.
+func (e Encoding) GetHealth() (Serializer, error) {
 	switch e {
 	case UnspecifiedEncoding, Thrift:
-		return true
-	default:
-		return false
-	}
-}
-
-// NewSerializer creates a Serializer for the specific encoding.
-func NewSerializer(opts RequestOptions) (Serializer, error) {
-	e := opts.Encoding
-
-	if opts.Health {
-		if !e.supportsHealth() {
-			return nil, errHealthThriftOnly
-		}
-		if opts.MethodName != "" {
-			return nil, errHealthAndMethod
-		}
-
 		method, spec := getHealthSpec()
 		return thriftSerializer{method, spec}, nil
+	default:
+		return nil, ErrHealthThriftOnly
 	}
-
-	if opts.MethodName == "" {
-		return nil, errMissingMethodName
-	}
-
-	if e == UnspecifiedEncoding && strings.Contains(opts.MethodName, "::") {
-		e = Thrift
-	}
-
-	switch e {
-	case Thrift:
-		return newThriftSerializer(opts.ThriftFile, opts.MethodName)
-	case JSON:
-		return jsonSerializer{opts.MethodName}, nil
-	case Raw:
-		return rawSerializer{opts.MethodName}, nil
-	}
-
-	return nil, errUnrecognizedEncoding
 }
 
 type jsonSerializer struct {
 	methodName string
+}
+
+// NewJSON returns a JSON serializer.
+func NewJSON(methodName string) Serializer {
+	return jsonSerializer{methodName}
 }
 
 func (e jsonSerializer) Encoding() Encoding {
@@ -144,7 +116,7 @@ func (e jsonSerializer) Encoding() Encoding {
 // Marshals the map to produce consistent output with whitespace removed
 // and sorted field order.
 func (e jsonSerializer) Request(input []byte) (*transport.Request, error) {
-	data, err := unmarshalJSONInput(input)
+	data, err := unmarshal.JSON(input)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +133,7 @@ func (e jsonSerializer) Request(input []byte) (*transport.Request, error) {
 }
 
 func (e jsonSerializer) Response(res *transport.Response) (interface{}, error) {
-	return unmarshalJSONInput(res.Body)
+	return unmarshal.JSON(res.Body)
 }
 
 func (e jsonSerializer) CheckSuccess(res *transport.Response) error {
@@ -171,6 +143,11 @@ func (e jsonSerializer) CheckSuccess(res *transport.Response) error {
 
 type rawSerializer struct {
 	methodName string
+}
+
+// NewRaw returns a raw serializer.
+func NewRaw(methodName string) Serializer {
+	return rawSerializer{methodName}
 }
 
 func (e rawSerializer) Encoding() Encoding {
