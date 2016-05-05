@@ -263,6 +263,10 @@ func TestParseHostFile(t *testing.T) {
 			want:     []string{"1.1.1.1:1", "2.2.2.2:2"},
 		},
 		{
+			filename: "testdata/valid_peerlist.yaml",
+			want:     []string{"1.1.1.1:1", "2.2.2.2:2"},
+		},
+		{
 			filename: "testdata/valid_peerlist.txt",
 			want:     []string{"1.1.1.1:1", "2.2.2.2:2"},
 		},

@@ -26,6 +26,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+
+	"gopkg.in/yaml.v2"
 )
 
 // getRequestInput gets the byte body passed in by the user via flags or through a file.
@@ -61,11 +63,20 @@ func getHeaders(inline, file string) (map[string]string, error) {
 	}
 
 	var headers map[string]string
-	if err := json.Unmarshal(contents, &headers); err != nil {
+	if err := yaml.Unmarshal(contents, &headers); err != nil {
 		return nil, fmt.Errorf("unmarshal headers failed: %v", err)
 	}
 
 	return headers, nil
+}
+
+func unmarshalYAMLInput(bs []byte) (map[string]interface{}, error) {
+	var m map[string]interface{}
+	if err := yaml.Unmarshal(bs, &m); err != nil {
+		return nil, err
+	}
+
+	return m, nil
 }
 
 func unmarshalJSONInput(bs []byte) (map[string]interface{}, error) {

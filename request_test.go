@@ -134,6 +134,10 @@ func TestGetHeaders(t *testing.T) {
 			inline: `{"k": "v"}`,
 			want:   map[string]string{"k": "v"},
 		},
+		{
+			inline: `k: v`,
+			want:   map[string]string{"k": "v"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -180,5 +184,111 @@ func TestUnmarshalJSONInput(t *testing.T) {
 		if assert.NoError(t, err, "unmarshalJSON(%s) should not fail", tt.input) {
 			assert.Equal(t, tt.want, got, "unmarshalJSON(%s) unexpected result", tt.input)
 		}
+	}
+}
+
+func TestUnmarshalYAMLInput(t *testing.T) {
+	tests := []struct {
+		msg       string
+		input     string
+		jsonInput string
+		want      map[string]interface{}
+		wantErr   bool
+	}{
+		{
+			msg: "basic types",
+			input: `
+str: v1
+int: 5
+bool: true
+int64: 9223372036854775807
+uint64: 18446744073709551615
+float: 6.5`,
+			want: map[string]interface{}{
+				"str":    "v1",
+				"int":    5,
+				"bool":   true,
+				"int64":  9223372036854775807,
+				"uint64": uint64(18446744073709551615),
+				"float":  6.5,
+			},
+		},
+		{
+			msg: "inline objects",
+			input: `
+obj:
+  1: 2
+  3: 5.6`,
+			want: map[string]interface{}{
+				"obj": map[interface{}]interface{}{
+					1: 2,
+					3: 5.6,
+				},
+			},
+		},
+		{
+			msg: "json is yaml",
+			input: `{
+				"str": "v1",
+				"int": 5,
+				"bool": true,
+				"int64": 9223372036854775807,
+				"uint64": 18446744073709551615,
+				"float": 6.5,
+				"obj": {"k1": "v1"}
+			}`,
+			want: map[string]interface{}{
+				"str":    "v1",
+				"int":    5,
+				"bool":   true,
+				"int64":  9223372036854775807,
+				"uint64": uint64(18446744073709551615),
+				"float":  6.5,
+				"obj": map[interface{}]interface{}{
+					"k1": "v1",
+				},
+			},
+		},
+		{
+			msg: "json with trailing comma",
+			input: `{
+				"str": "v1",
+			}`,
+			want: map[string]interface{}{
+				"str": "v1",
+			},
+		},
+		{
+			msg: "json with map[int]int",
+			input: `{
+				"obj": {
+					1: 2,
+					3: 4,
+				}
+			}`,
+			want: map[string]interface{}{
+				"obj": map[interface{}]interface{}{
+					1: 2,
+					3: 4,
+				},
+			},
+		},
+		{
+			msg:     "invalid yaml",
+			input:   `{"str" "asd"}`,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		got, err := unmarshalYAMLInput([]byte(tt.input))
+		if tt.wantErr {
+			assert.Error(t, err, "%v: should fail", tt.msg)
+			continue
+		}
+		if !assert.NoError(t, err, "%v: should succeed", tt.msg) {
+			continue
+		}
+		assert.Equal(t, tt.want, got, "%v: mismatch", tt.msg)
 	}
 }

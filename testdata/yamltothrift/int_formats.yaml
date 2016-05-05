@@ -1,0 +1,9 @@
+arg:
+  l:
+    - 16
+    # 16 in hex
+    - 0x10
+    # 16 in octal
+    - 020
+    # 16 in binary
+    - 0b1_0000

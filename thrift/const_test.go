@@ -21,7 +21,6 @@
 package thrift
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -43,11 +42,11 @@ func TestConstToRequest(t *testing.T) {
 		},
 		{
 			v:    compile.ConstantDouble(1.05),
-			want: json.Number("1.05"),
+			want: 1.05,
 		},
 		{
 			v:    compile.ConstantInt(1),
-			want: json.Number("1"),
+			want: int64(1),
 		},
 		{
 			v:    compile.ConstantString("foo"),
@@ -70,7 +69,7 @@ func TestConstToRequest(t *testing.T) {
 					Value: 5,
 				},
 			},
-			want: json.Number("5"),
+			want: int32(5),
 		},
 		{
 			v: compile.ConstantList{
@@ -78,7 +77,7 @@ func TestConstToRequest(t *testing.T) {
 				compile.ConstantBool(true),
 				compile.ConstantString("foo"),
 			},
-			want: []interface{}{json.Number("1"), true, "foo"},
+			want: []interface{}{int64(1), true, "foo"},
 		},
 		{
 			v: compile.ConstantMap{
@@ -86,8 +85,8 @@ func TestConstToRequest(t *testing.T) {
 				{compile.ConstantBool(true), compile.ConstantString("v2")},
 			},
 			want: map[interface{}]interface{}{
-				json.Number("1"): "v1",
-				true:             "v2",
+				int64(1): "v1",
+				true:     "v2",
 			},
 		},
 	}

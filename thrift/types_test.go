@@ -21,7 +21,6 @@
 package thrift
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -70,27 +69,27 @@ func TestParseBool(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			value: json.Number("1"),
+			value: int(1),
 			want:  true,
 		},
 		{
-			value: json.Number("0"),
+			value: 0,
 			want:  false,
 		},
 		{
-			value:   json.Number("1.0"),
+			value:   1.0,
 			wantErr: true,
 		},
 		{
-			value:   json.Number("0.0"),
+			value:   0.0,
 			wantErr: true,
 		},
 		{
-			value:   json.Number("-1"),
+			value:   -1,
 			wantErr: true,
 		},
 		{
-			value:   json.Number("2"),
+			value:   2,
 			wantErr: true,
 		},
 		{
@@ -119,17 +118,12 @@ func TestParseInt(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			value: json.Number("0"),
+			value: 0,
 			bits:  8,
 			want:  0,
 		},
 		{
-			value:   json.Number("1.0"),
-			bits:    8,
-			wantErr: true,
-		},
-		{
-			value:   "0",
+			value:   1.0,
 			bits:    8,
 			wantErr: true,
 		},
@@ -139,44 +133,54 @@ func TestParseInt(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			value: -128,
+			bits:  8,
+			want:  -128,
+		},
+		{
+			value: 127,
+			bits:  8,
+			want:  127,
+		},
+		{
 			// out of range
-			value:   json.Number("-257"),
+			value:   -129,
 			bits:    8,
 			wantErr: true,
 		},
 		{
 			// out of range
-			value:   json.Number("256"),
+			value:   128,
 			bits:    8,
 			wantErr: true,
 		},
 		{
-			value: json.Number("256"),
+			value: 256,
 			bits:  16,
 			want:  256,
 		},
 		{
-			value:   json.Number("65536"),
+			value:   65536,
 			bits:    16,
 			wantErr: true,
 		},
 		{
-			value: json.Number("65536"),
+			value: 65536,
 			bits:  32,
 			want:  65536,
 		},
 		{
-			value:   json.Number("4294967296"),
+			value:   4294967296,
 			bits:    32,
 			wantErr: true,
 		},
 		{
-			value: json.Number("4294967296"),
+			value: 4294967296,
 			bits:  64,
 			want:  4294967296,
 		},
 		{
-			value:   json.Number("18446744073709551616"),
+			value:   uint64(18446744073709551615),
 			bits:    64,
 			wantErr: true,
 		},
@@ -201,19 +205,27 @@ func TestParseDouble(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			value: json.Number("0"),
-			want:  0,
+			value: int(1),
+			want:  1,
 		},
 		{
-			value: json.Number("0.0"),
+			value: int64(1),
+			want:  1,
+		},
+		{
+			value: uint64(1),
+			want:  1,
+		},
+		{
+			value: 0.0,
 			want:  0.0,
 		},
 		{
-			value: json.Number("3.14159"),
+			value: 3.14159,
 			want:  3.14159,
 		},
 		{
-			value:   json.Number("asd"),
+			value:   "ast",
 			wantErr: true,
 		},
 		{
@@ -257,55 +269,55 @@ func TestParseBinary(t *testing.T) {
 			want:  []byte("asd"),
 		},
 		{
-			value: []interface{}{json.Number("65"), json.Number("66")},
+			value: []interface{}{65, 66},
 			want:  []byte("AB"),
 		},
 		{
-			value: []interface{}{json.Number("104"), "ello", "", " ", "world"},
+			value: []interface{}{104, "ello", "", " ", "world"},
 			want:  []byte("hello world"),
 		},
 		{
-			value: map[string]interface{}{"base64": "YWI="},
+			value: map[interface{}]interface{}{"base64": "YWI="},
 			want:  []byte("ab"),
 		},
 		{
-			value: map[string]interface{}{"base64": "YWI"},
+			value: map[interface{}]interface{}{"base64": "YWI"},
 			want:  []byte("ab"),
 		},
 		{
-			value: map[string]interface{}{"file": "../testdata/valid.json"},
+			value: map[interface{}]interface{}{"file": "../testdata/valid.json"},
 			want:  []byte(`{"k1": "v1", "k2": 5}` + "\n"),
 		},
 		{
-			value:  []interface{}{json.Number("256")},
+			value:  []interface{}{256},
 			errMsg: "failed to parse list of bytes",
 		},
 		{
-			value:  []interface{}{json.Number("1.5")},
-			errMsg: "failed to parse list of bytes",
+			value:  []interface{}{1.5},
+			errMsg: "can only parse list of bytes",
 		},
 		{
-			value:  map[string]interface{}{"base64": true},
+			value:  map[interface{}]interface{}{"base64": true},
 			errMsg: "base64 must be specified as string",
 		},
 		{
-			value:  map[string]interface{}{"base64": "a_b"},
+			value:  map[interface{}]interface{}{"base64": "a_b"},
 			errMsg: "illegal base64 data",
 		},
 		{
-			value:  map[string]interface{}{"unsupported": "ab"},
+			value:  map[interface{}]interface{}{"unsupported": "ab"},
 			errMsg: errBinaryObjectOptions.Error(),
 		},
 		{
-			value:  map[string]interface{}{"file": true},
+			value:  map[interface{}]interface{}{"file": true},
 			errMsg: "file requires filename as string",
 		},
 		{
-			value:  map[string]interface{}{"file": "not-found.json"},
+			value:  map[interface{}]interface{}{"file": "not-found.json"},
 			errMsg: "no such file or directory",
 		},
 		{
-			value:  json.Number("3.14159"),
+			value:  3.14159,
 			errMsg: "cannot parse binary/string",
 		},
 		{
@@ -317,8 +329,8 @@ func TestParseBinary(t *testing.T) {
 			errMsg: "cannot parse binary/string",
 		},
 		{
-			value:  []interface{}{0, 0, 0},
-			errMsg: "can only parse list of bytes or characters",
+			value: []interface{}{0, 0, 0},
+			want:  []byte{0, 0, 0},
 		},
 	}
 
