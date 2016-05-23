@@ -29,10 +29,11 @@ import (
 
 // Options are parsed from flags using go-flags.
 type Options struct {
-	ROpts          RequestOptions   `group:"request"`
+	ROpts          RequestOptions   `group:"request" description:"Configures an individual request."`
 	TOpts          TransportOptions `group:"transport"`
 	BOpts          BenchmarkOptions `group:"benchmark"`
 	DisplayVersion bool             `long:"version" description:"Displays the application version"`
+	ManPage        bool             `long:"man-page" hidden:"yes" description:"Print yab's man page to stdout"`
 }
 
 // RequestOptions are request related options
