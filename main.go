@@ -65,6 +65,13 @@ func parseAndRun(out output) {
 	var opts Options
 	parser := flags.NewParser(&opts, flags.HelpFlag|flags.PassDoubleDash)
 	parser.Usage = "[<service> <method> <body>] [OPTIONS]"
+	parser.ShortDescription = "yet another benchmarker"
+	parser.LongDescription = `
+yab is a benchmarking tool for TChannel and HTTP applications. It's primarily intended for Thrift applications but supports other encodings like JSON and binary (raw).
+
+It can be used in a curl-like fashion when benchmarking features are disabled.
+`
+
 	findGroup(parser, "transport").ShortDescription = "Transport Options"
 	findGroup(parser, "request").ShortDescription = "Request Options"
 	findGroup(parser, "benchmark").ShortDescription = "Benchmark Options"
@@ -88,6 +95,11 @@ func parseAndRun(out output) {
 
 	if opts.DisplayVersion {
 		out.Printf("yab version %v\n", versionString)
+		return
+	}
+
+	if opts.ManPage {
+		parser.WriteManPage(os.Stdout)
 		return
 	}
 
