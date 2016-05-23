@@ -21,6 +21,7 @@
 package main
 
 import (
+	"errors"
 	"strconv"
 	"time"
 
@@ -46,6 +47,10 @@ type RequestOptions struct {
 	HeadersFile string            `long:"headers-file" description:"Path of a file containing the headers in JSON or YAML"`
 	Health      bool              `long:"health" description:"Hit the health endpoint, Meta::health"`
 	Timeout     timeMillisFlag    `long:"timeout" default:"1s" description:"The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds are assumed."`
+
+	// These are aliases for tcurl compatibility.
+	Arg2 stringAlias `short:"2" long:"arg2" hidden:"true"`
+	Arg3 stringAlias `short:"3" long:"arg3" hidden:"true"`
 }
 
 // TransportOptions are transport related options.
@@ -76,6 +81,13 @@ type BenchmarkOptions struct {
 	StatsdHostPort string `long:"statsd" description:"Optional host:port of a StatsD server to report metrics"`
 }
 
+func newOptions() *Options {
+	var opts Options
+	opts.ROpts.Arg3.dest = &opts.ROpts.RequestJSON
+	opts.ROpts.Arg2.dest = &opts.ROpts.HeadersJSON
+	return &opts
+}
+
 type timeMillisFlag time.Duration
 
 func (t *timeMillisFlag) setDuration(d time.Duration) {
@@ -100,5 +112,19 @@ func (t *timeMillisFlag) UnmarshalFlag(value string) error {
 	}
 
 	t.setDuration(d)
+	return nil
+}
+
+var errStringAliasMissing = errors.New("string alias missing destination")
+
+type stringAlias struct {
+	dest *string
+}
+
+func (s *stringAlias) UnmarshalFlag(value string) error {
+	if s.dest == nil {
+		return errStringAliasMissing
+	}
+	*s.dest = value
 	return nil
 }
