@@ -101,7 +101,7 @@ It can be used in a curl-like fashion when benchmarking features are disabled.
 
 	if opts.ManPage {
 		parser.WriteManPage(os.Stdout)
-		return
+		return opts, errExit
 	}
 
 	fromPositional(remaining, 0, &opts.TOpts.ServiceName)
