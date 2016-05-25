@@ -22,8 +22,9 @@ package thrift
 
 import (
 	"io/ioutil"
-	"os"
 	"testing"
+
+	"github.com/yarpc/yab/internal/thrifttest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,18 +34,7 @@ import (
 
 // getFuncSpecs returns the spec for a service named "Test".
 func getFuncSpecs(t *testing.T, contents string) map[string]*compile.FunctionSpec {
-	file, err := ioutil.TempFile("", "func.thrift")
-	require.NoError(t, err, "TempFile failed")
-	defer os.Remove(file.Name())
-
-	_, err = file.Write([]byte(contents))
-	require.NoError(t, err, "Write failed")
-	require.NoError(t, file.Close(), "Close failed")
-
-	// Parse the Thrift file
-	module, err := compile.Compile(file.Name())
-	require.NoError(t, err, "Compile failed")
-
+	module := thrifttest.Parse(t, contents)
 	svc, err := module.LookupService("Test")
 	require.NoError(t, err, "Thrift contents missing service Test")
 	return svc.Functions
