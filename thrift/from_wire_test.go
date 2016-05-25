@@ -230,6 +230,45 @@ func TestValueFromWireSuccess(t *testing.T) {
 				"s": "foo",
 			},
 		},
+		{
+			// Enum with recognized value.
+			w: wire.NewValueI32(1),
+			spec: &compile.EnumSpec{
+				Name: "Op",
+				Items: []compile.EnumItem{{
+					Name:  "Add",
+					Value: 1,
+				}},
+			},
+			v: "Add",
+		},
+		{
+			// Enum with with unrecognized value.
+			w: wire.NewValueI32(1),
+			spec: &compile.EnumSpec{
+				Name:  "Op",
+				Items: nil,
+			},
+			v: "Op(1)",
+		},
+		{
+			// Enum with duplicated value.
+			w: wire.NewValueI32(1),
+			spec: &compile.EnumSpec{
+				Name: "Op",
+				Items: []compile.EnumItem{
+					{
+						Name:  "Add",
+						Value: 1,
+					},
+					{
+						Name:  "Sum",
+						Value: 1,
+					},
+				},
+			},
+			v: "Add",
+		},
 	}
 
 	for _, tt := range tests {

@@ -23,12 +23,13 @@ package thrift
 import (
 	"errors"
 	"fmt"
-
-	"gopkg.in/yaml.v2"
+	"strconv"
+	"strings"
 
 	"github.com/thriftrw/thriftrw-go/ast"
 	"github.com/thriftrw/thriftrw-go/compile"
 	"github.com/thriftrw/thriftrw-go/wire"
+	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -178,6 +179,34 @@ func checkStructValue(spec *compile.StructSpec, value wire.Struct) error {
 	return nil
 }
 
+func parseEnumString(spec *compile.EnumSpec, value string) (int64, error) {
+	for _, item := range spec.Items {
+		if strings.EqualFold(item.Name, value) {
+			return int64(item.Value), nil
+		}
+	}
+
+	// Try to parse Name(%d) format, which is how we format unknown enums.
+	if strings.HasPrefix(value, spec.Name+"(") && strings.HasSuffix(value, ")") {
+		num := value[len(spec.Name)+1 : len(value)-1]
+		if v, err := strconv.ParseInt(num, 10, 32); err == nil {
+			return v, nil
+		}
+	}
+
+	return 0, fmt.Errorf("unrecognized enum %q, expected one of %v", value, spec.Items)
+}
+
+func parseEnum(spec *compile.EnumSpec, value interface{}) (int64, error) {
+	// If the value is a string, then we need to check the enum mapping.
+	if v, ok := value.(string); ok {
+		return parseEnumString(spec, v)
+	}
+
+	// Otherwise, try to parse the enum as a number.
+	return parseInt(value, 32)
+}
+
 func toWireValue(spec compile.TypeSpec, value interface{}) (w wire.Value, err error) {
 	switch spec.TypeCode() {
 	case wire.TBool:
@@ -194,7 +223,11 @@ func toWireValue(spec compile.TypeSpec, value interface{}) (w wire.Value, err er
 		w = wire.NewValueI16(int16(intValue))
 	case wire.TI32:
 		var intValue int64
-		intValue, err = parseInt(value, 32)
+		if enumSpec, ok := spec.(*compile.EnumSpec); ok {
+			intValue, err = parseEnum(enumSpec, value)
+		} else {
+			intValue, err = parseInt(value, 32)
+		}
 		w = wire.NewValueI32(int32(intValue))
 	case wire.TI64:
 		var intValue int64

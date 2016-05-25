@@ -123,6 +123,15 @@ func valueFromWireMap(spec *compile.MapSpec, w wire.Map) (map[string]interface{}
 	return result, nil
 }
 
+func mapEnumValueToName(enumSpec *compile.EnumSpec, result int32) interface{} {
+	for _, item := range enumSpec.Items {
+		if item.Value == result {
+			return item.Name
+		}
+	}
+	return fmt.Sprintf("%v(%v)", enumSpec.Name, result)
+}
+
 // valueFromWire converts the wire.Value to the specific type it represents.
 func valueFromWire(spec compile.TypeSpec, w wire.Value) (interface{}, error) {
 	if spec.TypeCode() != w.Type() {
@@ -140,7 +149,11 @@ func valueFromWire(spec compile.TypeSpec, w wire.Value) (interface{}, error) {
 	case wire.TI16:
 		result = w.GetI16()
 	case wire.TI32:
-		result = w.GetI32()
+		if enumSpec, ok := spec.(*compile.EnumSpec); ok {
+			result = mapEnumValueToName(enumSpec, w.GetI32())
+		} else {
+			result = w.GetI32()
+		}
 	case wire.TI64:
 		result = w.GetI64()
 	case wire.TDouble:
