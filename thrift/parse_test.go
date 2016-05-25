@@ -67,6 +67,11 @@ func TestParseRequest(t *testing.T) {
 
     typedef i32 Foo
 
+		enum Op {
+			Add = 1,
+			MULTIPLY,
+		}
+
     service Test {
 
       void test(
@@ -87,6 +92,7 @@ func TestParseRequest(t *testing.T) {
 				15: optional map<string, i32> s_i_map;
 				16: optional map<i32, i32> i_i_map;
 				17: optional map<bool, i32> b_i_map;
+				18: optional Op op;
       )
     }
 
@@ -358,6 +364,38 @@ func TestParseRequest(t *testing.T) {
 			}},
 		},
 		{
+			request: map[string]interface{}{
+				"op": 1,
+			},
+			want: []wire.Field{
+				{ID: 18, Value: wire.NewValueI32(1)},
+			},
+		},
+		{
+			request: map[string]interface{}{
+				"op": "Op(999)",
+			},
+			want: []wire.Field{
+				{ID: 18, Value: wire.NewValueI32(999)},
+			},
+		},
+		{
+			request: map[string]interface{}{
+				"op": "Add",
+			},
+			want: []wire.Field{
+				{ID: 18, Value: wire.NewValueI32(1)},
+			},
+		},
+		{
+			request: map[string]interface{}{
+				"op": "Multiply",
+			},
+			want: []wire.Field{
+				{ID: 18, Value: wire.NewValueI32(2)},
+			},
+		},
+		{
 			// map is not the right type.
 			request: map[string]interface{}{
 				"s_i_map": "asd",
@@ -426,6 +464,20 @@ func TestParseRequest(t *testing.T) {
 				"999": 1,
 			},
 			errMsg: fieldGroupError{notFound: []string{"999"}}.Error(),
+		},
+		{
+			// Unknown enum
+			request: map[string]interface{}{
+				"op": "Divide",
+			},
+			errMsg: `unrecognized enum "Divide"`,
+		},
+		{
+			// Unknown enum
+			request: map[string]interface{}{
+				"op": "Op(NaN)",
+			},
+			errMsg: `unrecognized enum "Op(NaN)"`,
 		},
 	}
 
