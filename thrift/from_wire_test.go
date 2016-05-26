@@ -77,6 +77,8 @@ func TestValueFromWireSuccess(t *testing.T) {
 		w    wire.Value
 		spec compile.TypeSpec
 		v    interface{}
+
+		skipToWire bool
 	}{
 		{
 			w:    wire.NewValueBool(true),
@@ -211,7 +213,8 @@ func TestValueFromWireSuccess(t *testing.T) {
 				Type:   ast.StructType,
 				Fields: compile.FieldGroup{},
 			},
-			v: map[string]interface{}{},
+			v:          map[string]interface{}{},
+			skipToWire: true, // reason: unrecognized field
 		},
 		{
 			// struct S {1: optional string s = 'foo'}, default fields should always be set.
@@ -229,6 +232,7 @@ func TestValueFromWireSuccess(t *testing.T) {
 			v: map[string]interface{}{
 				"s": "foo",
 			},
+			skipToWire: true, // reason: default value
 		},
 		{
 			// Enum with recognized value.
@@ -273,8 +277,21 @@ func TestValueFromWireSuccess(t *testing.T) {
 
 	for _, tt := range tests {
 		got, err := valueFromWire(tt.spec, tt.w)
-		if assert.NoError(t, err, "Failed for (%v, %v)", tt.spec, tt.w) {
-			assert.Equal(t, tt.v, got, "Unexpected value for (%v, %v)", tt.spec, tt.w)
+		if assert.NoError(t, err, "Failed for valueFromWire(%v, %v)", tt.spec, tt.w) {
+			assert.Equal(t, tt.v, got, "Unexpected value for valueFromWire(%v, %v)", tt.spec, tt.w)
+		}
+
+		if tt.skipToWire {
+			continue
+		}
+		w, err := toWireValue(tt.spec, tt.v)
+		if assert.NoError(t, err, "Failed for toWireValue(%v, %v)", tt.spec, tt.v) {
+			assert.True(
+				t, wire.ValuesAreEqual(w, tt.w),
+				"Unexpected value for toWireValue(%v, %v):"+
+					"\n\t   %v (got)"+
+					"\n\t!= %v (expected)", tt.spec, tt.v, w, tt.w,
+			)
 		}
 	}
 }
