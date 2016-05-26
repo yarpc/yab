@@ -119,11 +119,53 @@ func TestValueFromWireSuccess(t *testing.T) {
 			v:    []byte("foo"),
 		},
 		{
+			w: wire.NewValueBinary([]byte("foo")),
+			spec: &compile.TypedefSpec{
+				Name:   "Blob",
+				Target: compile.BinarySpec,
+			},
+			v: []byte("foo"),
+		},
+		{
+			w: wire.NewValueString("str"),
+			spec: &compile.TypedefSpec{
+				Name:   "UUID",
+				Target: compile.StringSpec,
+			},
+			v: "str",
+		},
+		{
+			w: wire.NewValueString("str"),
+			spec: &compile.TypedefSpec{
+				Name: "UUID1",
+				Target: &compile.TypedefSpec{
+					Name:   "UUID2",
+					Target: compile.StringSpec,
+				},
+			},
+			v: "str",
+		},
+		{
 			w: makeWireList(wire.TI32, 4, func(i int) wire.Value {
 				return wire.NewValueI32(int32(i))
 			}),
 			spec: &compile.ListSpec{ValueSpec: compile.I32Spec},
 			v:    i32s(0, 1, 2, 3),
+		},
+		{
+			w: makeWireList(wire.TI32, 4, func(i int) wire.Value {
+				return wire.NewValueI32(int32(i))
+			}),
+			spec: &compile.TypedefSpec{
+				Name: "ListOfInts",
+				Target: &compile.ListSpec{
+					ValueSpec: &compile.TypedefSpec{
+						Name:   "Int",
+						Target: compile.I32Spec,
+					},
+				},
+			},
+			v: i32s(0, 1, 2, 3),
 		},
 		{
 			w: makeWireSet(wire.TI32, 4, func(i int) wire.Value {
@@ -192,6 +234,33 @@ func TestValueFromWireSuccess(t *testing.T) {
 					Name: "s",
 					Type: compile.StringSpec,
 				}},
+			},
+			v: map[string]interface{}{
+				"s": "foo",
+			},
+		},
+		{
+			// struct S {1: s string}
+			w: wire.NewValueStruct(wire.Struct{
+				Fields: []wire.Field{{
+					ID:    1,
+					Value: wire.NewValueString("foo"),
+				}},
+			}),
+			spec: &compile.TypedefSpec{
+				Name: "T",
+				Target: &compile.StructSpec{
+					Name: "S",
+					Type: ast.StructType,
+					Fields: compile.FieldGroup{{
+						ID:   1,
+						Name: "s",
+						Type: &compile.TypedefSpec{
+							Name:   "UUID",
+							Target: compile.StringSpec,
+						},
+					}},
+				},
 			},
 			v: map[string]interface{}{
 				"s": "foo",

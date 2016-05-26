@@ -208,6 +208,7 @@ func parseEnum(spec *compile.EnumSpec, value interface{}) (int64, error) {
 }
 
 func toWireValue(spec compile.TypeSpec, value interface{}) (w wire.Value, err error) {
+	spec = resolveTypeSpec(spec)
 	switch spec.TypeCode() {
 	case wire.TBool:
 		var boolValue bool
