@@ -63,6 +63,7 @@ func TestParseRequest(t *testing.T) {
 
 		struct SWrap {
 			1: required S s = S_default
+			2: optional S s2 = S_default
 		}
 
     typedef i32 Foo
@@ -245,6 +246,11 @@ func TestParseRequest(t *testing.T) {
 				{ID: 8, Value: wire.NewValueStruct(wire.Struct{
 					Fields: []wire.Field{
 						{ID: 1, Value: wire.NewValueStruct(wire.Struct{
+							Fields: []wire.Field{
+								{ID: 1, Value: wire.NewValueString("f1_val")},
+							},
+						})},
+						{ID: 2, Value: wire.NewValueStruct(wire.Struct{
 							Fields: []wire.Field{
 								{ID: 1, Value: wire.NewValueString("f1_val")},
 							},
