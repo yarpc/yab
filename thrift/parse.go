@@ -34,11 +34,11 @@ import (
 
 // Parse parses the given Thrift file.
 func Parse(file string) (*compile.Module, error) {
-	module, err := compile.Compile(file)
+	module, err := compile.Compile(file, compile.NonStrict())
 	// thriftrw wraps errors, so we can't use os.IsNotExist here.
 	if err != nil {
 		// The user may have left off the ".thrift", so try appending .thrift
-		if appendedModule, err2 := compile.Compile(file + ".thrift"); err2 == nil {
+		if appendedModule, err2 := compile.Compile(file+".thrift", compile.NonStrict()); err2 == nil {
 			module = appendedModule
 			err = nil
 		}
