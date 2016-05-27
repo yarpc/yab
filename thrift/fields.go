@@ -95,19 +95,19 @@ func fieldGroupToValue(fieldsList compile.FieldGroup, request map[string]interfa
 	}
 
 	for k, arg := range fields.exact {
-		if !arg.Required {
+		if _, ok := userFields[arg.Name]; ok {
 			continue
 		}
 
-		if _, ok := userFields[arg.Name]; !ok {
-			// If a required field has a default, we can use that.
-			if arg.Default == nil {
-				err.addMissingRequired(k)
-				continue
-			}
-
-			// Add the default value to the request map.
+		// Unspecified fields are always set to the Default value.
+		if arg.Default != nil {
 			userFields[arg.Name] = constToRequest(arg.Default)
+			continue
+		}
+
+		if arg.Required {
+			err.addMissingRequired(k)
+			continue
 		}
 	}
 

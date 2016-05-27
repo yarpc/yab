@@ -1,5 +1,5 @@
 hash: dfbc881fcd738f1f42860b2bebfc2ec6fd245f8254e71d3a7eeb3001a518d26a
-updated: 2016-05-03T08:37:55.167252584-07:00
+updated: 2016-05-27T11:50:44.096672-07:00
 imports:
 - name: github.com/apache/thrift
   version: 23d6746079d7b5fdb38214387c63f987e68a6d8f
@@ -9,15 +9,23 @@ imports:
   version: 725f76bd0300c1f9562e76fd94c27aa17e41243e
   subpackages:
   - statsd
+- name: github.com/davecgh/go-spew
+  version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
+  subpackages:
+  - spew
 - name: github.com/jessevdk/go-flags
-  version: 6b9493b3cb60367edd942144879646604089e3f7
+  version: b350cb1deecd3da4b80a29ccc4054abfd6329001
+- name: github.com/pmezard/go-difflib
+  version: e8554b8641db39598be7f6342874b958f12ae1d4
+  subpackages:
+  - difflib
 - name: github.com/stretchr/testify
-  version: 0744955171b0b6e1871ff9d7366abc2b7a7fcec0
+  version: e3a8ff8ce36581f87a15341206f205b1da467059
   subpackages:
   - assert
   - require
 - name: github.com/thriftrw/thriftrw-go
-  version: 653f1295612da68d9ce57e01ee1ff94fbb38a835
+  version: 6c625014a51e3909b3e7d860598f8ca001b91e58
   subpackages:
   - ast
   - compile
@@ -35,7 +43,7 @@ imports:
   - typed
   - thrift/gen-go/meta
 - name: golang.org/x/net
-  version: 3e8a7b0329d536af18e227bb21b6da4d1dbbe180
+  version: 30db96677b74e24b967e23f911eb3364fc61a011
   subpackages:
   - context
 - name: gopkg.in/yaml.v2

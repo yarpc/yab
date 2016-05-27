@@ -54,6 +54,12 @@ func constToRequest(v compile.ConstantValue) interface{} {
 			result[constToRequest(value.Key)] = constToRequest(value.Value)
 		}
 		return result
+	case *compile.ConstantStruct:
+		result := make(map[string]interface{})
+		for key, value := range v.Fields {
+			result[key] = constToRequest(value)
+		}
+		return result
 	default:
 		panic(fmt.Sprintf("unknown constant type: %T", v))
 	}
