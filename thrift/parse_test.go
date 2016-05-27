@@ -22,6 +22,7 @@ package thrift
 
 import (
 	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/yarpc/yab/internal/thrifttest"
@@ -510,10 +511,14 @@ func TestParseSuccess(t *testing.T) {
 	filePrefix := tempFile.Name() + "_1"
 	fullFile := filePrefix + ".thrift"
 
-	data := []byte("struct S {}")
+	data := []byte(`
+		struct S {
+			1: string s
+		}
+	`)
 	require.NoError(t, ioutil.WriteFile(fullFile, data, 0666),
 		"Failed to write thrift file to %v", fullFile)
-	//defer os.Remove(fullFile)
+	defer os.Remove(fullFile)
 
 	for _, fname := range []string{fullFile, filePrefix} {
 		module, err := Parse(fname)
