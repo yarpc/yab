@@ -83,6 +83,12 @@ func parseInt(v interface{}, bits int) (int64, error) {
 		v64 = v
 	case int:
 		v64 = int64(v)
+	case int8:
+		v64 = int64(v)
+	case int16:
+		v64 = int64(v)
+	case int32:
+		v64 = int64(v)
 	case uint64:
 		// YAML will only use uint64 if the value doesn't fit in an int64.
 		// However, Thrift only supports int64 values.
@@ -168,6 +174,8 @@ func parseBinary(value interface{}) ([]byte, error) {
 	switch v := value.(type) {
 	case string:
 		return []byte(v), nil
+	case []byte:
+		return v, nil
 	case []interface{}:
 		return parseBinaryList(v)
 	case map[interface{}]interface{}:
