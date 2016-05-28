@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/uber/tchannel-go/testutils"
 	"github.com/uber/tchannel-go/thrift"
 )
@@ -237,4 +238,33 @@ func TestVersion(t *testing.T) {
 	buf, out := getOutput(t)
 	parseAndRun(out)
 	assert.Equal(t, "yab version "+versionString+"\n", buf.String(), "Version output mismatch")
+}
+
+func TestGetOptionsAlias(t *testing.T) {
+	_, out := getOutput(t)
+
+	tests := []struct {
+		flagName  string
+		flagValue string
+	}{
+		{"", ""},
+		{"--request", "1"},
+		{"-r", "2"},
+		{"-3", "3"},
+		{"--arg3", "4"},
+		{"--request", "5"},
+		{"-r", "6"},
+		{"-3", "7"},
+		{"--arg3", "8"},
+	}
+
+	var flags []string
+	for _, tt := range tests {
+		flags = append(flags, tt.flagName, tt.flagValue)
+
+		opts, err := getOptions(flags, out)
+		require.NoError(t, err, "getOptions(%v) failed", flags)
+
+		assert.Equal(t, tt.flagValue, opts.ROpts.RequestJSON, "Unexpected request body for %v", flags)
+	}
 }

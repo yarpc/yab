@@ -18,25 +18,40 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package main
+package unmarshal
 
 import (
-	"testing"
+	"bytes"
+	"encoding/json"
+	"fmt"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v2"
 )
 
-func TestMetaSpec(t *testing.T) {
-	assert.NotPanics(t, func() {
-		spec := getMetaService()
-		assert.NotNil(t, spec, "Meta service spec is nil")
-	}, "Failed to get Meta service")
+// YAML unmarshals the given YAML input to a map.
+func YAML(bs []byte) (map[string]interface{}, error) {
+	var m map[string]interface{}
+	if err := yaml.Unmarshal(bs, &m); err != nil {
+		return nil, err
+	}
 
-	assert.NotPanics(t, func() {
-		name, spec := getHealthSpec()
-		assert.Equal(t, "Meta::health", name, "Method name mismatch")
-		require.NotNil(t, spec, "Got nil health spec")
-		assert.Equal(t, 0, len(spec.ArgsSpec), "Health method")
-	}, "Failed to get health spec")
+	return m, nil
+}
+
+// JSON unmarshals the given JSON input to a map.
+func JSON(bs []byte) (map[string]interface{}, error) {
+	// An empty body should produce an empty input map.
+	if len(bs) == 0 {
+		return make(map[string]interface{}), nil
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(bs))
+	decoder.UseNumber()
+
+	var data map[string]interface{}
+	if err := decoder.Decode(&data); err != nil {
+		return nil, fmt.Errorf("failed to parse JSON: %v", err)
+	}
+
+	return data, nil
 }

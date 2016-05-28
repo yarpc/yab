@@ -21,7 +21,6 @@
 package thrift
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/thriftrw/thriftrw-go/compile"
@@ -32,15 +31,15 @@ func constToRequest(v compile.ConstantValue) interface{} {
 	case compile.ConstantBool:
 		return bool(v)
 	case compile.ConstantDouble:
-		return json.Number(fmt.Sprint(float64(v)))
+		return float64(v)
 	case compile.ConstantInt:
-		return json.Number(fmt.Sprint(int64(v)))
+		return int64(v)
 	case compile.ConstantString:
 		return string(v)
 	case compile.ConstReference:
 		return constToRequest(v.Target.Value)
 	case compile.EnumItemReference:
-		return json.Number(fmt.Sprint(v.Item.Value))
+		return v.Item.Value
 	case compile.ConstantList:
 		result := make([]interface{}, len(v))
 		for i, value := range v {
@@ -53,6 +52,12 @@ func constToRequest(v compile.ConstantValue) interface{} {
 			// Note: If the key is not hashable, this will fail.
 			// We should allow using a custom []MapItem to represent a map.
 			result[constToRequest(value.Key)] = constToRequest(value.Value)
+		}
+		return result
+	case *compile.ConstantStruct:
+		result := make(map[string]interface{})
+		for key, value := range v.Fields {
+			result[key] = constToRequest(value)
 		}
 		return result
 	default:

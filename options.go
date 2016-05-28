@@ -21,36 +21,44 @@
 package main
 
 import (
+	"errors"
 	"strconv"
 	"time"
+
+	"github.com/yarpc/yab/encoding"
 )
 
 // Options are parsed from flags using go-flags.
 type Options struct {
-	ROpts          RequestOptions   `group:"request"`
+	ROpts          RequestOptions   `group:"request" description:"Configures an individual request."`
 	TOpts          TransportOptions `group:"transport"`
 	BOpts          BenchmarkOptions `group:"benchmark"`
 	DisplayVersion bool             `long:"version" description:"Displays the application version"`
+	ManPage        bool             `long:"man-page" hidden:"yes" description:"Print yab's man page to stdout"`
 }
 
 // RequestOptions are request related options
 type RequestOptions struct {
-	Encoding    Encoding       `short:"e" long:"encoding" description:"The encoding of the data, options are: Thrift, JSON, raw. Defaults to Thrift if the method contains '::' or a Thrift file is specified"`
-	ThriftFile  string         `short:"t" long:"thrift" description:"Path of the .thrift file"`
-	MethodName  string         `short:"m" long:"method" description:"The full Thrift method name (Svc::Method) to invoke"`
-	RequestJSON string         `short:"r" long:"request" description:"The request body, in JSON format"`
-	RequestFile string         `short:"f" long:"file" description:"Path of a file containing the request body in JSON"`
-	HeadersJSON string         `long:"headers" description:"The headers in JSON format"`
-	HeadersFile string         `long:"headers-file" description:"Path of a file containing the headers in JSON"`
-	Health      bool           `long:"health" description:"Hit the health endpoint, Meta::health"`
-	Timeout     timeMillisFlag `long:"timeout" default:"1s" description:"The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds are assumed."`
+	Encoding    encoding.Encoding `short:"e" long:"encoding" description:"The encoding of the data, options are: Thrift, JSON, raw. Defaults to Thrift if the method contains '::' or a Thrift file is specified"`
+	ThriftFile  string            `short:"t" long:"thrift" description:"Path of the .thrift file"`
+	MethodName  string            `short:"m" long:"method" description:"The full Thrift method name (Svc::Method) to invoke"`
+	RequestJSON string            `short:"r" long:"request" description:"The request body, in JSON or YAML format"`
+	RequestFile string            `short:"f" long:"file" description:"Path of a file containing the request body in JSON or YAML"`
+	HeadersJSON string            `long:"headers" description:"The headers in JSON or YAML format"`
+	HeadersFile string            `long:"headers-file" description:"Path of a file containing the headers in JSON or YAML"`
+	Health      bool              `long:"health" description:"Hit the health endpoint, Meta::health"`
+	Timeout     timeMillisFlag    `long:"timeout" default:"1s" description:"The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds are assumed."`
+
+	// These are aliases for tcurl compatibility.
+	Arg2 stringAlias `short:"2" long:"arg2" hidden:"true"`
+	Arg3 stringAlias `short:"3" long:"arg3" hidden:"true"`
 }
 
 // TransportOptions are transport related options.
 type TransportOptions struct {
 	ServiceName      string            `short:"s" long:"service" description:"The TChannel/Hyperbahn service name"`
 	HostPorts        []string          `short:"p" long:"peer" description:"The host:port of the service to call"`
-	HostPortFile     string            `short:"P" long:"peer-list" description:"Path of a JSON file containing a list of host:ports"`
+	HostPortFile     string            `short:"P" long:"peer-list" description:"Path of a JSON or YAML file containing a list of host:ports"`
 	CallerOverride   string            `long:"caller" description:"Caller will override the default caller name (which is yab-$USER)."`
 	TransportOptions map[string]string `long:"topt" description:"Custom options for the specific transport being used"`
 
@@ -72,6 +80,13 @@ type BenchmarkOptions struct {
 
 	// Benchmark metrics can optionally be reported via statsd.
 	StatsdHostPort string `long:"statsd" description:"Optional host:port of a StatsD server to report metrics"`
+}
+
+func newOptions() *Options {
+	var opts Options
+	opts.ROpts.Arg3.dest = &opts.ROpts.RequestJSON
+	opts.ROpts.Arg2.dest = &opts.ROpts.HeadersJSON
+	return &opts
 }
 
 type timeMillisFlag time.Duration
@@ -98,5 +113,19 @@ func (t *timeMillisFlag) UnmarshalFlag(value string) error {
 	}
 
 	t.setDuration(d)
+	return nil
+}
+
+var errStringAliasMissing = errors.New("string alias missing destination")
+
+type stringAlias struct {
+	dest *string
+}
+
+func (s *stringAlias) UnmarshalFlag(value string) error {
+	if s.dest == nil {
+		return errStringAliasMissing
+	}
+	*s.dest = value
 	return nil
 }

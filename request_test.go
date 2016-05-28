@@ -21,13 +21,13 @@
 package main
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/yarpc/yab/encoding"
 )
 
 func mustRead(fname string) []byte {
@@ -134,6 +134,10 @@ func TestGetHeaders(t *testing.T) {
 			inline: `{"k": "v"}`,
 			want:   map[string]string{"k": "v"},
 		},
+		{
+			inline: `k: v`,
+			want:   map[string]string{"k": "v"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -151,34 +155,90 @@ func TestGetHeaders(t *testing.T) {
 	}
 }
 
-func TestUnmarshalJSONInput(t *testing.T) {
+func TestNewSerializer(t *testing.T) {
 	tests := []struct {
-		input   []byte
-		want    map[string]interface{}
-		wantErr bool
+		encoding encoding.Encoding
+		opts     RequestOptions
+		want     encoding.Encoding
+		wantErr  error
 	}{
 		{
-			input: []byte("{}"),
-			want:  map[string]interface{}{},
+			encoding: encoding.JSON,
+			opts:     RequestOptions{Health: true},
+			wantErr:  encoding.ErrHealthThriftOnly,
 		},
 		{
-			input: mustRead("testdata/valid.json"),
-			want: map[string]interface{}{
-				"k1": "v1",
-				"k2": json.Number("5"),
+			encoding: encoding.Raw,
+			opts:     RequestOptions{Health: true},
+			wantErr:  encoding.ErrHealthThriftOnly,
+		},
+		{
+			encoding: encoding.Thrift,
+			opts:     RequestOptions{Health: true},
+			want:     encoding.Thrift,
+		},
+		{
+			encoding: encoding.Thrift,
+			opts: RequestOptions{
+				Health:     true,
+				MethodName: "method",
 			},
+			wantErr: errHealthAndMethod,
+		},
+		{
+			encoding: encoding.Encoding("asd"),
+			opts:     RequestOptions{MethodName: "method"},
+			wantErr:  errUnrecognizedEncoding,
+		},
+		{
+			encoding: encoding.UnspecifiedEncoding,
+			opts:     RequestOptions{Health: true},
+			want:     encoding.Thrift,
+		},
+		{
+			encoding: encoding.UnspecifiedEncoding,
+			opts:     RequestOptions{ThriftFile: validThrift, MethodName: "Simple::foo"},
+			want:     encoding.Thrift,
+		},
+		{
+			encoding: encoding.JSON,
+			opts:     RequestOptions{MethodName: "Test::foo"},
+			want:     encoding.JSON,
+		},
+		{
+			encoding: encoding.JSON,
+			wantErr:  errMissingMethodName,
+		},
+		{
+			encoding: encoding.Raw,
+			wantErr:  errMissingMethodName,
+		},
+		{
+			encoding: encoding.Thrift,
+			wantErr:  errMissingMethodName,
+		},
+		{
+			encoding: encoding.JSON,
+			opts:     RequestOptions{MethodName: "method"},
+			want:     encoding.JSON,
+		},
+		{
+			encoding: encoding.Raw,
+			opts:     RequestOptions{MethodName: "method"},
+			want:     encoding.Raw,
 		},
 	}
 
 	for _, tt := range tests {
-		got, err := unmarshalJSONInput(tt.input)
-		if tt.wantErr {
-			assert.Error(t, err, "unmarshalJSON(%s) should fail", tt.input)
+		tt.opts.Encoding = tt.encoding
+		got, err := NewSerializer(tt.opts)
+		assert.Equal(t, tt.wantErr, err, "NewSerializer(%+v) error", tt.opts)
+		if err != nil {
 			continue
 		}
 
-		if assert.NoError(t, err, "unmarshalJSON(%s) should not fail", tt.input) {
-			assert.Equal(t, tt.want, got, "unmarshalJSON(%s) unexpected result", tt.input)
+		if assert.NotNil(t, got, "NewSerializer(%+v) missing serializer", tt.opts) {
+			assert.Equal(t, tt.want, got.Encoding(), "NewSerializer(%+v) wrong encoding", tt.opts)
 		}
 	}
 }

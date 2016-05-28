@@ -25,13 +25,14 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/net/context"
+	"github.com/yarpc/yab/encoding"
+	"github.com/yarpc/yab/transport"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/uber/tchannel-go"
 	"github.com/uber/tchannel-go/raw"
-	"github.com/yarpc/yab/transport"
+	"golang.org/x/net/context"
 )
 
 func TestProtocolFor(t *testing.T) {
@@ -140,7 +141,7 @@ func TestGetTransport(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		transport, err := getTransport(tt.opts, Thrift)
+		transport, err := getTransport(tt.opts, encoding.Thrift)
 		if tt.errMsg != "" {
 			if assert.Error(t, err, "getTransport(%v) should fail", tt.opts) {
 				assert.Contains(t, err.Error(), tt.errMsg, "Unexpected error for getTransport(%v)", tt.opts)
@@ -196,7 +197,7 @@ func TestGetTransportCallerName(t *testing.T) {
 			CallerOverride: tt.callerOverride,
 			benchmarking:   tt.benchmark,
 		}
-		tchan, err := getTransport(opts, Raw)
+		tchan, err := getTransport(opts, encoding.Raw)
 		if tt.wantErr {
 			assert.Error(t, err, "Expect fail: %+v", tt)
 			continue
@@ -239,7 +240,7 @@ func TestGetTransportTraceEnabled(t *testing.T) {
 		ctx, cancel := tchannel.NewContext(time.Second)
 		defer cancel()
 
-		tchan, err := getTransport(opts, Raw)
+		tchan, err := getTransport(opts, encoding.Raw)
 		require.NoError(t, err, "getTransport failed")
 		res, err := tchan.Call(ctx, &transport.Request{Method: "test"})
 		require.NoError(t, err, "transport.Call failed")
@@ -260,6 +261,10 @@ func TestParseHostFile(t *testing.T) {
 		},
 		{
 			filename: "testdata/valid_peerlist.json",
+			want:     []string{"1.1.1.1:1", "2.2.2.2:2"},
+		},
+		{
+			filename: "testdata/valid_peerlist.yaml",
 			want:     []string{"1.1.1.1:1", "2.2.2.2:2"},
 		},
 		{

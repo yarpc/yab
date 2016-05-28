@@ -18,52 +18,40 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package main
+// Package thrifttest contains utilities to help test THrift serialization.
+package thrifttest
 
 import (
-	"bytes"
-	"fmt"
-	"io/ioutil"
-	"runtime"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/thriftrw/thriftrw-go/compile"
 )
 
-// Constants useful for tests
-const (
-	validThrift = "testdata/simple.thrift"
-	fooMethod   = "Simple::foo"
-)
+// DummyFS is an in-memory implementation of the Filesystem interface.
+type DummyFS map[string][]byte
 
-type testOutput struct {
-	*bytes.Buffer
-	fatalf func(string, ...interface{})
-}
-
-func (t testOutput) Fatalf(format string, args ...interface{}) {
-	t.fatalf(format, args...)
-	runtime.Goexit()
-}
-
-func (t testOutput) Printf(format string, args ...interface{}) {
-	t.WriteString(fmt.Sprintf(format, args...))
-}
-
-func getOutput(t *testing.T) (*bytes.Buffer, output) {
-	buf := &bytes.Buffer{}
-	out := testOutput{
-		Buffer: buf,
-		fatalf: t.Errorf,
+// Read returns the contents for the specified file.
+func (fs DummyFS) Read(filename string) ([]byte, error) {
+	if contents, ok := fs[filename]; ok {
+		return contents, nil
 	}
-	return buf, out
+	return nil, os.ErrNotExist
 }
 
-func writeFile(t *testing.T, prefix, contents string) string {
-	f, err := ioutil.TempFile("", prefix)
-	require.NoError(t, err, "TempFile failed")
-	_, err = f.WriteString(contents)
-	require.NoError(t, err, "Write to temp file failed")
-	require.NoError(t, f.Close(), "Close temp file failed")
-	return f.Name()
+// Abs returns the absolute path for the specified file.
+// The dummy implementation always returns the original path.
+func (DummyFS) Abs(filename string) (string, error) {
+	return filename, nil
+}
+
+// Parse parses the given file contents as a Thrift file with no dependencies.
+func Parse(t *testing.T, contents string) *compile.Module {
+	fs := DummyFS{
+		"file.thrift": []byte(contents),
+	}
+	compiled, err := compile.Compile("file.thrift", compile.Filesystem(fs))
+	require.NoError(t, err, "Failed to compile thrift file:\n%s", contents)
+	return compiled
 }

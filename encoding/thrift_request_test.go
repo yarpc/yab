@@ -18,13 +18,20 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package main
+package encoding
 
 import (
 	"testing"
 
+	"github.com/yarpc/yab/internal/thrifttest"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+)
+
+const (
+	fooMethod   = "Simple::foo"
+	validThrift = "../testdata/simple.thrift"
 )
 
 func TestNewThriftSerializer(t *testing.T) {
@@ -45,7 +52,7 @@ func TestNewThriftSerializer(t *testing.T) {
 		},
 		{
 			desc:   "Thrift file can't be parsed",
-			file:   "testdata/invalid.json",
+			file:   "../testdata/invalid.json",
 			errMsg: "could not parse Thrift",
 		},
 		{
@@ -74,10 +81,12 @@ func TestNewThriftSerializer(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got, err := newThriftSerializer(tt.file, tt.method)
+		got, err := NewThrift(tt.file, tt.method)
 		if tt.errMsg == "" {
 			assert.NoError(t, err, "%v", tt.desc)
-			assert.NotNil(t, got, "%v: Invalid request")
+			if assert.NotNil(t, got, "%v: Invalid request") {
+				assert.Equal(t, Thrift, got.Encoding(), "Encoding mismatch")
+			}
 			continue
 		}
 
@@ -89,7 +98,7 @@ func TestNewThriftSerializer(t *testing.T) {
 }
 
 func TestRequest(t *testing.T) {
-	serializer, err := newThriftSerializer(validThrift, "Simple::foo")
+	serializer, err := NewThrift(validThrift, "Simple::foo")
 	require.NoError(t, err, "Failed to create serializer")
 
 	tests := []struct {
@@ -100,7 +109,7 @@ func TestRequest(t *testing.T) {
 		{
 			desc:   "Invalid JSON",
 			bs:     []byte("{"),
-			errMsg: "parse",
+			errMsg: "yaml",
 		},
 		{
 			desc:   "Invalid field in request input",
@@ -129,7 +138,7 @@ func TestRequest(t *testing.T) {
 }
 
 func TestFindServiceFound(t *testing.T) {
-	parsed := mustParse(t, `
+	parsed := thrifttest.Parse(t, `
     service Foo {}
     service Bar {}
   `)
@@ -165,7 +174,7 @@ func TestFindServiceFound(t *testing.T) {
 }
 
 func TestFindMethod(t *testing.T) {
-	parsed := mustParse(t, `
+	parsed := thrifttest.Parse(t, `
     service Foo {
       void f1()
       i32 f2(1: i32 i)

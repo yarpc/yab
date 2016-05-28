@@ -1,0 +1,7 @@
+{
+  "arg": {
+    "b": {
+      "file": "../testdata/yamltothrift/binary_data.file"
+    }
+  }
+}

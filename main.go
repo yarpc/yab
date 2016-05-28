@@ -60,35 +60,48 @@ func main() {
 	parseAndRun(consoleOutput{os.Stdout})
 }
 
-// parseAndRun is like main, but uses the given output.
-func parseAndRun(out output) {
-	var opts Options
-	parser := flags.NewParser(&opts, flags.HelpFlag|flags.PassDoubleDash)
+var errExit = errors.New("sentinel error used to exit cleanly")
+
+func getOptions(args []string, out output) (*Options, error) {
+	opts := newOptions()
+	parser := flags.NewParser(opts, flags.HelpFlag|flags.PassDoubleDash)
 	parser.Usage = "[<service> <method> <body>] [OPTIONS]"
+	parser.ShortDescription = "yet another benchmarker"
+	parser.LongDescription = `
+yab is a benchmarking tool for TChannel and HTTP applications. It's primarily intended for Thrift applications but supports other encodings like JSON and binary (raw).
+
+It can be used in a curl-like fashion when benchmarking features are disabled.
+`
+
 	findGroup(parser, "transport").ShortDescription = "Transport Options"
 	findGroup(parser, "request").ShortDescription = "Request Options"
 	findGroup(parser, "benchmark").ShortDescription = "Benchmark Options"
 
 	// If there are no arguments specified, write the help.
-	if len(os.Args) <= 1 {
+	if len(args) == 0 {
 		parser.WriteHelp(out)
-		return
+		return opts, errExit
 	}
 
-	remaining, err := parser.Parse()
+	remaining, err := parser.ParseArgs(args)
 	if err != nil {
 		if ferr, ok := err.(*flags.Error); ok {
 			if ferr.Type == flags.ErrHelp {
 				parser.WriteHelp(out)
-				return
+				return opts, errExit
 			}
 		}
-		out.Fatalf("Failed to parse flags: %v", err)
+		return opts, err
 	}
 
 	if opts.DisplayVersion {
 		out.Printf("yab version %v\n", versionString)
-		return
+		return opts, errExit
+	}
+
+	if opts.ManPage {
+		parser.WriteManPage(os.Stdout)
+		return opts, errExit
 	}
 
 	fromPositional(remaining, 0, &opts.TOpts.ServiceName)
@@ -103,8 +116,19 @@ func parseAndRun(out output) {
 		fromPositional(remaining, 2, &opts.ROpts.RequestJSON)
 	}
 
-	runWithOptions(opts, out)
-	return
+	return opts, nil
+}
+
+// parseAndRun is like main, but uses the given output.
+func parseAndRun(out output) {
+	opts, err := getOptions(os.Args[1:], out)
+	if err != nil {
+		if err == errExit {
+			return
+		}
+		out.Fatalf("Failed to parse options: %v", err)
+	}
+	runWithOptions(*opts, out)
 }
 
 func runWithOptions(opts Options, out output) {
@@ -180,9 +204,4 @@ func makeRequest(t transport.Transport, request *transport.Request) (*transport.
 	defer cancel()
 
 	return t.Call(ctx, request)
-}
-
-func isFileMissing(f string) bool {
-	_, err := os.Stat(f)
-	return os.IsNotExist(err)
 }

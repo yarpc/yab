@@ -21,19 +21,21 @@
 package thrift
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/thriftrw/thriftrw-go/ast"
 	"github.com/thriftrw/thriftrw-go/compile"
 	"github.com/thriftrw/thriftrw-go/wire"
+	"gopkg.in/yaml.v2"
 )
 
 var (
 	errUsingSingleField   = errors.New("union value must only have a single value")
 	errStructUseMapString = errors.New("struct must be specified using map[string]*")
+	errMapUnknownType     = errors.New("map must be specified as a mapping")
 )
 
 func structValueMap(value interface{}) (map[string]interface{}, bool) {
@@ -94,18 +96,29 @@ func listToValue(t string, spec compile.TypeSpec, value interface{}) (wire.List,
 	}, nil
 }
 
-// JSON only allows keys to be strings, but the Thrift type may declare
-// a non-string type as the key. If the Thrift key type is not string or binary,
-// try to unmarshal the string as JSON and use wireToValue.
-func convertMapKey(keySpec compile.TypeSpec, value string) interface{} {
+func convertStringMap(m map[string]interface{}) map[interface{}]interface{} {
+	res := make(map[interface{}]interface{})
+	for k, v := range m {
+		res[k] = v
+	}
+	return res
+}
+
+// We want to support JSON, which doesn't allow non-string keys.
+// So if we receive a string key and the underlying Thrift type is not a string
+// then we try to unmarshal the JSON within the string.
+func convertMapKey(keySpec compile.TypeSpec, value interface{}) interface{} {
+	vStr, ok := value.(string)
+	if !ok {
+		// The user isn't nesting values inside of a string, ignore.
+		return value
+	}
 	if keySpec.TypeCode() == wire.TBinary {
 		return value
 	}
 
 	var data interface{}
-	decoder := json.NewDecoder(strings.NewReader(value))
-	decoder.UseNumber()
-	if err := decoder.Decode(&data); err == nil {
+	if err := yaml.Unmarshal([]byte(vStr), &data); err == nil {
 		return data
 	}
 
@@ -117,9 +130,13 @@ func convertMapKey(keySpec compile.TypeSpec, value string) interface{} {
 // TODO: Allow specifying maps using a []MapItem form so the user
 // can cleanly use non-string/int keys.
 func mapToValue(keySpec, valueSpec compile.TypeSpec, value interface{}) (wire.Map, error) {
-	valueMap, ok := value.(map[string]interface{})
-	if !ok {
-		return wire.Map{}, fmt.Errorf("map must be specified using map[string]*")
+	var valueMap map[interface{}]interface{}
+	if vm, ok := value.(map[interface{}]interface{}); ok {
+		valueMap = vm
+	} else if vm, ok := value.(map[string]interface{}); ok {
+		valueMap = convertStringMap(vm)
+	} else {
+		return wire.Map{}, errMapUnknownType
 	}
 
 	items := make([]wire.MapItem, 0, len(valueMap))
@@ -162,7 +179,36 @@ func checkStructValue(spec *compile.StructSpec, value wire.Struct) error {
 	return nil
 }
 
+func parseEnumString(spec *compile.EnumSpec, value string) (int64, error) {
+	for _, item := range spec.Items {
+		if strings.EqualFold(item.Name, value) {
+			return int64(item.Value), nil
+		}
+	}
+
+	// Try to parse Name(%d) format, which is how we format unknown enums.
+	if strings.HasPrefix(value, spec.Name+"(") && strings.HasSuffix(value, ")") {
+		num := value[len(spec.Name)+1 : len(value)-1]
+		if v, err := strconv.ParseInt(num, 10, 32); err == nil {
+			return v, nil
+		}
+	}
+
+	return 0, fmt.Errorf("unrecognized enum %q, expected one of %v", value, spec.Items)
+}
+
+func parseEnum(spec *compile.EnumSpec, value interface{}) (int64, error) {
+	// If the value is a string, then we need to check the enum mapping.
+	if v, ok := value.(string); ok {
+		return parseEnumString(spec, v)
+	}
+
+	// Otherwise, try to parse the enum as a number.
+	return parseInt(value, 32)
+}
+
 func toWireValue(spec compile.TypeSpec, value interface{}) (w wire.Value, err error) {
+	spec = compile.RootTypeSpec(spec)
 	switch spec.TypeCode() {
 	case wire.TBool:
 		var boolValue bool
@@ -178,7 +224,11 @@ func toWireValue(spec compile.TypeSpec, value interface{}) (w wire.Value, err er
 		w = wire.NewValueI16(int16(intValue))
 	case wire.TI32:
 		var intValue int64
-		intValue, err = parseInt(value, 32)
+		if enumSpec, ok := spec.(*compile.EnumSpec); ok {
+			intValue, err = parseEnum(enumSpec, value)
+		} else {
+			intValue, err = parseInt(value, 32)
+		}
 		w = wire.NewValueI32(int32(intValue))
 	case wire.TI64:
 		var intValue int64

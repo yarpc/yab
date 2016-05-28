@@ -18,52 +18,25 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package main
+package encoding
 
 import (
-	"bytes"
-	"fmt"
-	"io/ioutil"
-	"runtime"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// Constants useful for tests
-const (
-	validThrift = "testdata/simple.thrift"
-	fooMethod   = "Simple::foo"
-)
+func TestMetaSpec(t *testing.T) {
+	assert.NotPanics(t, func() {
+		spec := getMetaService()
+		assert.NotNil(t, spec, "Meta service spec is nil")
+	}, "Failed to get Meta service")
 
-type testOutput struct {
-	*bytes.Buffer
-	fatalf func(string, ...interface{})
-}
-
-func (t testOutput) Fatalf(format string, args ...interface{}) {
-	t.fatalf(format, args...)
-	runtime.Goexit()
-}
-
-func (t testOutput) Printf(format string, args ...interface{}) {
-	t.WriteString(fmt.Sprintf(format, args...))
-}
-
-func getOutput(t *testing.T) (*bytes.Buffer, output) {
-	buf := &bytes.Buffer{}
-	out := testOutput{
-		Buffer: buf,
-		fatalf: t.Errorf,
-	}
-	return buf, out
-}
-
-func writeFile(t *testing.T, prefix, contents string) string {
-	f, err := ioutil.TempFile("", prefix)
-	require.NoError(t, err, "TempFile failed")
-	_, err = f.WriteString(contents)
-	require.NoError(t, err, "Write to temp file failed")
-	require.NoError(t, f.Close(), "Close temp file failed")
-	return f.Name()
+	assert.NotPanics(t, func() {
+		name, spec := getHealthSpec()
+		assert.Equal(t, "Meta::health", name, "Method name mismatch")
+		require.NotNil(t, spec, "Got nil health spec")
+		assert.Equal(t, 0, len(spec.ArgsSpec), "Health method")
+	}, "Failed to get health spec")
 }

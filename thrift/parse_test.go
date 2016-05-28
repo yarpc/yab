@@ -21,10 +21,11 @@
 package thrift
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/yarpc/yab/internal/thrifttest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,18 +35,7 @@ import (
 
 // getFuncSpecs returns the spec for a service named "Test".
 func getFuncSpecs(t *testing.T, contents string) map[string]*compile.FunctionSpec {
-	file, err := ioutil.TempFile("", "func.thrift")
-	require.NoError(t, err, "TempFile failed")
-	defer os.Remove(file.Name())
-
-	_, err = file.Write([]byte(contents))
-	require.NoError(t, err, "Write failed")
-	require.NoError(t, file.Close(), "Close failed")
-
-	// Parse the Thrift file
-	module, err := compile.Compile(file.Name())
-	require.NoError(t, err, "Compile failed")
-
+	module := thrifttest.Parse(t, contents)
 	svc, err := module.LookupService("Test")
 	require.NoError(t, err, "Thrift contents missing service Test")
 	return svc.Functions
@@ -74,9 +64,15 @@ func TestParseRequest(t *testing.T) {
 
 		struct SWrap {
 			1: required S s = S_default
+			2: optional S s2 = S_default
 		}
 
     typedef i32 Foo
+
+		enum Op {
+			Add = 1,
+			MULTIPLY,
+		}
 
     service Test {
 
@@ -98,6 +94,7 @@ func TestParseRequest(t *testing.T) {
 				15: optional map<string, i32> s_i_map;
 				16: optional map<i32, i32> i_i_map;
 				17: optional map<bool, i32> b_i_map;
+				18: optional Op op;
       )
     }
 
@@ -122,12 +119,12 @@ func TestParseRequest(t *testing.T) {
 		{
 			// Set numbers and bools
 			request: map[string]interface{}{
-				"arg1":       json.Number("1"),
-				"arg2":       json.Number("2"),
-				"arg_i16":    json.Number("3"),
-				"arg_i32":    json.Number("4"),
+				"arg1":       1,
+				"arg2":       2,
+				"arg_i16":    3,
+				"arg_i32":    4,
 				"arg_bool":   true,
-				"arg_double": json.Number("5.6"),
+				"arg_double": 5.6,
 			},
 			want: []wire.Field{
 				{ID: 1, Value: wire.NewValueI8(1)},
@@ -143,12 +140,12 @@ func TestParseRequest(t *testing.T) {
 			request: map[string]interface{}{
 				"arg1": "asd",
 			},
-			errMsg: `field "byte" cannot parse int8 from "asd" of type string`,
+			errMsg: `field "byte" cannot parse int8 from string: asd`,
 		},
 		{
 			// Set the typedef
 			request: map[string]interface{}{
-				"foo": json.Number("3"),
+				"foo": 3,
 			},
 			want: []wire.Field{
 				{ID: 6, Value: wire.NewValueI32(3)},
@@ -236,7 +233,7 @@ func TestParseRequest(t *testing.T) {
 			request: map[string]interface{}{
 				"u": map[string]interface{}{
 					"s": "foo",
-					"i": json.Number("1"),
+					"i": 1,
 				},
 			},
 			errMsg: errUsingSingleField.Error(),
@@ -250,6 +247,11 @@ func TestParseRequest(t *testing.T) {
 				{ID: 8, Value: wire.NewValueStruct(wire.Struct{
 					Fields: []wire.Field{
 						{ID: 1, Value: wire.NewValueStruct(wire.Struct{
+							Fields: []wire.Field{
+								{ID: 1, Value: wire.NewValueString("f1_val")},
+							},
+						})},
+						{ID: 2, Value: wire.NewValueStruct(wire.Struct{
 							Fields: []wire.Field{
 								{ID: 1, Value: wire.NewValueString("f1_val")},
 							},
@@ -309,9 +311,9 @@ func TestParseRequest(t *testing.T) {
 		{
 			request: map[string]interface{}{
 				"s_i_map": map[string]interface{}{
-					"a": json.Number("1"),
-					"b": json.Number("2"),
-					"c": json.Number("3"),
+					"a": 1,
+					"b": 2,
+					"c": 3,
 				},
 			},
 			want: []wire.Field{{
@@ -330,9 +332,9 @@ func TestParseRequest(t *testing.T) {
 		},
 		{
 			request: map[string]interface{}{
-				"i_i_map": map[string]interface{}{
-					"2": json.Number("1"),
-					"1": json.Number("2"),
+				"i_i_map": map[interface{}]interface{}{
+					2: 1,
+					1: 2,
 				},
 			},
 			want: []wire.Field{{
@@ -349,17 +351,69 @@ func TestParseRequest(t *testing.T) {
 			}},
 		},
 		{
+			request: map[string]interface{}{
+				"i_i_map": map[interface{}]interface{}{
+					"2": 1,
+					"1": 2,
+				},
+			},
+			want: []wire.Field{{
+				ID: 16,
+				Value: wire.NewValueMap(wire.Map{
+					KeyType:   wire.TI32,
+					ValueType: wire.TI32,
+					Size:      2,
+					Items: wire.MapItemListFromSlice([]wire.MapItem{
+						{wire.NewValueI32(2), wire.NewValueI32(1)},
+						{wire.NewValueI32(1), wire.NewValueI32(2)},
+					}),
+				}),
+			}},
+		},
+		{
+			request: map[string]interface{}{
+				"op": 1,
+			},
+			want: []wire.Field{
+				{ID: 18, Value: wire.NewValueI32(1)},
+			},
+		},
+		{
+			request: map[string]interface{}{
+				"op": "Op(999)",
+			},
+			want: []wire.Field{
+				{ID: 18, Value: wire.NewValueI32(999)},
+			},
+		},
+		{
+			request: map[string]interface{}{
+				"op": "Add",
+			},
+			want: []wire.Field{
+				{ID: 18, Value: wire.NewValueI32(1)},
+			},
+		},
+		{
+			request: map[string]interface{}{
+				"op": "Multiply",
+			},
+			want: []wire.Field{
+				{ID: 18, Value: wire.NewValueI32(2)},
+			},
+		},
+		{
 			// map is not the right type.
 			request: map[string]interface{}{
 				"s_i_map": "asd",
 			},
-			errMsg: "map must be specified using map[string]*",
+			errMsg: errMapUnknownType.Error(),
 		},
 		{
 			// map key type is wrong.
 			request: map[string]interface{}{
 				"b_i_map": map[string]interface{}{
-					"asd": json.Number("1"),
+					"asd": 1,
 				},
 			},
 			errMsg: "map key (asd) failed",
@@ -376,9 +430,9 @@ func TestParseRequest(t *testing.T) {
 		{
 			// use fuzzy matching to set fields.
 			request: map[string]interface{}{
-				"Arg1":    json.Number("1"),
-				"argi16_": json.Number("3"),
-				"ARGi32":  json.Number("4"),
+				"Arg1":    1,
+				"argi16_": 3,
+				"ARGi32":  4,
 				"ArgBool": true,
 			},
 			want: []wire.Field{
@@ -401,8 +455,8 @@ func TestParseRequest(t *testing.T) {
 		{
 			// allow specifying fields by field ID
 			request: map[string]interface{}{
-				"1":  json.Number("1"),
-				"9":  json.Number("3"),
+				"1":  1,
+				"9":  3,
 				"11": true,
 			},
 			want: []wire.Field{
@@ -414,9 +468,23 @@ func TestParseRequest(t *testing.T) {
 		{
 			// invalid field IDs should report an error though.
 			request: map[string]interface{}{
-				"999": json.Number("1"),
+				"999": 1,
 			},
 			errMsg: fieldGroupError{notFound: []string{"999"}}.Error(),
+		},
+		{
+			// Unknown enum
+			request: map[string]interface{}{
+				"op": "Divide",
+			},
+			errMsg: `unrecognized enum "Divide"`,
+		},
+		{
+			// Unknown enum
+			request: map[string]interface{}{
+				"op": "Op(NaN)",
+			},
+			errMsg: `unrecognized enum "Op(NaN)"`,
 		},
 	}
 
@@ -443,10 +511,14 @@ func TestParseSuccess(t *testing.T) {
 	filePrefix := tempFile.Name() + "_1"
 	fullFile := filePrefix + ".thrift"
 
-	data := []byte("struct S {}")
+	data := []byte(`
+		struct S {
+			1: string s
+		}
+	`)
 	require.NoError(t, ioutil.WriteFile(fullFile, data, 0666),
 		"Failed to write thrift file to %v", fullFile)
-	//defer os.Remove(fullFile)
+	defer os.Remove(fullFile)
 
 	for _, fname := range []string{fullFile, filePrefix} {
 		module, err := Parse(fname)

@@ -1,7 +1,8 @@
-package main
+package encoding
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -33,7 +34,7 @@ func TestEncodingUnmarshal(t *testing.T) {
 		},
 		{
 			input:   "unknown",
-			wantErr: errUnrecognizedEncoding,
+			wantErr: fmt.Errorf(`unknown encoding: "unknown"`),
 		},
 	}
 
@@ -55,97 +56,9 @@ func TestEncodingUnmarshalNil(t *testing.T) {
 	assert.Equal(t, errNilEncoding, e.UnmarshalFlag("raw"), "Unmarshal nil encoding should fail")
 }
 
-func TestNewSerializer(t *testing.T) {
-	tests := []struct {
-		encoding Encoding
-		opts     RequestOptions
-		want     Encoding
-		wantErr  error
-	}{
-		{
-			encoding: JSON,
-			opts:     RequestOptions{Health: true},
-			wantErr:  errHealthThriftOnly,
-		},
-		{
-			encoding: Raw,
-			opts:     RequestOptions{Health: true},
-			wantErr:  errHealthThriftOnly,
-		},
-		{
-			encoding: Thrift,
-			opts:     RequestOptions{Health: true},
-			want:     Thrift,
-		},
-		{
-			encoding: Thrift,
-			opts: RequestOptions{
-				Health:     true,
-				MethodName: "method",
-			},
-			wantErr: errHealthAndMethod,
-		},
-		{
-			encoding: Encoding("asd"),
-			opts:     RequestOptions{MethodName: "method"},
-			wantErr:  errUnrecognizedEncoding,
-		},
-		{
-			encoding: UnspecifiedEncoding,
-			opts:     RequestOptions{Health: true},
-			want:     Thrift,
-		},
-		{
-			encoding: UnspecifiedEncoding,
-			opts:     RequestOptions{ThriftFile: validThrift, MethodName: "Simple::foo"},
-			want:     Thrift,
-		},
-		{
-			encoding: JSON,
-			opts:     RequestOptions{MethodName: "Test::foo"},
-			want:     JSON,
-		},
-		{
-			encoding: JSON,
-			wantErr:  errMissingMethodName,
-		},
-		{
-			encoding: Raw,
-			wantErr:  errMissingMethodName,
-		},
-		{
-			encoding: Thrift,
-			wantErr:  errMissingMethodName,
-		},
-		{
-			encoding: JSON,
-			opts:     RequestOptions{MethodName: "method"},
-			want:     JSON,
-		},
-		{
-			encoding: Raw,
-			opts:     RequestOptions{MethodName: "method"},
-			want:     Raw,
-		},
-	}
-
-	for _, tt := range tests {
-		tt.opts.Encoding = tt.encoding
-		got, err := NewSerializer(tt.opts)
-		assert.Equal(t, tt.wantErr, err, "NewSerializer(%+v) error", tt.opts)
-		if err != nil {
-			continue
-		}
-
-		if assert.NotNil(t, got, "NewSerializer(%+v) missing serializer", tt.opts) {
-			assert.Equal(t, tt.want, got.Encoding(), "NewSerializer(%+v) wrong encoding", tt.opts)
-		}
-	}
-}
-
 func TestRawEncoding(t *testing.T) {
-	serializer, err := NewSerializer(RequestOptions{Encoding: Raw, MethodName: "method"})
-	require.NoError(t, err, "Failed to create raw serializer")
+	serializer := NewRaw("method")
+	require.Equal(t, Raw, serializer.Encoding(), "Encoding mismatch")
 
 	got, err := serializer.Request([]byte("asd"))
 	require.NoError(t, err, "raw.Request failed")
@@ -163,9 +76,31 @@ func TestRawEncoding(t *testing.T) {
 	assert.NoError(t, serializer.CheckSuccess(nil), "CheckSuccess failed")
 }
 
+func TestEncodingGetHealth(t *testing.T) {
+	tests := []struct {
+		encoding Encoding
+		success  bool
+	}{
+		{UnspecifiedEncoding, true},
+		{Thrift, true},
+		{Raw, false},
+		{JSON, false},
+	}
+
+	for _, tt := range tests {
+		health, err := tt.encoding.GetHealth()
+		if tt.success {
+			assert.NoError(t, err, "%v.GetHealth should succeed", tt.encoding)
+			assert.NotNil(t, health, "%v.GetHealth should succeed")
+		} else {
+			assert.Error(t, err, "%v.GetHealth should fail", tt.encoding)
+		}
+	}
+}
+
 func TestJSONEncodingRequest(t *testing.T) {
-	serializer, err := NewSerializer(RequestOptions{Encoding: JSON, MethodName: "method"})
-	require.NoError(t, err, "Failed to create JSON serializer")
+	serializer := NewJSON("method")
+	require.Equal(t, JSON, serializer.Encoding(), "Encoding mismatch")
 
 	tests := []struct {
 		data   string
@@ -204,8 +139,7 @@ func TestJSONEncodingRequest(t *testing.T) {
 }
 
 func TestJSONEncodingResponse(t *testing.T) {
-	serializer, err := NewSerializer(RequestOptions{Encoding: JSON, MethodName: "method"})
-	require.NoError(t, err, "Failed to create JSON serializer")
+	serializer := NewJSON("method")
 
 	tests := []struct {
 		data   string

@@ -24,13 +24,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
 )
 
 const warmupRequests = 10
 
 type benchmarkMethod struct {
-	serializer Serializer
+	serializer encoding.Serializer
 	req        *transport.Request
 }
 

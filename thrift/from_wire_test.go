@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thriftrw/thriftrw-go/ast"
 	"github.com/thriftrw/thriftrw-go/compile"
 	"github.com/thriftrw/thriftrw-go/wire"
@@ -77,6 +78,8 @@ func TestValueFromWireSuccess(t *testing.T) {
 		w    wire.Value
 		spec compile.TypeSpec
 		v    interface{}
+
+		skipToWire bool
 	}{
 		{
 			w:    wire.NewValueBool(true),
@@ -119,11 +122,53 @@ func TestValueFromWireSuccess(t *testing.T) {
 			v:    []byte("foo"),
 		},
 		{
+			w: wire.NewValueBinary([]byte("foo")),
+			spec: &compile.TypedefSpec{
+				Name:   "Blob",
+				Target: compile.BinarySpec,
+			},
+			v: []byte("foo"),
+		},
+		{
+			w: wire.NewValueString("str"),
+			spec: &compile.TypedefSpec{
+				Name:   "UUID",
+				Target: compile.StringSpec,
+			},
+			v: "str",
+		},
+		{
+			w: wire.NewValueString("str"),
+			spec: &compile.TypedefSpec{
+				Name: "UUID1",
+				Target: &compile.TypedefSpec{
+					Name:   "UUID2",
+					Target: compile.StringSpec,
+				},
+			},
+			v: "str",
+		},
+		{
 			w: makeWireList(wire.TI32, 4, func(i int) wire.Value {
 				return wire.NewValueI32(int32(i))
 			}),
 			spec: &compile.ListSpec{ValueSpec: compile.I32Spec},
 			v:    i32s(0, 1, 2, 3),
+		},
+		{
+			w: makeWireList(wire.TI32, 4, func(i int) wire.Value {
+				return wire.NewValueI32(int32(i))
+			}),
+			spec: &compile.TypedefSpec{
+				Name: "ListOfInts",
+				Target: &compile.ListSpec{
+					ValueSpec: &compile.TypedefSpec{
+						Name:   "Int",
+						Target: compile.I32Spec,
+					},
+				},
+			},
+			v: i32s(0, 1, 2, 3),
 		},
 		{
 			w: makeWireSet(wire.TI32, 4, func(i int) wire.Value {
@@ -198,6 +243,33 @@ func TestValueFromWireSuccess(t *testing.T) {
 			},
 		},
 		{
+			// struct S {1: s string}
+			w: wire.NewValueStruct(wire.Struct{
+				Fields: []wire.Field{{
+					ID:    1,
+					Value: wire.NewValueString("foo"),
+				}},
+			}),
+			spec: &compile.TypedefSpec{
+				Name: "T",
+				Target: &compile.StructSpec{
+					Name: "S",
+					Type: ast.StructType,
+					Fields: compile.FieldGroup{{
+						ID:   1,
+						Name: "s",
+						Type: &compile.TypedefSpec{
+							Name:   "UUID",
+							Target: compile.StringSpec,
+						},
+					}},
+				},
+			},
+			v: map[string]interface{}{
+				"s": "foo",
+			},
+		},
+		{
 			// struct S {}, unknown field shouldn't cause an error.
 			// TODO: should we add unknown fields to the result with a special _unknown_field_1 key?
 			w: wire.NewValueStruct(wire.Struct{
@@ -211,7 +283,8 @@ func TestValueFromWireSuccess(t *testing.T) {
 				Type:   ast.StructType,
 				Fields: compile.FieldGroup{},
 			},
-			v: map[string]interface{}{},
+			v:          map[string]interface{}{},
+			skipToWire: true, // reason: unrecognized field
 		},
 		{
 			// struct S {1: optional string s = 'foo'}, default fields should always be set.
@@ -229,13 +302,69 @@ func TestValueFromWireSuccess(t *testing.T) {
 			v: map[string]interface{}{
 				"s": "foo",
 			},
+			skipToWire: true, // reason: default value
+		},
+		{
+			// Enum with recognized value.
+			w: wire.NewValueI32(1),
+			spec: &compile.EnumSpec{
+				Name: "Op",
+				Items: []compile.EnumItem{{
+					Name:  "Add",
+					Value: 1,
+				}},
+			},
+			v: "Add",
+		},
+		{
+			// Enum with with unrecognized value.
+			w: wire.NewValueI32(1),
+			spec: &compile.EnumSpec{
+				Name:  "Op",
+				Items: nil,
+			},
+			v: "Op(1)",
+		},
+		{
+			// Enum with duplicated value.
+			w: wire.NewValueI32(1),
+			spec: &compile.EnumSpec{
+				Name: "Op",
+				Items: []compile.EnumItem{
+					{
+						Name:  "Add",
+						Value: 1,
+					},
+					{
+						Name:  "Sum",
+						Value: 1,
+					},
+				},
+			},
+			v: "Add",
 		},
 	}
 
 	for _, tt := range tests {
-		got, err := valueFromWire(tt.spec, tt.w)
-		if assert.NoError(t, err, "Failed for (%v, %v)", tt.spec, tt.w) {
-			assert.Equal(t, tt.v, got, "Unexpected value for (%v, %v)", tt.spec, tt.w)
+		spec, err := tt.spec.Link(compile.EmptyScope("fake"))
+		require.NoError(t, err, "Failed to link %v", tt.spec)
+
+		got, err := valueFromWire(spec, tt.w)
+		if assert.NoError(t, err, "Failed for valueFromWire(%v, %v)", spec, tt.w) {
+			assert.Equal(t, tt.v, got, "Unexpected value for valueFromWire(%v, %v)", tt.spec, tt.w)
+		}
+
+		if tt.skipToWire {
+			continue
+		}
+		w, err := toWireValue(spec, tt.v)
+		if assert.NoError(t, err, "Failed for toWireValue(%v, %v)", spec, tt.v) {
+			assert.True(
+				t, wire.ValuesAreEqual(w, tt.w),
+				"Unexpected value for toWireValue(%v, %v):"+
+					"\n\t   %v (got)"+
+					"\n\t!= %v (expected)", spec, tt.v, w, tt.w,
+			)
 		}
 	}
 }

@@ -22,31 +22,24 @@ package thrift
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"strconv"
 	"strings"
 )
 
 var errBinaryObjectOptions = errors.New(
 	"object input for binary/string must have one of the following keys: base64, file")
 
-func parseBoolNumber(v json.Number) (bool, error) {
-	i64, err := v.Int64()
-	if err != nil {
-		return false, fmt.Errorf("cannot parse bool from float %q", v)
-	}
-
-	switch i64 {
+func parseBoolNumber(v int) (bool, error) {
+	switch v {
 	case 0:
 		return false, nil
 	case 1:
 		return true, nil
 	}
 
-	return false, fmt.Errorf("cannot parse bool from int %q", v)
+	return false, fmt.Errorf("cannot parse bool from int %v", v)
 }
 
 func parseBoolString(v string) (bool, error) {
@@ -68,42 +61,63 @@ func parseBool(value interface{}) (bool, error) {
 	switch v := value.(type) {
 	case bool:
 		return v, nil
-	case json.Number:
+	case int:
+		// YAML uses int for all small values. For large values, it may use int64 or uint64
+		// but those are not valid bool values anyway, so we don't need to check them.
 		return parseBoolNumber(v)
 	case string:
 		return parseBoolString(v)
 	default:
-		return false, fmt.Errorf("cannot parse bool from %q of type %T", value, value)
+		return false, fmt.Errorf("cannot parse bool %T: %v", value, value)
 	}
 }
 
-// parseInt parses an integer from a json.Number.
-// TODO: in future, should we allow strings with hex values (e.g. 0x1)
-func parseInt(value interface{}, bits int) (int64, error) {
-	v, ok := value.(json.Number)
-	if !ok {
-		return 0, fmt.Errorf("cannot parse int%v from %q of type %T", bits, value, value)
+// parseInt parses an integer of the given size.
+func parseInt(v interface{}, bits int) (int64, error) {
+	var maxVal int64 = 1<<(uint(bits)-1) - 1
+	minVal := -maxVal - 1
+
+	var v64 int64
+	switch v := v.(type) {
+	case int64:
+		v64 = v
+	case int:
+		v64 = int64(v)
+	case int8:
+		v64 = int64(v)
+	case int16:
+		v64 = int64(v)
+	case int32:
+		v64 = int64(v)
+	case uint64:
+		// YAML will only use uint64 if the value doesn't fit in an int64.
+		// However, Thrift only supports int64 values.
+		return 0, fmt.Errorf("uint64 value %v is out of range for int%v [%v, %v]", v, bits, minVal, maxVal)
+	default:
+		return 0, fmt.Errorf("cannot parse int%v from %T: %v", bits, v, v)
 	}
 
-	n, err := strconv.ParseInt(v.String(), 10, bits)
-	if err != nil {
-		return 0, fmt.Errorf("cannot parse int%v from %q: %v", bits, value, err)
+	if v64 < minVal || v64 > maxVal {
+		return 0, fmt.Errorf("value %v is out of range for int%v [%v, %v]", v64, bits, minVal, maxVal)
 	}
-	return n, nil
+
+	return v64, nil
 }
 
-// parseDouble parses a float64 from a json.Number.
-func parseDouble(value interface{}) (float64, error) {
-	v, ok := value.(json.Number)
-	if !ok {
-		return 0, fmt.Errorf("cannot parse double from %q of type %T", value, value)
+// parseDouble parses a float64 from an integer or a float.
+func parseDouble(v interface{}) (float64, error) {
+	switch v := v.(type) {
+	case int:
+		return float64(v), nil
+	case int64:
+		return float64(v), nil
+	case uint64:
+		return float64(v), nil
+	case float64:
+		return v, nil
+	default:
+		return 0, fmt.Errorf("cannot parse double from %T: %v", v, v)
 	}
-
-	f64, err := v.Float64()
-	if err != nil {
-		return 0, fmt.Errorf("cannot parse double from %q", value)
-	}
-	return f64, nil
 }
 
 // parseBinaryList will try to parse a list of numbers
@@ -112,12 +126,13 @@ func parseBinaryList(vl []interface{}) ([]byte, error) {
 	bs := make([]byte, 0, len(vl))
 	for _, v := range vl {
 		switch v := v.(type) {
-		case json.Number:
-			vInt, err := strconv.ParseInt(v.String(), 10, 8)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse list of bytes: %v", err)
+		case int:
+			// YAML uses int for all small values. For large values, it may use int64 or uint64
+			// but those are not valid bool values anyway, so we don't need to check them.
+			if v < 0 || v >= (1<<8) {
+				return nil, fmt.Errorf("failed to parse list of bytes: %v is not a byte", v)
 			}
-			bs = append(bs, byte(vInt))
+			bs = append(bs, byte(v))
 		case string:
 			bs = append(bs, v...)
 		default:
@@ -128,7 +143,7 @@ func parseBinaryList(vl []interface{}) ([]byte, error) {
 	return bs, nil
 }
 
-func parseBinaryMap(v map[string]interface{}) ([]byte, error) {
+func parseBinaryMap(v map[interface{}]interface{}) ([]byte, error) {
 	if v, ok := v["base64"]; ok {
 		str, ok := v.(string)
 		if !ok {
@@ -159,11 +174,13 @@ func parseBinary(value interface{}) ([]byte, error) {
 	switch v := value.(type) {
 	case string:
 		return []byte(v), nil
+	case []byte:
+		return v, nil
 	case []interface{}:
 		return parseBinaryList(v)
-	case map[string]interface{}:
+	case map[interface{}]interface{}:
 		return parseBinaryMap(v)
 	default:
-		return nil, fmt.Errorf("cannot parse binary/string from: type %T, value %v", value, v)
+		return nil, fmt.Errorf("cannot parse binary/string from %T: %v", value, v)
 	}
 }
