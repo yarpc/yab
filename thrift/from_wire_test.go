@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thriftrw/thriftrw-go/ast"
 	"github.com/thriftrw/thriftrw-go/compile"
 	"github.com/thriftrw/thriftrw-go/wire"
@@ -345,21 +346,24 @@ func TestValueFromWireSuccess(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got, err := valueFromWire(tt.spec, tt.w)
-		if assert.NoError(t, err, "Failed for valueFromWire(%v, %v)", tt.spec, tt.w) {
+		spec, err := tt.spec.Link(compile.EmptyScope("fake"))
+		require.NoError(t, err, "Failed to link %v", tt.spec)
+
+		got, err := valueFromWire(spec, tt.w)
+		if assert.NoError(t, err, "Failed for valueFromWire(%v, %v)", spec, tt.w) {
 			assert.Equal(t, tt.v, got, "Unexpected value for valueFromWire(%v, %v)", tt.spec, tt.w)
 		}
 
 		if tt.skipToWire {
 			continue
 		}
-		w, err := toWireValue(tt.spec, tt.v)
-		if assert.NoError(t, err, "Failed for toWireValue(%v, %v)", tt.spec, tt.v) {
+		w, err := toWireValue(spec, tt.v)
+		if assert.NoError(t, err, "Failed for toWireValue(%v, %v)", spec, tt.v) {
 			assert.True(
 				t, wire.ValuesAreEqual(w, tt.w),
 				"Unexpected value for toWireValue(%v, %v):"+
 					"\n\t   %v (got)"+
-					"\n\t!= %v (expected)", tt.spec, tt.v, w, tt.w,
+					"\n\t!= %v (expected)", spec, tt.v, w, tt.w,
 			)
 		}
 	}

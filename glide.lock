@@ -1,5 +1,5 @@
 hash: dfbc881fcd738f1f42860b2bebfc2ec6fd245f8254e71d3a7eeb3001a518d26a
-updated: 2016-05-27T11:50:44.096672-07:00
+updated: 2016-05-27T16:46:45.241973684-07:00
 imports:
 - name: github.com/apache/thrift
   version: 23d6746079d7b5fdb38214387c63f987e68a6d8f
@@ -25,7 +25,7 @@ imports:
   - assert
   - require
 - name: github.com/thriftrw/thriftrw-go
-  version: 6c625014a51e3909b3e7d860598f8ca001b91e58
+  version: d511d45b9dbe1e412b663ca6186118ad52da2fb8
   subpackages:
   - ast
   - compile

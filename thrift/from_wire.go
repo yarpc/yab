@@ -141,7 +141,7 @@ func valueFromWire(spec compile.TypeSpec, w wire.Value) (interface{}, error) {
 	var result interface{}
 	var err error
 
-	spec = resolveTypeSpec(spec)
+	spec = compile.RootTypeSpec(spec)
 	switch spec.TypeCode() {
 	case wire.TBool:
 		result = w.GetBool()
