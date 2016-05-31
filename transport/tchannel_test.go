@@ -58,7 +58,7 @@ func TestTChannelConstructor(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got, err := TChannel(tt.opts)
+		got, err := NewTChannel(tt.opts)
 		if tt.errMsg != "" {
 			if assert.Error(t, err, "TChannel(%v) should fail", tt.opts) {
 				assert.Contains(t, err.Error(), tt.errMsg, "Unexpected error for TChannel(%v)", tt.opts)
@@ -86,8 +86,9 @@ func setupServerAndTransport(t *testing.T, changeOpts ...func(*TChannelOptions))
 		changeFn(&opts)
 	}
 
-	transport, err := TChannel(opts)
+	transport, err := NewTChannel(opts)
 	require.NoError(t, err, "Failed to create TChannel transport")
+	require.Equal(t, TChannel, transport.Protocol(), "Unexpected protocol")
 
 	return svr, transport
 }

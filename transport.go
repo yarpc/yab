@@ -139,7 +139,7 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding) (transport.
 			TransportOpts:   opts.TransportOptions,
 			TraceSampleRate: traceSampleRate,
 		}
-		return transport.TChannel(topts)
+		return transport.NewTChannel(topts)
 	}
 
 	hopts := transport.HTTPOptions{
@@ -147,7 +147,7 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding) (transport.
 		TargetService: opts.ServiceName,
 		URLs:          hostPorts,
 	}
-	return transport.HTTP(hopts)
+	return transport.NewHTTP(hopts)
 }
 
 func parseHostFile(filename string) ([]string, error) {

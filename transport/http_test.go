@@ -55,7 +55,7 @@ func TestHTTPConstructor(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got, err := HTTP(tt.opts)
+		got, err := NewHTTP(tt.opts)
 		if tt.errMsg != "" {
 			if assert.Error(t, err, "HTTP(%v) should fail", tt.opts) {
 				assert.Contains(t, err.Error(), tt.errMsg, "Unexpected error for HTTP(%v)", tt.opts)
@@ -65,6 +65,7 @@ func TestHTTPConstructor(t *testing.T) {
 
 		if assert.NoError(t, err, "HTTP(%v) should not fail", tt.opts) {
 			assert.NotNil(t, got, "HTTP(%v) returned nil Transport", tt.opts)
+			assert.Equal(t, HTTP, got.Protocol(), "Unexpected protocol")
 		}
 	}
 }
@@ -162,7 +163,7 @@ func TestHTTPCall(t *testing.T) {
 	}))
 	defer svr.Close()
 
-	transport, err := HTTP(HTTPOptions{
+	transport, err := NewHTTP(HTTPOptions{
 		URLs:          []string{svr.URL + "/rpc"},
 		SourceService: "source",
 		TargetService: "target",

@@ -51,8 +51,8 @@ var (
 	errMissingTarget = errors.New("specify target service name")
 )
 
-// HTTP returns a transport that calls a HTTP service.
-func HTTP(opts HTTPOptions) (Transport, error) {
+// NewHTTP returns a transport that calls a HTTP service.
+func NewHTTP(opts HTTPOptions) (Transport, error) {
 	if len(opts.URLs) == 0 {
 		return nil, errNoURLs
 	}
@@ -96,6 +96,10 @@ func (h *httpTransport) newReq(ctx context.Context, r *Request) (*http.Request, 
 	}
 
 	return req, nil
+}
+
+func (h *httpTransport) Protocol() Protocol {
+	return HTTP
 }
 
 func (h *httpTransport) Call(ctx context.Context, r *Request) (*Response, error) {
