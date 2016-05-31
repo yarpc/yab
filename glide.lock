@@ -1,5 +1,5 @@
 hash: dfbc881fcd738f1f42860b2bebfc2ec6fd245f8254e71d3a7eeb3001a518d26a
-updated: 2016-05-27T16:46:45.241973684-07:00
+updated: 2016-05-31T11:54:31.08655279-07:00
 imports:
 - name: github.com/apache/thrift
   version: 23d6746079d7b5fdb38214387c63f987e68a6d8f
@@ -14,7 +14,7 @@ imports:
   subpackages:
   - spew
 - name: github.com/jessevdk/go-flags
-  version: b350cb1deecd3da4b80a29ccc4054abfd6329001
+  version: b9b882a3990882b05e02765f5df2cd3ad02874ee
 - name: github.com/pmezard/go-difflib
   version: e8554b8641db39598be7f6342874b958f12ae1d4
   subpackages:
@@ -43,7 +43,7 @@ imports:
   - typed
   - thrift/gen-go/meta
 - name: golang.org/x/net
-  version: 30db96677b74e24b967e23f911eb3364fc61a011
+  version: c4c3ea71919de159c9e246d7be66deb7f0a39a58
   subpackages:
   - context
 - name: gopkg.in/yaml.v2
