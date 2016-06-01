@@ -25,6 +25,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/yarpc/yab/transport"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -37,7 +39,7 @@ func TestBenchmark(t *testing.T) {
 		return false
 	}))
 
-	m := benchmarkMethodForTest(t, fooMethod)
+	m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
 	buf, out := getOutput(t)
 
 	runBenchmark(out, Options{

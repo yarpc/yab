@@ -27,6 +27,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
 
 	"github.com/jessevdk/go-flags"
@@ -153,6 +154,8 @@ func runWithOptions(opts Options, out output) {
 		out.Fatalf("Failed while parsing options: %v\n", err)
 	}
 
+	serializer = withTransportSerializer(transport.Protocol(), serializer)
+
 	// req is the transport.Request that will be used to make a call.
 	req, err := serializer.Request(reqInput)
 	if err != nil {
@@ -196,6 +199,19 @@ func runWithOptions(opts Options, out output) {
 		serializer: serializer,
 		req:        req,
 	})
+}
+
+type noEnveloper interface {
+	WithoutEnvelopes() encoding.Serializer
+}
+
+// withTransportSerializer may modify the serializer for the transport used.
+// E.g. Thrift payloads are not enveloped when used with TChannel.
+func withTransportSerializer(p transport.Protocol, s encoding.Serializer) encoding.Serializer {
+	if p == transport.TChannel && s.Encoding() == encoding.Thrift {
+		s = s.(noEnveloper).WithoutEnvelopes()
+	}
+	return s
 }
 
 // makeRequest makes a request using the given transport.

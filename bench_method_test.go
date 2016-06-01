@@ -26,13 +26,14 @@ import (
 	"time"
 
 	"github.com/yarpc/yab/encoding"
+	"github.com/yarpc/yab/transport"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/uber/tchannel-go/testutils"
 )
 
-func benchmarkMethodForTest(t *testing.T, methodString string) benchmarkMethod {
+func benchmarkMethodForTest(t *testing.T, methodString string, p transport.Protocol) benchmarkMethod {
 	rOpts := RequestOptions{
 		Encoding:   encoding.Thrift,
 		ThriftFile: validThrift,
@@ -40,6 +41,8 @@ func benchmarkMethodForTest(t *testing.T, methodString string) benchmarkMethod {
 	}
 	serializer, err := NewSerializer(rOpts)
 	require.NoError(t, err, "Failed to create Thrift serializer")
+
+	serializer = withTransportSerializer(p, serializer)
 
 	req, err := serializer.Request(nil)
 	require.NoError(t, err, "Failed to serialize Thrift body")
@@ -81,7 +84,7 @@ func TestBenchmarkMethodWarmTransport(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		m := benchmarkMethodForTest(t, fooMethod)
+		m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
 		if tt.method != "" {
 			m.req.Method = tt.method
 		}
@@ -142,16 +145,16 @@ func TestBenchmarkMethodCall(t *testing.T) {
 		ServiceName: "foo",
 		HostPorts:   []string{s.hostPort()},
 	}
-	transport, err := getTransport(tOpts, encoding.Thrift)
+	tp, err := getTransport(tOpts, encoding.Thrift)
 	require.NoError(t, err, "Failed to get transport")
 
 	for _, tt := range tests {
-		m := benchmarkMethodForTest(t, tt.method)
+		m := benchmarkMethodForTest(t, tt.method, transport.TChannel)
 		if tt.reqMethod != "" {
 			m.req.Method = tt.reqMethod
 		}
 
-		d, err := m.call(transport)
+		d, err := m.call(tp)
 		if tt.wantErr != "" {
 			if assert.Error(t, err, "call should fail") {
 				assert.Contains(t, err.Error(), tt.wantErr, "call should return 0 duration")
@@ -165,7 +168,7 @@ func TestBenchmarkMethodCall(t *testing.T) {
 }
 
 func TestBenchmarkMethodWarmTransportsSuccess(t *testing.T) {
-	m := benchmarkMethodForTest(t, fooMethod)
+	m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
 	s := newServer(t)
 	defer s.shutdown()
 	s.register(fooMethod, methods.echo())
@@ -183,7 +186,7 @@ func TestBenchmarkMethodWarmTransportsSuccess(t *testing.T) {
 }
 
 func TestBenchmarkMethodWarmTransportsError(t *testing.T) {
-	m := benchmarkMethodForTest(t, fooMethod)
+	m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
 
 	tests := []int32{0, 50}
 	for _, tt := range tests {

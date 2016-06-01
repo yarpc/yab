@@ -115,8 +115,10 @@ func (e thriftSerializer) CheckSuccess(res *transport.Response) error {
 	return thrift.CheckSuccess(e.spec, res.Body, e.opts)
 }
 
-func (e thriftSerializer) DisableEnvelopes() {
+func (e thriftSerializer) WithoutEnvelopes() Serializer {
+	// We're modifying a copy of e.
 	e.opts.UseEnvelopes = false
+	return e
 }
 
 func findMethod(service *compile.ServiceSpec, methodName string) (*compile.FunctionSpec, error) {
