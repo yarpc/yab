@@ -67,8 +67,8 @@ type TChannelOptions struct {
 	TransportOpts map[string]string
 }
 
-// TChannel returns a Transport that calls a TChannel service.
-func TChannel(opts TChannelOptions) (Transport, error) {
+// NewTChannel returns a Transport that calls a TChannel service.
+func NewTChannel(opts TChannelOptions) (Transport, error) {
 	level := tchannel.LogLevelWarn
 	if opts.LogLevel != nil {
 		level = *opts.LogLevel
@@ -108,6 +108,10 @@ func TChannel(opts TChannelOptions) (Transport, error) {
 		sc:          ch.GetSubChannel(opts.TargetService),
 		callOptions: callOpts,
 	}, nil
+}
+
+func (t *tchan) Protocol() Protocol {
+	return TChannel
 }
 
 func (t *tchan) Call(ctx context.Context, r *Request) (*Response, error) {

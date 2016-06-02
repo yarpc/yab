@@ -93,7 +93,7 @@ func (e Encoding) GetHealth() (Serializer, error) {
 	switch e {
 	case UnspecifiedEncoding, Thrift:
 		method, spec := getHealthSpec()
-		return thriftSerializer{method, spec}, nil
+		return thriftSerializer{method, spec, defaultOpts}, nil
 	default:
 		return nil, ErrHealthThriftOnly
 	}

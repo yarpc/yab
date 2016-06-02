@@ -18,45 +18,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package main
+package thrift
 
-import (
-	"sync/atomic"
-	"testing"
-	"time"
-
-	"github.com/yarpc/yab/transport"
-
-	"github.com/stretchr/testify/assert"
-)
-
-func TestBenchmark(t *testing.T) {
-
-	var requests int32
-	s := newServer(t)
-	s.register(fooMethod, methods.errorIf(func() bool {
-		atomic.AddInt32(&requests, 1)
-		return false
-	}))
-
-	m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
-	buf, out := getOutput(t)
-
-	runBenchmark(out, Options{
-		BOpts: BenchmarkOptions{
-			MaxRequests: 1000,
-			MaxDuration: time.Second,
-			Connections: 50,
-			Concurrency: 2,
-		},
-		TOpts: s.transportOpts(),
-	}, m)
-
-	bufStr := buf.String()
-	assert.Contains(t, bufStr, "Max RPS")
-	assert.NotContains(t, bufStr, "Errors")
-
-	// Due to warm up, we make:
-	// 10 * Connections extra requests
-	assert.EqualValues(t, 1000+10*50, requests, "Invalid number of requests")
+// Options controls the serialization of the Thrift request/response.
+type Options struct {
+	UseEnvelopes bool
 }

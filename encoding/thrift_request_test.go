@@ -243,3 +243,36 @@ func TestFindMethod(t *testing.T) {
 		}
 	}
 }
+
+func TestWithoutEnvelopes(t *testing.T) {
+	serializer, err := NewThrift(validThrift, "Simple::foo")
+	require.NoError(t, err, "Failed to create serializer")
+
+	tests := []struct {
+		desc       string
+		serializer Serializer
+		want       []byte
+	}{
+		{
+			desc:       "with envelope",
+			serializer: serializer,
+			want: []byte{
+				0x80, 0x01, 0x00, 0x01, // version | type = 1 | call
+				0x00, 0x00, 0x00, 0x03, 'f', 'o', 'o', // "foo"
+				0x00, 0x00, 0x00, 0x00, // seqID
+				0x00, // empty struct
+			},
+		},
+		{
+			desc:       "without envelope",
+			serializer: serializer.(thriftSerializer).WithoutEnvelopes(),
+			want:       []byte{0x00},
+		},
+	}
+
+	for _, tt := range tests {
+		got, err := tt.serializer.Request([]byte("{}"))
+		require.NoError(t, err, "%v: serialize failed", tt.desc)
+		assert.Equal(t, tt.want, got.Body, "%v: got unexpected bytes", tt.desc)
+	}
+}

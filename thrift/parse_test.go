@@ -584,12 +584,20 @@ func TestRequestToBytes(t *testing.T) {
 
 	tests := []struct {
 		request map[string]interface{}
+		opts    Options
 		wantErr bool
 	}{
 		{
 			request: map[string]interface{}{
 				"s": "foo",
 			},
+			opts: Options{},
+		},
+		{
+			request: map[string]interface{}{
+				"s": "foo",
+			},
+			opts: Options{UseEnvelopes: true},
 		},
 		{
 			request: map[string]interface{}{
@@ -600,7 +608,7 @@ func TestRequestToBytes(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		_, err := RequestToBytes(funcSpec, tt.request)
+		_, err := RequestToBytes(funcSpec, tt.request, tt.opts)
 		assert.Equal(t, tt.wantErr, err != nil, "wantErr %v for %v", tt.wantErr, tt.request)
 	}
 }
