@@ -26,6 +26,14 @@ install_ci: install
 		go get golang.org/x/tools/cmd/cover
 
 
+.PHONY: update_man
+update_man:
+	go install .
+	yab --man-page > man/yab.1
+	nroff -man man/yab.1 | man2html -title yab > man/yab.html
+	[[ -d ../yab_ghpages ]] && cp man/yab.html ../yab_ghpages/man.html
+	@echo "Please update gh-pages"
+
 .PHONY: test_ci
 test_ci: install_ci build
 	./scripts/cover.sh $(shell go list $(PACKAGES))
