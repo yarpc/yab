@@ -44,6 +44,12 @@ func findGroup(parser *flags.Parser, group string) *flags.Group {
 	panic("no group called " + group + " found.")
 }
 
+func setGroupDesc(parser *flags.Parser, groupName, newName, desc string) {
+	g := findGroup(parser, groupName)
+	g.ShortDescription = newName
+	g.LongDescription = desc
+}
+
 func fromPositional(args []string, index int, s *string) bool {
 	if len(args) <= index {
 		return false
@@ -74,9 +80,9 @@ yab is a benchmarking tool for TChannel and HTTP applications. It's primarily in
 It can be used in a curl-like fashion when benchmarking features are disabled.
 `
 
-	findGroup(parser, "transport").ShortDescription = "Transport Options"
-	findGroup(parser, "request").ShortDescription = "Request Options"
-	findGroup(parser, "benchmark").ShortDescription = "Benchmark Options"
+	setGroupDesc(parser, "request", "Request Options", _reqOptsDesc)
+	setGroupDesc(parser, "transport", "Transport Options", _transportOptsDesc)
+	setGroupDesc(parser, "benchmark", "Benchmark Options", _benchmarkOptsDesc)
 
 	// If there are no arguments specified, write the help.
 	if len(args) == 0 {

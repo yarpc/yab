@@ -30,7 +30,7 @@ import (
 
 // Options are parsed from flags using go-flags.
 type Options struct {
-	ROpts          RequestOptions   `group:"request" description:"Configures an individual request."`
+	ROpts          RequestOptions   `group:"request"`
 	TOpts          TransportOptions `group:"transport"`
 	BOpts          BenchmarkOptions `group:"benchmark"`
 	DisplayVersion bool             `long:"version" description:"Displays the application version"`
@@ -68,8 +68,8 @@ type TransportOptions struct {
 
 // BenchmarkOptions are benchmark-specific options
 type BenchmarkOptions struct {
-	MaxRequests int           `short:"n" long:"maxRequests" default:"1000000" description:"The maximum number of requests to make"`
-	MaxDuration time.Duration `short:"d" long:"maxDuration" default:"0s" description:"The maximum amount of time to run the benchmark for"`
+	MaxRequests int           `short:"n" long:"max-requests" default:"1000000" description:"The maximum number of requests to make"`
+	MaxDuration time.Duration `short:"d" long:"max-duration" default:"0s" description:"The maximum amount of time to run the benchmark for"`
 
 	// NumCPUs is the value for GOMAXPROCS. The default value of 0 will not update GOMAXPROCS.
 	NumCPUs int `long:"cpus" description:"The number of OS threads"`
