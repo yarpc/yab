@@ -25,14 +25,19 @@ import (
 	"fmt"
 
 	"github.com/thriftrw/thriftrw-go/compile"
+	"github.com/thriftrw/thriftrw-go/envelope"
 	"github.com/thriftrw/thriftrw-go/protocol"
 	"github.com/thriftrw/thriftrw-go/wire"
 )
 
+type encodedException struct {
+	error
+}
+
 // ResponseBytesToMap takes the given response bytes and creates a map that
 // uses field name as keys.
-func ResponseBytesToMap(spec *compile.FunctionSpec, responseBytes []byte) (map[string]interface{}, error) {
-	w, err := responseBytesToWire(responseBytes)
+func ResponseBytesToMap(spec *compile.FunctionSpec, responseBytes []byte, opts Options) (map[string]interface{}, error) {
+	w, err := responseBytesToWire(responseBytes, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -84,10 +89,10 @@ func checkException(spec *compile.FunctionSpec, fieldID int16) string {
 // A response is successful if:
 // - Thrift deserialization is successful (lazy fields are not evaluated)
 // - Only Field ID 0 (if the method has a return type) or no fields are set.
-func CheckSuccess(spec *compile.FunctionSpec, responseBytes []byte) error {
-	w, err := responseBytesToWire(responseBytes)
+func CheckSuccess(spec *compile.FunctionSpec, responseBytes []byte, opts Options) error {
+	w, err := responseBytesToWire(responseBytes, opts)
 	if err != nil {
-		return fmt.Errorf("could not deserialize result: %v", err)
+		return wrapSerializeException(err, "could not deserialize result")
 	}
 
 	if spec.ResultSpec == nil || spec.ResultSpec.ReturnType == nil {
@@ -111,10 +116,21 @@ func CheckSuccess(spec *compile.FunctionSpec, responseBytes []byte) error {
 	return nil
 }
 
-func responseBytesToWire(responseBytes []byte) (wire.Struct, error) {
-	w, err := protocol.Binary.Decode(bytes.NewReader(responseBytes), wire.TStruct)
-	if err != nil {
-		return wire.Struct{}, fmt.Errorf("cannot parse Thrift struct from response: %v", err)
+func responseBytesToWire(responseBytes []byte, opts Options) (wire.Struct, error) {
+	var w wire.Value
+	var err error
+
+	reader := bytes.NewReader(responseBytes)
+	if opts.UseEnvelopes {
+		w, _, err = envelope.ReadReply(protocol.Binary, bytes.NewReader(responseBytes))
+		if err != nil {
+			return wire.Struct{}, encodedException{err}
+		}
+	} else {
+		w, err = protocol.Binary.Decode(reader, wire.TStruct)
+		if err != nil {
+			return wire.Struct{}, fmt.Errorf("cannot parse Thrift struct from response: %v", err)
+		}
 	}
 
 	if w.Type() != wire.TStruct {
@@ -122,4 +138,11 @@ func responseBytesToWire(responseBytes []byte) (wire.Struct, error) {
 	}
 
 	return w.GetStruct(), nil
+}
+
+func wrapSerializeException(err error, msg string) error {
+	if _, ok := err.(encodedException); ok {
+		return err
+	}
+	return fmt.Errorf("%s: %v", msg, err)
 }

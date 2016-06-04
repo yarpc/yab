@@ -62,14 +62,25 @@ func SplitMethod(fullMethod string) (svc, method string, err error) {
 
 // RequestToBytes takes a user request and converts it to the Thrift binary payload.
 // It uses the method spec to convert the user request.
-func RequestToBytes(method *compile.FunctionSpec, request map[string]interface{}) ([]byte, error) {
+func RequestToBytes(method *compile.FunctionSpec, request map[string]interface{}, opts Options) ([]byte, error) {
 	w, err := structToValue(compile.FieldGroup(method.ArgsSpec), request)
 	if err != nil {
 		return nil, err
 	}
 
 	buf := &bytes.Buffer{}
-	if err := protocol.Binary.Encode(wire.NewValueStruct(w), buf); err != nil {
+	if opts.UseEnvelopes {
+		// Sequence IDs are unused, so use the default, 0.
+		enveloped := wire.Envelope{
+			Name:  method.Name,
+			Type:  wire.Call,
+			Value: wire.NewValueStruct(w),
+		}
+		err = protocol.Binary.EncodeEnveloped(enveloped, buf)
+	} else {
+		err = protocol.Binary.Encode(wire.NewValueStruct(w), buf)
+	}
+	if err != nil {
 		return nil, fmt.Errorf("failed to convert Thrift value to bytes: %v", err)
 	}
 

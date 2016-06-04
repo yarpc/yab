@@ -39,6 +39,14 @@ func encodeWire(w wire.Value) []byte {
 	return buf.Bytes()
 }
 
+func encodeEnveloped(e wire.Envelope) []byte {
+	buf := &bytes.Buffer{}
+	if err := protocol.Binary.EncodeEnveloped(e, buf); err != nil {
+		panic(fmt.Errorf("Binary.EncodeEnveloped(%v) failed: %v", e, err))
+	}
+	return buf.Bytes()
+}
+
 func TestResponseBytesToMap(t *testing.T) {
 	funcSpecs := getFuncSpecs(t, `
     exception E {
@@ -61,13 +69,25 @@ func TestResponseBytesToMap(t *testing.T) {
 		msg    string
 		spec   *compile.FunctionSpec
 		bs     []byte
+		opts   Options
 		want   map[string]interface{}
 		errMsg string
 	}{
 		{
 			msg:  "fVoid with empty result struct",
 			spec: funcSpecs["fVoid"],
-			bs:   encodeWire(wire.NewValueStruct(wire.Struct{Fields: nil})),
+			bs:   encodeWire(wire.NewValueStruct(wire.Struct{})),
+			want: map[string]interface{}{},
+		},
+		{
+			msg:  "fVoid with envelope",
+			spec: funcSpecs["fVoid"],
+			bs: encodeEnveloped(wire.Envelope{
+				Name:  "method",
+				Type:  wire.Reply,
+				Value: wire.NewValueStruct(wire.Struct{}),
+			}),
+			opts: Options{UseEnvelopes: true},
 			want: map[string]interface{}{},
 		},
 		{
@@ -128,7 +148,7 @@ func TestResponseBytesToMap(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got, err := ResponseBytesToMap(tt.spec, tt.bs)
+		got, err := ResponseBytesToMap(tt.spec, tt.bs, tt.opts)
 		if tt.errMsg != "" {
 			if assert.Error(t, err, "Expected error for %v", tt.msg) {
 				assert.Contains(t, err.Error(), tt.errMsg, "Error mismatch for %v", tt.msg)
@@ -152,12 +172,23 @@ func TestResponseBytesToWire(t *testing.T) {
 	tests := []struct {
 		msg    string
 		bs     []byte
+		opts   Options
 		want   wire.Struct
 		errMsg string
 	}{
 		{
 			msg:  "valid struct",
 			bs:   encodeWire(wire.NewValueStruct(s)),
+			want: s,
+		},
+		{
+			msg: "valid struct",
+			bs: encodeEnveloped(wire.Envelope{
+				Name:  "method",
+				Type:  wire.Reply,
+				Value: wire.NewValueStruct(s),
+			}),
+			opts: Options{UseEnvelopes: true},
 			want: s,
 		},
 		{
@@ -173,7 +204,7 @@ func TestResponseBytesToWire(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got, err := responseBytesToWire(tt.bs)
+		got, err := responseBytesToWire(tt.bs, tt.opts)
 		if tt.errMsg != "" {
 			if assert.Error(t, err, "Expected to fail: %s", tt.msg) {
 				assert.Contains(t, err.Error(), tt.errMsg, "Error message mismatch: %s", tt.msg)
@@ -219,6 +250,7 @@ func TestCheckSuccess(t *testing.T) {
 		msg    string
 		method string
 		bs     []byte
+		opts   Options
 		errMsg string
 	}{
 		{
@@ -231,6 +263,27 @@ func TestCheckSuccess(t *testing.T) {
 			msg:    "void success",
 			method: "m1",
 			bs:     encodeWire(emptyResult),
+		},
+		{
+			msg:    "void success with envelope",
+			method: "m1",
+			bs: encodeEnveloped(wire.Envelope{
+				Name:  "method",
+				Type:  wire.Reply,
+				Value: emptyResult,
+			}),
+			opts: Options{UseEnvelopes: true},
+		},
+		{
+			msg:    "exception in envelope",
+			method: "m1",
+			bs: encodeEnveloped(wire.Envelope{
+				Name:  "method",
+				Type:  wire.Exception,
+				Value: onlyEx,
+			}),
+			opts:   Options{UseEnvelopes: true},
+			errMsg: "TApplicationException{}",
 		},
 		{
 			msg:    "unexpected result for void method",
@@ -322,7 +375,7 @@ func TestCheckSuccess(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		err := CheckSuccess(funcSpecs[tt.method], tt.bs)
+		err := CheckSuccess(funcSpecs[tt.method], tt.bs, tt.opts)
 		if tt.errMsg == "" {
 			assert.NoError(t, err, "%v: CheckSuccess should not fail", tt.msg)
 			continue

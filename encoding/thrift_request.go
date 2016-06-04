@@ -33,9 +33,12 @@ import (
 	"github.com/thriftrw/thriftrw-go/compile"
 )
 
+var defaultOpts = thrift.Options{UseEnvelopes: true}
+
 type thriftSerializer struct {
 	methodName string
 	spec       *compile.FunctionSpec
+	opts       thrift.Options
 }
 
 // NewThrift returns a Thrift serializer.
@@ -67,7 +70,7 @@ func NewThrift(thriftFile, methodName string) (Serializer, error) {
 		return nil, err
 	}
 
-	return thriftSerializer{methodName, spec}, nil
+	return thriftSerializer{methodName, spec, defaultOpts}, nil
 }
 
 func (e thriftSerializer) Encoding() Encoding {
@@ -80,7 +83,7 @@ func (e thriftSerializer) Request(input []byte) (*transport.Request, error) {
 		return nil, err
 	}
 
-	reqBytes, err := thrift.RequestToBytes(e.spec, reqMap)
+	reqBytes, err := thrift.RequestToBytes(e.spec, reqMap, e.opts)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +95,7 @@ func (e thriftSerializer) Request(input []byte) (*transport.Request, error) {
 }
 
 func (e thriftSerializer) Response(res *transport.Response) (interface{}, error) {
-	return thrift.ResponseBytesToMap(e.spec, res.Body)
+	return thrift.ResponseBytesToMap(e.spec, res.Body, e.opts)
 }
 
 func findService(parsed *compile.Module, svcName string) (*compile.ServiceSpec, error) {
@@ -109,7 +112,13 @@ func findService(parsed *compile.Module, svcName string) (*compile.ServiceSpec, 
 }
 
 func (e thriftSerializer) CheckSuccess(res *transport.Response) error {
-	return thrift.CheckSuccess(e.spec, res.Body)
+	return thrift.CheckSuccess(e.spec, res.Body, e.opts)
+}
+
+func (e thriftSerializer) WithoutEnvelopes() Serializer {
+	// We're modifying a copy of e.
+	e.opts.UseEnvelopes = false
+	return e
 }
 
 func findMethod(service *compile.ServiceSpec, methodName string) (*compile.FunctionSpec, error) {

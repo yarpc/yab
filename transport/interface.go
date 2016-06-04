@@ -41,8 +41,18 @@ type Response struct {
 	Trace   string
 }
 
+// Protocol represents the wire protocol used to send the request.
+type Protocol int
+
+// The list of protocols supported by YAB.
+const (
+	TChannel Protocol = iota + 1
+	HTTP
+)
+
 // Transport defines the interface for the underlying transport over which
 // calls are made.
 type Transport interface {
 	Call(ctx context.Context, request *Request) (*Response, error)
+	Protocol() Protocol
 }

@@ -27,6 +27,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
 
 	"github.com/jessevdk/go-flags"
@@ -41,6 +42,12 @@ func findGroup(parser *flags.Parser, group string) *flags.Group {
 	}
 
 	panic("no group called " + group + " found.")
+}
+
+func setGroupDesc(parser *flags.Parser, groupName, newName, desc string) {
+	g := findGroup(parser, groupName)
+	g.ShortDescription = newName
+	g.LongDescription = desc
 }
 
 func fromPositional(args []string, index int, s *string) bool {
@@ -73,9 +80,9 @@ yab is a benchmarking tool for TChannel and HTTP applications. It's primarily in
 It can be used in a curl-like fashion when benchmarking features are disabled.
 `
 
-	findGroup(parser, "transport").ShortDescription = "Transport Options"
-	findGroup(parser, "request").ShortDescription = "Request Options"
-	findGroup(parser, "benchmark").ShortDescription = "Benchmark Options"
+	setGroupDesc(parser, "request", "Request Options", _reqOptsDesc)
+	setGroupDesc(parser, "transport", "Transport Options", _transportOptsDesc)
+	setGroupDesc(parser, "benchmark", "Benchmark Options", _benchmarkOptsDesc)
 
 	// If there are no arguments specified, write the help.
 	if len(args) == 0 {
@@ -153,6 +160,8 @@ func runWithOptions(opts Options, out output) {
 		out.Fatalf("Failed while parsing options: %v\n", err)
 	}
 
+	serializer = withTransportSerializer(transport.Protocol(), serializer)
+
 	// req is the transport.Request that will be used to make a call.
 	req, err := serializer.Request(reqInput)
 	if err != nil {
@@ -196,6 +205,19 @@ func runWithOptions(opts Options, out output) {
 		serializer: serializer,
 		req:        req,
 	})
+}
+
+type noEnveloper interface {
+	WithoutEnvelopes() encoding.Serializer
+}
+
+// withTransportSerializer may modify the serializer for the transport used.
+// E.g. Thrift payloads are not enveloped when used with TChannel.
+func withTransportSerializer(p transport.Protocol, s encoding.Serializer) encoding.Serializer {
+	if p == transport.TChannel && s.Encoding() == encoding.Thrift {
+		s = s.(noEnveloper).WithoutEnvelopes()
+	}
+	return s
 }
 
 // makeRequest makes a request using the given transport.
