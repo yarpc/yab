@@ -80,7 +80,8 @@ func newRunToken(maxRequests, rps int, maxDuration time.Duration) *runToken {
 	return t
 }
 
-func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run *runToken) {
+func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run *runToken) int {
+	count := 0
 	for cur := run; cur.More(); cur = cur.Next() {
 		latency, err := m.call(t)
 		if err != nil {
@@ -89,7 +90,9 @@ func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run 
 		}
 
 		s.recordLatency(latency)
+		count++
 	}
+	return count
 }
 
 func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
@@ -131,16 +134,17 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 
 	rt := newRunToken(opts.MaxRequests, opts.RPS, opts.MaxDuration)
 
+	counts := make([]int, len(connections))
 	start := time.Now()
 	for i, c := range connections {
 		for j := 0; j < opts.Concurrency; j++ {
 			state := states[i*opts.Concurrency+j]
 
 			wg.Add(1)
-			go func(c transport.Transport) {
+			go func(i int, c transport.Transport) {
 				defer wg.Done()
-				runWorker(c, m, state, rt)
-			}(c)
+				counts[i] = runWorker(c, m, state, rt)
+			}(i, c)
 		}
 	}
 
@@ -158,6 +162,8 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 
 	overall.printErrors(out)
 	overall.printLatencies(out)
+
+	out.Printf("Counts:            %v\n", counts)
 
 	out.Printf("Elapsed time:      %v\n", (total / time.Millisecond * time.Millisecond))
 	out.Printf("Total requests:    %v\n", len(overall.latencies))
