@@ -64,6 +64,9 @@ type TransportOptions struct {
 
 	// benchmarking is a private flag set when a transport is required for benchmarking.
 	benchmarking bool
+
+	// Alias for tcurl compatibility.
+	H stringAlias `short:"H" hidden:"true"`
 }
 
 // BenchmarkOptions are benchmark-specific options
@@ -86,6 +89,7 @@ func newOptions() *Options {
 	var opts Options
 	opts.ROpts.Arg3.dest = &opts.ROpts.RequestJSON
 	opts.ROpts.Arg2.dest = &opts.ROpts.HeadersJSON
+	opts.TOpts.H.dest = &opts.TOpts.HostPortFile
 	return &opts
 }
 
