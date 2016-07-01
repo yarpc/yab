@@ -21,6 +21,7 @@
 package main
 
 import (
+	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -95,7 +96,7 @@ func TestBenchmarkMethodWarmTransport(t *testing.T) {
 			CallerOverride: tt.callerOverride,
 		}
 
-		transport, err := m.WarmTransport(tOpts)
+		transport, err := m.WarmTransport(tOpts, 1 /* warmupRequests */)
 		if tt.wantErr != "" {
 			if assert.Error(t, err, "WarmTransport should fail") {
 				assert.Contains(t, err.Error(), tt.wantErr, "Invalid error message")
@@ -177,7 +178,7 @@ func TestBenchmarkMethodWarmTransportsSuccess(t *testing.T) {
 		ServiceName: "foo",
 		HostPorts:   []string{s.hostPort()},
 	}
-	transports, err := m.WarmTransports(10, tOpts)
+	transports, err := m.WarmTransports(10, tOpts, 1 /* warmupRequests */)
 	assert.NoError(t, err, "WarmTransports should not fail")
 	assert.Equal(t, 10, len(transports), "Got unexpected number of transports")
 	for i, transport := range transports {
@@ -188,21 +189,53 @@ func TestBenchmarkMethodWarmTransportsSuccess(t *testing.T) {
 func TestBenchmarkMethodWarmTransportsError(t *testing.T) {
 	m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
 
-	tests := []int32{0, 50}
+	tests := []struct {
+		success int
+		warmup  int
+		wantErr bool
+	}{
+		{
+			success: 0,
+			warmup:  0,
+			wantErr: false,
+		},
+		{
+			success: 0,
+			warmup:  1,
+			wantErr: true,
+		},
+		{
+			success: 90,
+			warmup:  9,
+			wantErr: false,
+		},
+		{
+			success: 90,
+			warmup:  10,
+			wantErr: true,
+		},
+	}
+
 	for _, tt := range tests {
 		s := newServer(t)
 		defer s.shutdown()
+		msg := fmt.Sprintf("success: %v warmup: %v", tt.success, tt.warmup)
 
 		// Simple::foo will succeed for tt requests, then start failing.
+		var counter int32
 		s.register(fooMethod, methods.errorIf(func() bool {
-			return atomic.AddInt32(&tt, -1) <= 0
+			return atomic.AddInt32(&counter, 1) > int32(tt.success)
 		}))
 
 		tOpts := TransportOptions{
 			ServiceName: "foo",
 			HostPorts:   []string{s.hostPort()},
 		}
-		_, err := m.WarmTransports(10, tOpts)
-		assert.Error(t, err, "WarmTransports should fail")
+		_, err := m.WarmTransports(10, tOpts, tt.warmup)
+		if tt.wantErr {
+			assert.Error(t, err, "%v: WarmTransports should fail", msg)
+		} else {
+			assert.NoError(t, err, "%v: WarmTransports should succeed", msg)
+		}
 	}
 }

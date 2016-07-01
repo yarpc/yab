@@ -84,9 +84,10 @@ type BenchmarkOptions struct {
 	// NumCPUs is the value for GOMAXPROCS. The default value of 0 will not update GOMAXPROCS.
 	NumCPUs int `long:"cpus" description:"The number of OS threads"`
 
-	Connections int `long:"connections" description:"The number of TCP connections to use"`
-	Concurrency int `long:"concurrency" default:"1" description:"The number of concurrent calls per connection"`
-	RPS         int `long:"rps" default:"0" description:"Limit on the number of requests per second. The default (0) is no limit."`
+	Connections    int `long:"connections" description:"The number of TCP connections to use"`
+	WarmupRequests int `long:"warmup" description:"The number of requests to make to warmup each connection" default:"10"`
+	Concurrency    int `long:"concurrency" default:"1" description:"The number of concurrent calls per connection"`
+	RPS            int `long:"rps" default:"0" description:"Limit on the number of requests per second. The default (0) is no limit."`
 
 	// Benchmark metrics can optionally be reported via statsd.
 	StatsdHostPort string `long:"statsd" description:"Optional host:port of a StatsD server to report metrics"`
