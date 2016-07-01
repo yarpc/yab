@@ -50,8 +50,15 @@ type RequestOptions struct {
 	Timeout     timeMillisFlag    `long:"timeout" default:"1s" description:"The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds are assumed."`
 
 	// These are aliases for tcurl compatibility.
-	Arg2 stringAlias `short:"2" long:"arg2" hidden:"true"`
-	Arg3 stringAlias `short:"3" long:"arg3" hidden:"true"`
+	Aliases struct {
+		Endpoint stringAlias `long:"endpoint" hidden:"true"`
+		Arg1     stringAlias `short:"1" long:"arg1" hidden:"true"`
+		Arg2     stringAlias `short:"2" long:"arg2" hidden:"true"`
+		Arg3     stringAlias `short:"3" long:"arg3" hidden:"true"`
+		Body     stringAlias `long:"body" hidden:"true"`
+		JSON     bool        `long:"json" hidden:"true"`
+		Raw      bool        `long:"raw" hidden:"true"`
+	}
 }
 
 // TransportOptions are transport related options.
@@ -66,7 +73,7 @@ type TransportOptions struct {
 	benchmarking bool
 
 	// Alias for tcurl compatibility.
-	H stringAlias `short:"H" long:"hostlist" hidden:"true"`
+	Hostlist stringAlias `short:"H" long:"hostlist" hidden:"true"`
 }
 
 // BenchmarkOptions are benchmark-specific options
@@ -87,9 +94,14 @@ type BenchmarkOptions struct {
 
 func newOptions() *Options {
 	var opts Options
-	opts.ROpts.Arg3.dest = &opts.ROpts.RequestJSON
-	opts.ROpts.Arg2.dest = &opts.ROpts.HeadersJSON
-	opts.TOpts.H.dest = &opts.TOpts.HostPortFile
+	aliases := &opts.ROpts.Aliases
+	aliases.Arg1.dest = &opts.ROpts.MethodName
+	aliases.Endpoint.dest = &opts.ROpts.MethodName
+	aliases.Arg2.dest = &opts.ROpts.HeadersJSON
+	aliases.Arg3.dest = &opts.ROpts.RequestJSON
+	aliases.Body.dest = &opts.ROpts.RequestJSON
+
+	opts.TOpts.Hostlist.dest = &opts.TOpts.HostPortFile
 	return &opts
 }
 
@@ -132,4 +144,13 @@ func (s *stringAlias) UnmarshalFlag(value string) error {
 	}
 	*s.dest = value
 	return nil
+}
+
+func setEncodingOptions(opts *Options) {
+	if opts.ROpts.Aliases.JSON {
+		opts.ROpts.Encoding = encoding.JSON
+	}
+	if opts.ROpts.Aliases.Raw {
+		opts.ROpts.Encoding = encoding.Raw
+	}
 }

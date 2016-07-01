@@ -27,6 +27,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/yarpc/yab/encoding"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/uber/tchannel-go/testutils"
@@ -241,8 +243,6 @@ func TestVersion(t *testing.T) {
 }
 
 func TestGetOptionsAlias(t *testing.T) {
-	_, out := getOutput(t)
-
 	tests := []struct {
 		flagName  string
 		flagValue string
@@ -259,6 +259,7 @@ func TestGetOptionsAlias(t *testing.T) {
 	}
 
 	var flags []string
+	_, out := getOutput(t)
 	for _, tt := range tests {
 		flags = append(flags, tt.flagName, tt.flagValue)
 
@@ -266,5 +267,96 @@ func TestGetOptionsAlias(t *testing.T) {
 		require.NoError(t, err, "getOptions(%v) failed", flags)
 
 		assert.Equal(t, tt.flagValue, opts.ROpts.RequestJSON, "Unexpected request body for %v", flags)
+	}
+}
+
+func TestAlises(t *testing.T) {
+	type cmdArgs []string
+
+	tests := []struct {
+		args     []cmdArgs
+		validate func(args cmdArgs, opts *Options)
+		want     Options
+	}{
+		{
+			args: []cmdArgs{
+				{"--timeout", "1s"},
+				{"--timeout", "1000"},
+				{"-t", "1000"},
+			},
+			validate: func(args cmdArgs, opts *Options) {
+				assert.Equal(t, time.Second, opts.ROpts.Timeout.Duration(), "Args: %v", args)
+			},
+		},
+		{
+			args: []cmdArgs{
+				{"-P", "file"},
+				{"-H", "file"},
+				{"--hostlist", "file"},
+			},
+			validate: func(args cmdArgs, opts *Options) {
+				assert.Equal(t, "file", opts.TOpts.HostPortFile, "Args: %v", args)
+			},
+		},
+		{
+			args: []cmdArgs{
+				{"--method", "m"},
+				{"--endpoint", "m"},
+				{"-1", "m"},
+				{"--arg1", "m"},
+			},
+			validate: func(args cmdArgs, opts *Options) {
+				assert.Equal(t, "m", opts.ROpts.MethodName, "Args: %v", args)
+			},
+		},
+		{
+			args: []cmdArgs{
+				{"--headers", "{}"},
+				{"-2", "{}"},
+				{"--arg2", "{}"},
+			},
+			validate: func(args cmdArgs, opts *Options) {
+				assert.Equal(t, "{}", opts.ROpts.HeadersJSON, "Args: %v", args)
+			},
+		},
+		{
+			args: []cmdArgs{
+				{"--request", "{}"},
+				{"--body", "{}"},
+				{"-3", "{}"},
+				{"--arg3", "{}"},
+			},
+			validate: func(args cmdArgs, opts *Options) {
+				assert.Equal(t, "{}", opts.ROpts.RequestJSON, "Args: %v", args)
+			},
+		},
+		{
+			args: []cmdArgs{
+				{"-e", "json"},
+				{"--json"},
+			},
+			validate: func(args cmdArgs, opts *Options) {
+				assert.Equal(t, encoding.JSON, opts.ROpts.Encoding, "Args: %v", args)
+			},
+		},
+		{
+			args: []cmdArgs{
+				{"-e", "raw"},
+				{"--raw"},
+			},
+			validate: func(args cmdArgs, opts *Options) {
+				assert.Equal(t, encoding.Raw, opts.ROpts.Encoding, "Args: %v", args)
+			},
+		},
+	}
+
+	_, out := getOutput(t)
+	for _, tt := range tests {
+		for _, args := range tt.args {
+			opts, err := getOptions([]string(args), out)
+			if assert.NoError(t, err, "getOptions failed for %v", "Args: %v", args) {
+				tt.validate(args, opts)
+			}
+		}
 	}
 }

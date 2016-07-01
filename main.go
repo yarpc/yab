@@ -100,6 +100,7 @@ It can be used in a curl-like fashion when benchmarking features are disabled.
 		}
 		return opts, err
 	}
+	setEncodingOptions(opts)
 
 	if opts.DisplayVersion {
 		out.Printf("yab version %v\n", versionString)
