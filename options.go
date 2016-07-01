@@ -66,7 +66,7 @@ type TransportOptions struct {
 	benchmarking bool
 
 	// Alias for tcurl compatibility.
-	H stringAlias `short:"H" hidden:"true"`
+	H stringAlias `short:"H" long:"hostlist" hidden:"true"`
 }
 
 // BenchmarkOptions are benchmark-specific options
