@@ -44,10 +44,11 @@ func TestBenchmark(t *testing.T) {
 
 	runBenchmark(out, Options{
 		BOpts: BenchmarkOptions{
-			MaxRequests: 1000,
-			MaxDuration: time.Second,
-			Connections: 50,
-			Concurrency: 2,
+			MaxRequests:    1000,
+			MaxDuration:    time.Second,
+			Connections:    50,
+			WarmupRequests: 10,
+			Concurrency:    2,
 		},
 		TOpts: s.transportOpts(),
 	}, m)

@@ -113,14 +113,14 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 
 	// Warm up number of connections.
 	// TODO: If we're making N connections, we should try to select N unique peers
-	connections, err := m.WarmTransports(numConns, allOpts.TOpts)
+	connections, err := m.WarmTransports(numConns, allOpts.TOpts, opts.WarmupRequests)
 	if err != nil {
-		out.Fatalf("Failed to create connections: %v", err)
+		out.Fatalf("Failed to warmup connections for benchmark: %v", err)
 	}
 
 	statter, err := statsd.NewClient(opts.StatsdHostPort, allOpts.TOpts.ServiceName, allOpts.ROpts.MethodName)
 	if err != nil {
-		out.Fatalf("Failed to create statsd client: %v", err)
+		out.Fatalf("Failed to create statsd client for benchmark: %v", err)
 	}
 
 	var wg sync.WaitGroup

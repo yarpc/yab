@@ -1,4 +1,4 @@
-.TH yab 1 "3 June 2016"
+.TH yab 1 "30 June 2016"
 .SH NAME
 yab \- yet another benchmarker
 .SH SYNOPSIS
@@ -147,6 +147,9 @@ The number of OS threads
 .TP
 \fB\fB\-\-connections\fR\fP
 The number of TCP connections to use
+.TP
+\fB\fB\-\-warmup\fR <default: \fI"10"\fR>\fP
+The number of requests to make to warmup each connection
 .TP
 \fB\fB\-\-concurrency\fR <default: \fI"1"\fR>\fP
 The number of concurrent calls per connection
