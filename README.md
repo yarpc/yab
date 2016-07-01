@@ -7,7 +7,7 @@ supports making Thrift requests to both HTTP and TChannel services.
 **NOTE**: HTTP support is not cross-compatible with Apache Thrift yet, due to
 missing message envelope support.
 
-`yab` is currently in **alpha** status.
+`yab` is currently in **beta** status.
 
 
 ### Installing
