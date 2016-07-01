@@ -23,10 +23,9 @@ package main
 import (
 	"runtime"
 	"sync"
-	"sync/atomic"
 	"time"
 
-	"github.com/yarpc/yab/ratelimit"
+	"github.com/yarpc/yab/limiter"
 	"github.com/yarpc/yab/statsd"
 	"github.com/yarpc/yab/transport"
 )
@@ -49,39 +48,8 @@ func (o BenchmarkOptions) getNumConnections(goMaxProcs int) int {
 	return goMaxProcs * 2
 }
 
-type runToken struct {
-	requestsLeft int64
-	limiter      ratelimit.Limiter
-}
-
-func (t *runToken) More() bool {
-	t.limiter.Take()
-	return atomic.AddInt64(&t.requestsLeft, -1) >= 0
-}
-
-func (t *runToken) Next() *runToken {
-	return t
-}
-
-func newRunToken(maxRequests, rps int, maxDuration time.Duration) *runToken {
-	limiter := ratelimit.NewInfinite()
-	if rps > 0 {
-		limiter = ratelimit.New(rps)
-	}
-
-	t := &runToken{
-		requestsLeft: int64(maxRequests),
-		limiter:      limiter,
-	}
-	time.AfterFunc(maxDuration, func() {
-		atomic.StoreInt64(&t.requestsLeft, 0)
-	})
-
-	return t
-}
-
-func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run *runToken) {
-	for cur := run; cur.More(); cur = cur.Next() {
+func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run *limiter.Run) {
+	for cur := run; cur.More(); {
 		latency, err := m.call(t)
 		if err != nil {
 			s.recordError(err)
@@ -129,7 +97,7 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 		states[i] = newBenchmarkState(statter)
 	}
 
-	rt := newRunToken(opts.MaxRequests, opts.RPS, opts.MaxDuration)
+	run := limiter.New(opts.MaxRequests, opts.RPS, opts.MaxDuration)
 
 	start := time.Now()
 	for i, c := range connections {
@@ -139,7 +107,7 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 			wg.Add(1)
 			go func(c transport.Transport) {
 				defer wg.Done()
-				runWorker(c, m, state, rt)
+				runWorker(c, m, state, run)
 			}(c)
 		}
 	}
