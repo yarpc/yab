@@ -21,6 +21,8 @@
 package main
 
 import (
+	"os"
+	"os/signal"
 	"runtime"
 	"sync"
 	"time"
@@ -98,6 +100,7 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 	}
 
 	run := limiter.New(opts.MaxRequests, opts.RPS, opts.MaxDuration)
+	stopOnInterrupt(out, run)
 
 	start := time.Now()
 	for i, c := range connections {
@@ -130,4 +133,17 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 	out.Printf("Elapsed time:      %v\n", (total / time.Millisecond * time.Millisecond))
 	out.Printf("Total requests:    %v\n", len(overall.latencies))
 	out.Printf("RPS:               %.2f\n", float64(len(overall.latencies))/total.Seconds())
+}
+
+// stopOnInterrupt sets up a signal that will trigger the run to stop.
+func stopOnInterrupt(out output, r *limiter.Run) {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+
+	go func() {
+		<-c
+		// Preceding newline since Ctrl-C will be printed inline.
+		out.Printf("\n!!Benchmark interrupted!!\n")
+		r.Stop()
+	}()
 }
