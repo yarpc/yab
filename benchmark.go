@@ -21,12 +21,13 @@
 package main
 
 import (
+	"os"
+	"os/signal"
 	"runtime"
 	"sync"
-	"sync/atomic"
 	"time"
 
-	"github.com/yarpc/yab/ratelimit"
+	"github.com/yarpc/yab/limiter"
 	"github.com/yarpc/yab/statsd"
 	"github.com/yarpc/yab/transport"
 )
@@ -49,39 +50,8 @@ func (o BenchmarkOptions) getNumConnections(goMaxProcs int) int {
 	return goMaxProcs * 2
 }
 
-type runToken struct {
-	requestsLeft int64
-	limiter      ratelimit.Limiter
-}
-
-func (t *runToken) More() bool {
-	t.limiter.Take()
-	return atomic.AddInt64(&t.requestsLeft, -1) >= 0
-}
-
-func (t *runToken) Next() *runToken {
-	return t
-}
-
-func newRunToken(maxRequests, rps int, maxDuration time.Duration) *runToken {
-	limiter := ratelimit.NewInfinite()
-	if rps > 0 {
-		limiter = ratelimit.New(rps)
-	}
-
-	t := &runToken{
-		requestsLeft: int64(maxRequests),
-		limiter:      limiter,
-	}
-	time.AfterFunc(maxDuration, func() {
-		atomic.StoreInt64(&t.requestsLeft, 0)
-	})
-
-	return t
-}
-
-func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run *runToken) {
-	for cur := run; cur.More(); cur = cur.Next() {
+func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run *limiter.Run) {
+	for cur := run; cur.More(); {
 		latency, err := m.call(t)
 		if err != nil {
 			s.recordError(err)
@@ -113,14 +83,14 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 
 	// Warm up number of connections.
 	// TODO: If we're making N connections, we should try to select N unique peers
-	connections, err := m.WarmTransports(numConns, allOpts.TOpts)
+	connections, err := m.WarmTransports(numConns, allOpts.TOpts, opts.WarmupRequests)
 	if err != nil {
-		out.Fatalf("Failed to create connections: %v", err)
+		out.Fatalf("Failed to warmup connections for benchmark: %v", err)
 	}
 
 	statter, err := statsd.NewClient(opts.StatsdHostPort, allOpts.TOpts.ServiceName, allOpts.ROpts.MethodName)
 	if err != nil {
-		out.Fatalf("Failed to create statsd client: %v", err)
+		out.Fatalf("Failed to create statsd client for benchmark: %v", err)
 	}
 
 	var wg sync.WaitGroup
@@ -129,7 +99,8 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 		states[i] = newBenchmarkState(statter)
 	}
 
-	rt := newRunToken(opts.MaxRequests, opts.RPS, opts.MaxDuration)
+	run := limiter.New(opts.MaxRequests, opts.RPS, opts.MaxDuration)
+	stopOnInterrupt(out, run)
 
 	start := time.Now()
 	for i, c := range connections {
@@ -139,7 +110,7 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 			wg.Add(1)
 			go func(c transport.Transport) {
 				defer wg.Done()
-				runWorker(c, m, state, rt)
+				runWorker(c, m, state, run)
 			}(c)
 		}
 	}
@@ -162,4 +133,17 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 	out.Printf("Elapsed time:      %v\n", (total / time.Millisecond * time.Millisecond))
 	out.Printf("Total requests:    %v\n", len(overall.latencies))
 	out.Printf("RPS:               %.2f\n", float64(len(overall.latencies))/total.Seconds())
+}
+
+// stopOnInterrupt sets up a signal that will trigger the run to stop.
+func stopOnInterrupt(out output, r *limiter.Run) {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+
+	go func() {
+		<-c
+		// Preceding newline since Ctrl-C will be printed inline.
+		out.Printf("\n!!Benchmark interrupted!!\n")
+		r.Stop()
+	}()
 }

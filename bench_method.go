@@ -28,8 +28,6 @@ import (
 	"github.com/yarpc/yab/transport"
 )
 
-const warmupRequests = 10
-
 type benchmarkMethod struct {
 	serializer encoding.Serializer
 	req        *transport.Request
@@ -37,7 +35,7 @@ type benchmarkMethod struct {
 
 // WarmTransport warms up a transport and returns it. The transport is warmed
 // up by making some number of requests through it.
-func (m benchmarkMethod) WarmTransport(opts TransportOptions) (transport.Transport, error) {
+func (m benchmarkMethod) WarmTransport(opts TransportOptions, warmupRequests int) (transport.Transport, error) {
 	opts.benchmarking = true
 	transport, err := getTransport(opts, m.serializer.Encoding())
 	if err != nil {
@@ -67,7 +65,7 @@ func (m benchmarkMethod) call(t transport.Transport) (time.Duration, error) {
 
 // WarmTransports returns n transports that have been warmed up.
 // No requests may fail during the warmup period.
-func (m benchmarkMethod) WarmTransports(n int, tOpts TransportOptions) ([]transport.Transport, error) {
+func (m benchmarkMethod) WarmTransports(n int, tOpts TransportOptions, warmupRequests int) ([]transport.Transport, error) {
 	transports := make([]transport.Transport, n)
 	errs := make([]error, n)
 
@@ -76,7 +74,7 @@ func (m benchmarkMethod) WarmTransports(n int, tOpts TransportOptions) ([]transp
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			transports[i], errs[i] = m.WarmTransport(tOpts)
+			transports[i], errs[i] = m.WarmTransport(tOpts, warmupRequests)
 		}(i)
 	}
 
