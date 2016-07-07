@@ -21,6 +21,7 @@
 package main
 
 import (
+	"math/rand"
 	"sync"
 	"time"
 
@@ -63,19 +64,35 @@ func (m benchmarkMethod) call(t transport.Transport) (time.Duration, error) {
 	return duration, err
 }
 
+func hostPortBalancer(hostPorts []string) func(i int) string {
+	numHostPorts := len(hostPorts)
+	startOffset := rand.Intn(numHostPorts)
+	return func(i int) string {
+		offset := (startOffset + i) % numHostPorts
+		return hostPorts[offset]
+	}
+}
+
 // WarmTransports returns n transports that have been warmed up.
 // No requests may fail during the warmup period.
 func (m benchmarkMethod) WarmTransports(n int, tOpts TransportOptions, warmupRequests int) ([]transport.Transport, error) {
+	tOpts, err := loadTransportHostPorts(tOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	hostPortFor := hostPortBalancer(tOpts.HostPorts)
 	transports := make([]transport.Transport, n)
 	errs := make([]error, n)
 
 	var wg sync.WaitGroup
 	for i := range transports {
 		wg.Add(1)
-		go func(i int) {
+		go func(i int, tOpts TransportOptions) {
 			defer wg.Done()
+			tOpts.HostPorts = []string{hostPortFor(i)}
 			transports[i], errs[i] = m.WarmTransport(tOpts, warmupRequests)
-		}(i)
+		}(i, tOpts)
 	}
 
 	wg.Wait()

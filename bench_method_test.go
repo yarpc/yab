@@ -22,6 +22,7 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -168,21 +169,75 @@ func TestBenchmarkMethodCall(t *testing.T) {
 	}
 }
 
+func TestHostPortBalancer(t *testing.T) {
+	tests := []struct {
+		seed      int64
+		hostPorts []string
+		want      []string
+	}{
+		{
+			seed:      1,
+			hostPorts: []string{"1"},
+			want:      []string{"1", "1", "1"},
+		},
+		{
+			seed:      1,
+			hostPorts: []string{"1", "2"},
+			want:      []string{"2", "1", "2"},
+		},
+		{
+			seed:      2,
+			hostPorts: []string{"1", "2"},
+			want:      []string{"1", "2", "1"},
+		},
+		{
+			seed:      1,
+			hostPorts: []string{"1", "2", "3", "4", "5"},
+			want:      []string{"2", "3", "4"},
+		},
+	}
+
+	for _, tt := range tests {
+		rand.Seed(tt.seed)
+		hostPortFor := hostPortBalancer(tt.hostPorts)
+		for i, want := range tt.want {
+			got := hostPortFor(i)
+			assert.Equal(t, want, got, "hostPortBalancer(%v) seed %v i %v failed", tt.hostPorts, tt.seed, i)
+		}
+	}
+}
+
 func TestBenchmarkMethodWarmTransportsSuccess(t *testing.T) {
+	const numServers = 5
 	m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
-	s := newServer(t)
-	defer s.shutdown()
-	s.register(fooMethod, methods.echo())
+
+	counters := make([]*int32, numServers)
+	servers := make([]*server, numServers)
+	serverHPs := make([]string, numServers)
+	for i := range servers {
+		servers[i] = newServer(t)
+		defer servers[i].shutdown()
+		serverHPs[i] = servers[i].hostPort()
+
+		counter, handler := methods.counter()
+		counters[i] = counter
+		servers[i].register(fooMethod, handler)
+	}
 
 	tOpts := TransportOptions{
 		ServiceName: "foo",
-		HostPorts:   []string{s.hostPort()},
+		HostPorts:   serverHPs,
 	}
-	transports, err := m.WarmTransports(10, tOpts, 1 /* warmupRequests */)
+	transports, err := m.WarmTransports(numServers, tOpts, 1 /* warmupRequests */)
 	assert.NoError(t, err, "WarmTransports should not fail")
-	assert.Equal(t, 10, len(transports), "Got unexpected number of transports")
+	assert.Equal(t, numServers, len(transports), "Got unexpected number of transports")
 	for i, transport := range transports {
 		assert.NotNil(t, transport, "transports[%v] should not be nil", i)
+	}
+
+	// Verify that each server has received one call.
+	for i, counter := range counters {
+		assert.EqualValues(t, 1, *counter, "Server %v received unexpected number of calls", i)
 	}
 }
 

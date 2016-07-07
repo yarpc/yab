@@ -86,31 +86,42 @@ func ensureSameProtocol(hostPorts []string) (string, error) {
 	return lastProtocol, nil
 }
 
-func getTransport(opts TransportOptions, encoding encoding.Encoding) (transport.Transport, error) {
-	if opts.ServiceName == "" {
-		return nil, errServiceRequired
-	}
+func loadTransportHostPorts(opts TransportOptions) (TransportOptions, error) {
 	if len(opts.HostPorts) == 0 && opts.HostPortFile == "" {
-		return nil, errPeerRequired
+		return opts, errPeerRequired
 	}
 
 	hostPorts := opts.HostPorts
 	if opts.HostPortFile != "" {
 		if len(hostPorts) > 0 {
-			return nil, errPeerOptions
+			return opts, errPeerOptions
 		}
 		var err error
 		hostPorts, err = parseHostFile(opts.HostPortFile)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse host file: %v", err)
+			return opts, fmt.Errorf("failed to parse host file: %v", err)
 		}
 
 		if len(hostPorts) == 0 {
-			return nil, errPeerRequired
+			return opts, errPeerRequired
 		}
 	}
 
-	protocol, err := ensureSameProtocol(hostPorts)
+	opts.HostPorts = hostPorts
+	return opts, nil
+}
+
+func getTransport(opts TransportOptions, encoding encoding.Encoding) (transport.Transport, error) {
+	if opts.ServiceName == "" {
+		return nil, errServiceRequired
+	}
+
+	opts, err := loadTransportHostPorts(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	protocol, err := ensureSameProtocol(opts.HostPorts)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +135,7 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding) (transport.
 	}
 
 	if protocol == "tchannel" {
-		remapLocalHost(hostPorts)
+		remapLocalHost(opts.HostPorts)
 
 		traceSampleRate := 1.0
 		if opts.benchmarking {
@@ -134,7 +145,7 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding) (transport.
 		topts := transport.TChannelOptions{
 			SourceService:   sourceService,
 			TargetService:   opts.ServiceName,
-			HostPorts:       hostPorts,
+			HostPorts:       opts.HostPorts,
 			Encoding:        encoding.String(),
 			TransportOpts:   opts.TransportOptions,
 			TraceSampleRate: traceSampleRate,
@@ -145,7 +156,7 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding) (transport.
 	hopts := transport.HTTPOptions{
 		SourceService: sourceService,
 		TargetService: opts.ServiceName,
-		URLs:          hostPorts,
+		URLs:          opts.HostPorts,
 	}
 	return transport.NewHTTP(hopts)
 }
