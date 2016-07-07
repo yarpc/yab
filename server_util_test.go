@@ -22,6 +22,7 @@ package main
 
 import (
 	"errors"
+	"sync/atomic"
 	"testing"
 
 	"github.com/uber/tchannel-go"
@@ -108,6 +109,14 @@ func (methodsT) errorIf(f func() bool) handler {
 			Arg3: args.Arg3,
 		}, nil
 	}
+}
+
+func (methodsT) counter() (*int32, handler) {
+	var count int32
+	return &count, methods.errorIf(func() bool {
+		atomic.AddInt32(&count, 1)
+		return false
+	})
 }
 
 func echoServer(t *testing.T, method string, overrideResp []byte) string {
