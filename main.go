@@ -25,6 +25,8 @@ import (
 	"errors"
 	"log"
 	"os"
+	"os/user"
+	"path"
 	"time"
 
 	"github.com/yarpc/yab/encoding"
@@ -78,6 +80,17 @@ func getOptions(args []string, out output) (*Options, error) {
 yab is a benchmarking tool for TChannel and HTTP applications. It's primarily intended for Thrift applications but supports other encodings like JSON and binary (raw).
 
 It can be used in a curl-like fashion when benchmarking features are disabled.
+
+Default options can be specified in a ~/.yab.ini file with contents similar to this:
+
+	[request]
+	timeout = 2s
+
+	[transport]
+	peer-list = "/path/to/peer/list.json"
+
+	[benchmark]
+	warmup = 10
 `
 
 	setGroupDesc(parser, "request", "Request Options", _reqOptsDesc)
@@ -88,6 +101,15 @@ It can be used in a curl-like fashion when benchmarking features are disabled.
 	if len(args) == 0 {
 		parser.WriteHelp(out)
 		return opts, errExit
+	}
+
+	// Read defaults from ~/.yab.ini
+	if user, err := user.Current(); err != nil {
+		out.Fatalf("Failed to find the current user: %v\n", err)
+	} else {
+		homeDir := user.HomeDir
+		iniParser := flags.NewIniParser(parser)
+		iniParser.ParseFile(path.Join(homeDir, ".yab.ini"))
 	}
 
 	remaining, err := parser.ParseArgs(args)
