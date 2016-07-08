@@ -25,6 +25,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/yarpc/yab/encoding"
@@ -69,20 +70,33 @@ func main() {
 
 var errExit = errors.New("sentinel error used to exit cleanly")
 
+func toGroff(s string) string {
+	// Expand tabbed lines beginnging with "-" as a bullet list.
+	s = strings.Replace(s, "\t- ", ".IP \\[bu]\n", -1 /* all occurences */)
+
+	// Expand all lines beginning with a tab as pre-formatted:
+	s = strings.Replace(s, "\n\n\t", "\n.PP\n\t", -1)
+	s = strings.Replace(s, "\t", ".RS 0\n\t", -1)
+
+	// Restore remaining blocks as new paragraphs.
+	s = strings.Replace(s, "\n\n", "\n.PP\n", -1)
+	return s
+}
+
 func getOptions(args []string, out output) (*Options, error) {
 	opts := newOptions()
 	parser := flags.NewParser(opts, flags.HelpFlag|flags.PassDoubleDash)
 	parser.Usage = "[<service> <method> <body>] [OPTIONS]"
 	parser.ShortDescription = "yet another benchmarker"
-	parser.LongDescription = `
+	parser.LongDescription = toGroff(`
 yab is a benchmarking tool for TChannel and HTTP applications. It's primarily intended for Thrift applications but supports other encodings like JSON and binary (raw).
 
 It can be used in a curl-like fashion when benchmarking features are disabled.
-`
+`)
 
-	setGroupDesc(parser, "request", "Request Options", _reqOptsDesc)
-	setGroupDesc(parser, "transport", "Transport Options", _transportOptsDesc)
-	setGroupDesc(parser, "benchmark", "Benchmark Options", _benchmarkOptsDesc)
+	setGroupDesc(parser, "request", "Request Options", toGroff(_reqOptsDesc))
+	setGroupDesc(parser, "transport", "Transport Options", toGroff(_transportOptsDesc))
+	setGroupDesc(parser, "benchmark", "Benchmark Options", toGroff(_benchmarkOptsDesc))
 
 	// If there are no arguments specified, write the help.
 	if len(args) == 0 {

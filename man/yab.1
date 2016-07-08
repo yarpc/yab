@@ -1,4 +1,4 @@
-.TH yab 1 "30 June 2016"
+.TH yab 1 "8 July 2016"
 .SH NAME
 yab \- yet another benchmarker
 .SH SYNOPSIS
@@ -6,7 +6,7 @@ yab \- yet another benchmarker
 .SH DESCRIPTION
 
 yab is a benchmarking tool for TChannel and HTTP applications. It's primarily intended for Thrift applications but supports other encodings like JSON and binary (raw).
-
+.PP
 It can be used in a curl-like fashion when benchmarking features are disabled.
 
 .SH OPTIONS
@@ -16,41 +16,61 @@ It can be used in a curl-like fashion when benchmarking features are disabled.
 Displays the application version
 .SS Request Options
 Configures the request data and the encoding.
-
+.PP
 To make Thrift requests, specify a Thrift file and pass the Thrift
 service and procedure to the method argument (-m or --method) as
 Service::Method.
-  $ yab -p localhost:9787 kv -t kv.thrift -m KeyValue::Count -r '{}'
-
+.PP
+.RS 0
+	$ yab -p localhost:9787 kv -t kv.thrift -m KeyValue::Count -r '{}'
+.PP
 You can also use positional arguments to specify the method and body:
-  $ yab -p localhost:9787  -t kv.thrift kv KeyValue::Count '{}'
-
+.PP
+.RS 0
+	$ yab -p localhost:9787  -t kv.thrift kv KeyValue::Count '{}'
+.PP
 The TChannel health endpoint can be hit without specifying a Thrift file
 by passing --health.
-
+.PP
 Thrift requests can be specified as JSON or YAML. For example, for a method
 defined as:
-  void addUser(1: string name, 2: i32 age)
-
+.PP
+.RS 0
+	void addUser(1: string name, 2: i32 age)
+.PP
 You can pass the request as JSON: {"name": "Prashant", age: 100}
 or as YAML:
-  name: Prashant
-  age: 100
-
+.PP
+.RS 0
+	name: Prashant
+.RS 0
+	age: 100
+.PP
 The request body can be specified on the command line using -r or --request:
-  $ yab -p localhost:9787 -t kv.thrift kv KeyValue::Get -r '{"key": "hello"}'
-
+.PP
+.RS 0
+	$ yab -p localhost:9787 -t kv.thrift kv KeyValue::Get -r '{"key": "hello"}'
+.PP
 Or it can be loaded from a file using -f or --file:
-  $ yab -p localhost:9787 -t kv.thrift kv KeyValue::Get --file req.yaml
-
+.PP
+.RS 0
+	$ yab -p localhost:9787 -t kv.thrift kv KeyValue::Get --file req.yaml
+.PP
 Binary data can be specified in one of many ways:
-  - As a string or an array of bytes: "data" or [100, 97, 116, 97]
-  - As base64: {"base64": "ZGF0YQ=="}
-  - Loaded from a file: {"file": "data.bin"}
-
+.IP \\[bu]
+As a string or an array of bytes: "data" or [100, 97, 116, 97]
+.IP \\[bu]
+As base64: {"base64": "ZGF0YQ=="}
+.IP \\[bu]
+Loaded from a file: {"file": "data.bin"}
+.PP
 Examples:
-  $ yab -p localhost:9787 -t kv.thrift kv -m KeyValue::Set -3 '{"key": "hello", "value": [100, 97, 116, 97]}'
-  $ yab -p localhost:9787 -t kv.thrift kv KeyValue::Set -3 '{"key": "hello", "value": {"file": "data.bin"}}'
+.PP
+.RS 0
+	$ yab -p localhost:9787 -t kv.thrift kv -m KeyValue::Set -3 '{"key": "hello", "value": [100, 97, 116, 97]}'
+.PP
+.RS 0
+	$ yab -p localhost:9787 -t kv.thrift kv KeyValue::Set -3 '{"key": "hello", "value": {"file": "data.bin"}}'
 
 .TP
 \fB\fB\-e\fR, \fB\-\-encoding\fR\fP
@@ -81,22 +101,32 @@ Hit the health endpoint, Meta::health
 The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds are assumed.
 .SS Transport Options
 Configures the network transport used to make requests.
-
+.PP
 yab can target both TChannel and HTTP endpoints. To specify a TChannel endpoint,
 specify the peer's host and port:
-  $ yab -p localhost:9787 [options]
+.PP
+.RS 0
+	$ yab -p localhost:9787 [options]
+.PP
 or
-  $ yab -p tchannel://localhost:9787 [options]
-
+.PP
+.RS 0
+	$ yab -p tchannel://localhost:9787 [options]
+.PP
 For HTTP endpoints, specify the URL as the peer,
-  $ yab -p http://localhost:8080/thrift [options]
-
-The Thrift encoded body will be POSTed to the specified URL.
-
+.PP
+.RS 0
+	$ yab -p http://localhost:8080/thrift [options]
+.PP
+The Thrift-encoded body will be POSTed to the specified URL.
+.PP
 Multiple peers can be specified using a peer list using -P or --peer-list.
 When making a single request, a single peer from this list is selected randomly.
-When benchmarking, each connection will randomly select a peer.
-  $ yab --peer-list hosts.json [options]
+When benchmarking, connections will be established in a round-robin fashion,
+starting with a random peer.
+.PP
+.RS 0
+	$ yab --peer-list hosts.json [options]
 
 .TP
 \fB\fB\-s\fR, \fB\-\-service\fR\fP
@@ -115,21 +145,23 @@ Caller will override the default caller name (which is yab-$USER).
 Custom options for the specific transport being used
 .SS Benchmark Options
 Configures benchmarking, which is disabled by default.
-
+.PP
 By default, yab will only make a single request. To enable benchmarking, you
 must specify the maximum duration for the benchmark by passing -d or --max-duration.
-
-yab will make requests till either the maximum requests (-n or --max-requests)
+.PP
+yab will make requests until either the maximum requests (-n or --max-requests)
 or the maximum duration is reached.
-
+.PP
 You can control the rate at which yab makes requests using the --rps flag.
-
+.PP
 An example benchmark command might be:
-  yab -p localhost:9787 moe --health -n 100000 -d 10s --rps 1000
-
+.PP
+.RS 0
+	yab -p localhost:9787 moe --health -n 100000 -d 10s --rps 1000
+.PP
 This would make requests at 1000 RPS until either the maximum number of
 requests (100,000) or the maximum duration (10 seconds) is reached.
-
+.PP
 By default, yab will create multiple connections (defaulting to the number of
 CPUs on the machine), but will only have one concurrent call per connection.
 The number of connections and concurrent calls per connection can be controlled

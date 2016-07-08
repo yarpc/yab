@@ -360,3 +360,61 @@ func TestAlises(t *testing.T) {
 		}
 	}
 }
+
+func TestToGroff(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{
+			input: `
+not a bullet list
+
+	- bullet
+	- list
+
+not a bullet list`,
+			expected: `
+not a bullet list
+.PP
+.IP \[bu]
+bullet
+.IP \[bu]
+list
+.PP
+not a bullet list`,
+		},
+
+		{
+			input: `
+beginning
+
+	pre-formatted
+
+middle
+
+	pre-formatted
+	still pre-formatted
+
+end`,
+			expected: `
+beginning
+.PP
+.RS 0
+	pre-formatted
+.PP
+middle
+.PP
+.RS 0
+	pre-formatted
+.RS 0
+	still pre-formatted
+.PP
+end`,
+		},
+	}
+
+	for _, tt := range tests {
+		assert.Equal(t, toGroff(tt.input), tt.expected)
+	}
+}

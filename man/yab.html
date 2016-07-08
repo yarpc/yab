@@ -1,7 +1,6 @@
 <HTML>
 <HEAD>
 <TITLE>yab</TITLE>
-<meta charset="utf-8">
 </HEAD>
 <BODY>
 <H1>yab</H1>
@@ -28,7 +27,7 @@
 </PRE>
 <H2>OPTIONS</H2><PRE>
    <B>Application</B> <B>Options</B>
-       --<B>version</B>
+       âˆ<B>â</B>ˆ’âˆ<B>â</B>ˆ’<B>version</B>
               Displays the application version
 
    <B>Request</B> <B>Options</B>
@@ -37,137 +36,141 @@
        To make Thrift requests, specify a Thrift file and pass the Thrift serâ€
        vice  and  procedure  to  the  method argument (â€m or â€â€method) as Serâ€
        vice::Method.
-         $ yab â€p localhost:9787 kv â€t kv.thrift â€m KeyValue::Count â€r â€™{}â€™
+
+            $ yab â€p localhost:9787 kv â€t kv.thrift â€m KeyValue::Count â€r â€™{}â€™
 
        You can also use positional arguments to specify the method and body:
-         $ yab â€p localhost:9787  â€t kv.thrift kv KeyValue::Count â€™{}â€™
 
-       The TChannel health endpoint can be hit  without  specifying  a  Thrift
+            $ yab â€p localhost:9787  â€t kv.thrift kv KeyValue::Count â€™{}â€™
+
+       The  TChannel  health  endpoint  can be hit without specifying a Thrift
        file by passing â€â€health.
 
-       Thrift  requests  can  be specified as JSON or YAML. For example, for a
+       Thrift requests can be specified as JSON or YAML. For  example,  for  a
        method defined as:
-         void addUser(1: string name, 2: i32 age)
 
-       You can pass the request as JSON: {"name": "Prashant", age: 100} or  as
+            void addUser(1: string name, 2: i32 age)
+
+       You  can pass the request as JSON: {"name": "Prashant", age: 100} or as
        YAML:
-         name: Prashant
-         age: 100
 
-       The  request  body  can  be  specified  on the command line using â€r or
+            name: Prashant
+            age: 100
+
+       The request body can be specified on  the  command  line  using  â€r  or
        â€â€request:
-         $ yab â€p localhost:9787 â€t kv.thrift  kv  KeyValue::Get  â€r  â€™{"key":
+
+            $  yab â€p localhost:9787 â€t kv.thrift kv KeyValue::Get â€r â€™{"key":
        "hello"}â€™
 
        Or it can be loaded from a file using â€f or â€â€file:
-         $ yab â€p localhost:9787 â€t kv.thrift kv KeyValue::Get â€â€file req.yaml
 
-       Binary data can be specified in one of many ways:
-         â€ As a string or an array of bytes: "data" or [100, 97, 116, 97]
-         â€ As base64: {"base64": "ZGF0YQ=="}
-         â€ Loaded from a file: {"file": "data.bin"}
+       â€™{"key": "hello", "value": [100, 97, 116, 97]}â€™
+
+            $ yab â€p localhost:9787 â€t kv.thrift kv KeyValue::Set â€3  â€™{"key":
+       "hello", "value": {"file": "data.bin"}}â€™
+
+
+       âˆ<B>â</B>ˆ’<B>e</B>, âˆ<B>â</B>ˆ’âˆ<B>â</B>ˆ’<B>encoding</B>
+              The  encoding  of  the  data,  options  are:  Thrift, JSON, raw.
+              Defaults to Thrift if the method contains â€™::â€™ or a Thrift  file
+              is specified
+
+       âˆ<B>â</B>ˆ’<B>t</B>, âˆ<B>â</B>ˆ’âˆ<B>â</B>ˆ’<B>thrift</B>
               Path of the .thrift file
 
-       -<B>m</B>, --<B>method</B>
+       âˆ<B>â</B>ˆ’<B>m</B>, âˆ<B>â</B>ˆ’âˆ<B>â</B>ˆ’<B>method</B>
               The full Thrift method name (Svc::Method) to invoke
 
-       -<B>r</B>, --<B>request</B>
+       âˆ<B>â</B>ˆ’<B>r</B>, âˆ<B>â</B>ˆ’âˆ<B>â</B>ˆ’<B>request</B>
               The request body, in JSON or YAML format
 
-       -<B>f</B>, --<B>file</B>
+       âˆ<B>â</B>ˆ’<B>f</B>, âˆ<B>â</B>ˆ’âˆ<B>â</B>ˆ’<B>file</B>
               Path of a file containing the request body in JSON or YAML
 
-       --<B>headers</B>
+       âˆ<B>â</B>ˆ’âˆ<B>â</B>ˆ’<B>headers</B>
               The headers in JSON or YAML format
 
-       --<B>headers</B>-<B>file</B>
+       âˆ<B>â</B>ˆ’âˆ<B>â</B>ˆ’<B>headers</B>â€<B>â</B>€<B>file</B>
               Path of a file containing the headers in JSON or YAML
 
-       --<B>health</B>
+       âˆ<B>â</B>ˆ’âˆ<B>â</B>ˆ’<B>health</B>
               Hit the health endpoint, Meta::health
 
-       --<B>timeout</B> &lt;default: <I>"1s"</I>&gt;
-              The timeout for each request. E.g., 100ms, 0.5s, 1s. If no  unit
+       âˆ<B>â</B>ˆ’âˆ<B>â</B>ˆ’<B>timeout</B> &lt;default: <I>"1s"</I>&gt;
+              The  timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit
               is specified, milliseconds are assumed.
 
    <B>Transport</B> <B>Options</B>
        Configures the network transport used to make requests.
 
-       yab  can target both TChannel and HTTP endpoints. To specify a TChannel
+       yab can target both TChannel and HTTP endpoints. To specify a  TChannel
        endpoint, specify the peerâ€™s host and port:
-         $ yab â€p localhost:9787 [options] or
-         $ yab â€p tchannel://localhost:9787 [options]
+
+            $ yab â€p localhost:9787 [options]
+
+       or
+
+            $ yab â€p tchannel://localhost:9787 [options]
 
        For HTTP endpoints, specify the URL as the peer,
-         $ yab â€p http://localhost:8080/thrift [options]
 
-       The Thrift encoded body will be POSTed to the specified URL.
+            $ yab â€p http://localhost:8080/thrift [options]
 
-       Multiple peers can be specified using a peer list using â€P  or  â€â€peerâ€
-       list.   When  making  a single request, a single peer from this list is
-       selected randomly.  When benchmarking, each  connection  will  randomly
-       select a peer.
-         $ yab â€â€peerâ€list hosts.json [options]
-
-
-       -<B>s</B>, --<B>service</B>
-              The TChannel/Hyperbahn service name
-
-       -<B>p</B>, --<B>peer</B>
               The host:port of the service to call
 
-       -<B>P</B>, --<B>peer</B>-<B>list</B>
+       âˆ<B>â</B>ˆ’<B>P</B>, âˆ<B>â</B>ˆ’âˆ<B>â</B>ˆ’<B>peer</B>â€<B>â</B>€<B>list</B>
               Path of a JSON or YAML file containing a list of host:ports
 
-       yab will make requests till either the maximum requests (â€n  or  â€â€maxâ€
+       âˆ<B>â</B>ˆ’âˆ<B>â</B>ˆ’<B>caller</B>
+              Caller  will  override  the  default  caller  name   (which   is
+              yabâ€$USER).
+
+       âˆ<B>â</B>ˆ’âˆ<B>â</B>ˆ’<B>topt</B> Custom options for the specific transport being used
+
+   <B>Benchmark</B> <B>Options</B>
+       Configures benchmarking, which is disabled by default.
+
+       By  default,  yab will only make a single request. To enable benchmarkâ€
+       ing, you must specify the maximum duration for the benchmark by passing
+       â€d or â€â€maxâ€duration.
+
+       yab  will make requests until either the maximum requests (â€n or â€â€maxâ€
        requests) or the maximum duration is reached.
 
-       You  can  control  the rate at which yab makes requests using the â€â€rps
+       You can control the rate at which yab makes requests  using  the  â€â€rps
        flag.
 
        An example benchmark command might be:
-         yab â€p localhost:9787 moe â€â€health â€n 100000 â€d 10s â€â€rps 1000
+
+            yab â€p localhost:9787 moe â€â€health â€n 100000 â€d 10s â€â€rps 1000
 
        This would make requests at 1000 RPS until either the maximum number of
        requests (100,000) or the maximum duration (10 seconds) is reached.
 
-       By  default,  yab  will  create multiple connections (defaulting to the
-       number of CPUs on the machine), but will only have one concurrent  call
-       per  connection.   The  number  of connections and concurrent calls per
+       By default, yab will create multiple  connections  (defaulting  to  the
+       number  of CPUs on the machine), but will only have one concurrent call
+       per connection.  The number of connections  and  concurrent  calls  per
        connection can be controlled using â€â€connections and â€â€concurrency.
 
 
-       -<B>n</B>, --<B>max</B>-<B>requests</B> &lt;default: <I>"1000000"</I>&gt;
+       âˆ<B>â</B>ˆ’<B>n</B>, âˆ<B>â</B>ˆ’âˆ<B>â</B>ˆ’<B>max</B>â€<B>â</B>€<B>requests</B> &lt;default: <I>"1000000"</I>&gt;
               The maximum number of requests to make
 
-       -<B>d</B>, --<B>max</B>-<B>duration</B> &lt;default: <I>"0s"</I>&gt;
+       âˆ<B>â</B>ˆ’<B>d</B>, âˆ<B>â</B>ˆ’âˆ<B>â</B>ˆ’<B>max</B>â€<B>â</B>€<B>duration</B> &lt;default: <I>"0s"</I>&gt;
               The maximum amount of time to run the benchmark for
 
-       --<B>cpus</B> The number of OS threads
+       âˆ<B>â</B>ˆ’âˆ<B>â</B>ˆ’<B>cpus</B> The number of OS threads
 
-       --<B>connections</B>
+       âˆ<B>â</B>ˆ’âˆ<B>â</B>ˆ’<B>connections</B>
               The number of TCP connections to use
 
-       --<B>warmup</B> &lt;default: <I>"10"</I>&gt;
+       âˆ<B>â</B>ˆ’âˆ<B>â</B>ˆ’<B>warmup</B> &lt;default: <I>"10"</I>&gt;
               The number of requests to make to warmup each connection
 
-       --<B>concurrency</B> &lt;default: <I>"1"</I>&gt;
-              The number of concurrent calls per connection
+       âˆ<B>â</B>ˆ’âˆ<B>â</B>ˆ’<B>concurrency</B> &lt;default: <I>"1"</I>&gt;
 
-       --<B>rps</B> &lt;default: <I>"0"</I>&gt;
-              Limit on the number of requests per second. The default  (0)  is
-              no limit.
-
-       --<B>statsd</B>
-              Optional host:port of a StatsD server to report metrics
-
-   <B>Help</B> <B>Options</B>
-       -<B>h</B>, --<B>help</B>
-              Show this help message
-
-
-
-                                 30 June 2016                           <B>yab(1)</B>
+                                  8 July 2016                           <B>yab(1)</B>
 </PRE>
 <HR>
 <ADDRESS>
