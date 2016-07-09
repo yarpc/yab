@@ -85,7 +85,7 @@ yab is a benchmarking tool for TChannel and HTTP applications. It's primarily in
 
 It can be used in a curl-like fashion when benchmarking features are disabled.
 
-Default options can be specified in a ~/.yab.ini file with contents similar to this:
+Default options can be specified in a ~/.config/yab/yab.ini file with contents similar to this:
 
 	[request]
 	timeout = 2s
