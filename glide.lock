@@ -1,5 +1,5 @@
-hash: fd05ccae439afc6f74a6c576c98a279826a6111f91bf36db475bccf3bbd3f9eb
-updated: 2016-06-01T08:45:45.209063968-07:00
+hash: 0badca56130abf1fc7d731d7e6b3adc1e974185c6d63431ac32ec36c7671e2a6
+updated: 2016-07-08T16:43:42.1722035-07:00
 imports:
 - name: github.com/apache/thrift
   version: 39a09ac5e49481d39dd1bcb6757ffe182e3df20a
@@ -9,6 +9,8 @@ imports:
   version: 725f76bd0300c1f9562e76fd94c27aa17e41243e
   subpackages:
   - statsd
+- name: github.com/casimir/xdg-go
+  version: 372ccc2180dab73316615641d5617c5ed3e35529
 - name: github.com/davecgh/go-spew
   version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
   subpackages:

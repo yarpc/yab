@@ -23,12 +23,12 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"os"
-	"os/user"
-	"path"
 	"time"
 
+	"github.com/casimir/xdg-go"
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
 
@@ -71,9 +71,13 @@ func main() {
 
 var errExit = errors.New("sentinel error used to exit cleanly")
 
-func getOptions(args []string, out output) (*Options, error) {
+func newParser() (*flags.Parser, *Options) {
 	opts := newOptions()
-	parser := flags.NewParser(opts, flags.HelpFlag|flags.PassDoubleDash)
+	return flags.NewParser(opts, flags.HelpFlag|flags.PassDoubleDash), opts
+}
+
+func getOptions(args []string, out output) (*Options, error) {
+	parser, opts := newParser()
 	parser.Usage = "[<service> <method> <body>] [OPTIONS]"
 	parser.ShortDescription = "yet another benchmarker"
 	parser.LongDescription = `
@@ -103,13 +107,10 @@ Default options can be specified in a ~/.yab.ini file with contents similar to t
 		return opts, errExit
 	}
 
-	// Read defaults from ~/.yab.ini
-	if user, err := user.Current(); err != nil {
-		out.Fatalf("Failed to find the current user: %v\n", err)
-	} else {
-		homeDir := user.HomeDir
-		iniParser := flags.NewIniParser(parser)
-		iniParser.ParseFile(path.Join(homeDir, ".yab.ini"))
+	// Read defaults from ~/.config/yab/yab.ini if they're available.
+	err := parseDefaultConfigs(parser)
+	if err != nil {
+		out.Fatalf("error reading yab.ini: %v\n", err)
 	}
 
 	remaining, err := parser.ParseArgs(args)
@@ -159,6 +160,20 @@ func parseAndRun(out output) {
 		out.Fatalf("Failed to parse options: %v", err)
 	}
 	runWithOptions(*opts, out)
+}
+
+// parseDefaultConfigs reads defaults from ~/.config/yab/yab.ini if they're
+// available.
+func parseDefaultConfigs(parser *flags.Parser) error {
+	app := xdg.App{Name: "yab"}
+	configFile := app.ConfigPath("yab.ini")
+	if _, err := os.Stat(configFile); err == nil {
+		iniParser := flags.NewIniParser(parser)
+		if err := iniParser.ParseFile(configFile); err != nil {
+			return fmt.Errorf("couldn't read %q: %q", configFile, err)
+		}
+	}
+	return nil
 }
 
 func runWithOptions(opts Options, out output) {
