@@ -19,7 +19,8 @@
 // THE SOFTWARE.
 
 // yab is a benchmarking tool for TChannel and HTTP applications.
-// It's primarily intended for Thrift applications but supports other encodings like JSON and binary (raw).
+// It's primarily intended for Thrift applications but supports other encodings
+// like JSON and binary (raw).
 //
 // It can be used in a curl-like fashion when benchmarking features are disabled.
 //
@@ -37,7 +38,7 @@ Service::Method.
 
 You can also use positional arguments to specify the method and body:
 
-	$ yab -p localhost:9787  -t kv.thrift kv KeyValue::Count '{}'
+	$ yab -p localhost:9787 -t kv.thrift kv KeyValue::Count '{}'
 
 The TChannel health endpoint can be hit without specifying a Thrift file
 by passing --health.
@@ -55,22 +56,25 @@ or as YAML:
 
 The request body can be specified on the command line using -r or --request:
 
-	$ yab -p localhost:9787 -t kv.thrift kv KeyValue::Get -r '{"key": "hello"}'
+	$ yab -p localhost:9787 -t kv.thrift kv \
+	    KeyValue::Get -r '{"key": "hello"}'
 
 Or it can be loaded from a file using -f or --file:
 
 	$ yab -p localhost:9787 -t kv.thrift kv KeyValue::Get --file req.yaml
 
 Binary data can be specified in one of many ways:
-	- As a string or an array of bytes: "data" or [100, 97, 116, 97]
-	- As base64: {"base64": "ZGF0YQ=="}
-	- Loaded from a file: {"file": "data.bin"}
+	* As a string or an array of bytes: "data" or [100, 97, 116, 97]
+	* As base64: {"base64": "ZGF0YQ=="}
+	* Loaded from a file: {"file": "data.bin"}
 
 Examples:
 
-	$ yab -p localhost:9787 -t kv.thrift kv -m KeyValue::Set -3 '{"key": "hello", "value": [100, 97, 116, 97]}'
+	$ yab -p localhost:9787 -t kv.thrift kv -m KeyValue::Set \
+	    -r '{"key": "hello", "value": [100, 97, 116, 97]}'
 
-	$ yab -p localhost:9787 -t kv.thrift kv KeyValue::Set -3 '{"key": "hello", "value": {"file": "data.bin"}}'
+	$ yab -p localhost:9787 -t kv.thrift kv KeyValue::Set \
+	    -r '{"key": "hello", "value": {"file": "data.bin"}}'
 `
 
 const _transportOptsDesc = `Configures the network transport used to make requests.
@@ -100,8 +104,8 @@ starting with a random peer.
 
 const _benchmarkOptsDesc = `Configures benchmarking, which is disabled by default.
 
-By default, yab will only make a single request. To enable benchmarking, you
-must specify the maximum duration for the benchmark by passing -d or --max-duration.
+By default, yab will only make a single request. To enable benchmarking,
+specify the maximum duration for the benchmark by passing -d or --max-duration.
 
 yab will make requests until either the maximum requests (-n or --max-requests)
 or the maximum duration is reached.
@@ -110,7 +114,7 @@ You can control the rate at which yab makes requests using the --rps flag.
 
 An example benchmark command might be:
 
-	yab -p localhost:9787 moe --health -n 100000 -d 10s --rps 1000
+	$ yab -p localhost:9787 moe --health -n 100000 -d 10s --rps 1000
 
 This would make requests at 1000 RPS until either the maximum number of
 requests (100,000) or the maximum duration (10 seconds) is reached.
@@ -120,3 +124,5 @@ CPUs on the machine), but will only have one concurrent call per connection.
 The number of connections and concurrent calls per connection can be controlled
 using --connections and --concurrency.
 `
+
+/* vim: set tabstop=8:softtabstop=8:shiftwidth=8:noexpandtab */
