@@ -370,8 +370,8 @@ func TestToGroff(t *testing.T) {
 			input: `
 not a bullet list
 
-	- bullet
-	- list
+	* bullet
+	* list
 
 not a bullet list`,
 			expected: `
@@ -400,15 +400,24 @@ end`,
 			expected: `
 beginning
 .PP
-.RS 0
-	pre-formatted
+.nf
+.RS
+pre-formatted
+.RE
+.fi
 .PP
 middle
 .PP
-.RS 0
-	pre-formatted
-.RS 0
-	still pre-formatted
+.nf
+.RS
+pre-formatted
+.RE
+.fi
+.nf
+.RS
+still pre-formatted
+.RE
+.fi
 .PP
 end`,
 		},

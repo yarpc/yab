@@ -25,6 +25,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -71,15 +72,20 @@ func main() {
 var errExit = errors.New("sentinel error used to exit cleanly")
 
 func toGroff(s string) string {
-	// Expand tabbed lines beginnging with "-" as a bullet list.
-	s = strings.Replace(s, "\t- ", ".IP \\[bu]\n", -1 /* all occurences */)
+	// Expand tabbed lines beginning with "-" as items in a bullet list.
+	s = strings.Replace(s, "\n\t* ", "\n.IP \\[bu]\n", -1 /* all occurences */)
 
-	// Expand all lines beginning with a tab as pre-formatted:
-	s = strings.Replace(s, "\n\n\t", "\n.PP\n\t", -1)
-	s = strings.Replace(s, "\t", ".RS 0\n\t", -1)
-
-	// Restore remaining blocks as new paragraphs.
+	// Two newlines start a new paragraph.
 	s = strings.Replace(s, "\n\n", "\n.PP\n", -1)
+
+	// Lines beginning with a tab are interpreted as example code.
+	//
+	// See http://liw.fi/manpages/ for an explanation of these
+	// commands -- tl;dr: turn of paragraph filling and indent the
+	// block one level.
+	indentRegexp := regexp.MustCompile(`\t(.*)\n`)
+	s = indentRegexp.ReplaceAllString(s, ".nf\n.RS\n$1\n.RE\n.fi\n")
+
 	return s
 }
 
