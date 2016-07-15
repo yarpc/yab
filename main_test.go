@@ -373,33 +373,27 @@ func TestParseIniFile(t *testing.T) {
 		expectedError string
 	}{
 		{
-			message:       "valid ini file should parse correctly",
-			configPath:    path.Join("testdata", "ini", "valid"),
-			expectedError: "",
+			message:    "valid ini file should parse correctly",
+			configPath: path.Join("testdata", "ini", "valid"),
 		},
 		{
-			message:       "absent ini file should be ignored",
-			configPath:    path.Join("testdata", "ini", "missing"),
-			expectedError: "",
+			message:    "absent ini file should be ignored",
+			configPath: path.Join("testdata", "ini", "missing"),
 		},
 		{
 			message:       "invalid ini file should raise error",
 			configPath:    path.Join("testdata", "ini", "invalid"),
-			expectedError: "couldn't read \"testdata/ini/invalid/yab/yab.ini\": \"testdata/ini/invalid/yab/yab.ini:2: time: unknown unit foo in duration 3foo\"",
+			expectedError: "couldn't read testdata/ini/invalid/yab/defaults.ini: testdata/ini/invalid/yab/defaults.ini:2: time: unknown unit foo in duration 3foo",
 		},
 	}
-
 	for _, tt := range tests {
 		os.Setenv(configHomeEnv, tt.configPath)
-
 		parser, _ := newParser()
-
 		err := parseDefaultConfigs(parser)
-
 		if tt.expectedError == "" {
-			assert.Nil(t, err, tt.message)
+			assert.NoError(t, err, tt.message)
 		} else {
-			assert.NotNil(t, err, tt.message)
+			assert.Error(t, err, tt.message)
 			assert.Equal(t, err.Error(), tt.expectedError, tt.message)
 		}
 	}
