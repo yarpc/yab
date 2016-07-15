@@ -374,27 +374,26 @@ func TestParseIniFile(t *testing.T) {
 	}{
 		{
 			message:    "valid ini file should parse correctly",
-			configPath: path.Join("testdata", "ini", "valid"),
+			configPath: "valid",
 		},
 		{
 			message:    "absent ini file should be ignored",
-			configPath: path.Join("testdata", "ini", "missing"),
+			configPath: "missing",
 		},
 		{
 			message:       "invalid ini file should raise error",
-			configPath:    path.Join("testdata", "ini", "invalid"),
+			configPath:    "invalid",
 			expectedError: "couldn't read testdata/ini/invalid/yab/defaults.ini: testdata/ini/invalid/yab/defaults.ini:2: time: unknown unit foo in duration 3foo",
 		},
 	}
 	for _, tt := range tests {
-		os.Setenv(configHomeEnv, tt.configPath)
+		os.Setenv(configHomeEnv, path.Join("testdata", "ini", tt.configPath))
 		parser, _ := newParser()
 		err := parseDefaultConfigs(parser)
 		if tt.expectedError == "" {
 			assert.NoError(t, err, tt.message)
 		} else {
-			assert.Error(t, err, tt.message)
-			assert.Equal(t, err.Error(), tt.expectedError, tt.message)
+			assert.EqualError(t, err, tt.expectedError, tt.message)
 		}
 	}
 }

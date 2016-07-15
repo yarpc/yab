@@ -128,9 +128,8 @@ Default options can be specified in a ~/.config/yab/defaults.ini file with conte
 	}
 
 	// Read defaults if they're available.
-	err := parseDefaultConfigs(parser)
-	if err != nil {
-		out.Fatalf("error reading defaults: %v\n", err)
+	if err := parseDefaultConfigs(parser); err != nil {
+		return nil, fmt.Errorf("error reading defaults: %v\n", err)
 	}
 
 	remaining, err := parser.ParseArgs(args)
