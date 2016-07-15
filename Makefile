@@ -30,7 +30,7 @@ install_ci: install
 update_man:
 	go install .
 	yab --man-page > man/yab.1
-	nroff -Tascii -man man/yab.1 | man2html -title yab > man/yab.html
+	groff -man -T html man/yab.1 > man/yab.html
 	[[ -d ../yab_ghpages ]] && cp man/yab.html ../yab_ghpages/man.html
 	@echo "Please update gh-pages"
 
