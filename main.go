@@ -166,13 +166,18 @@ func parseAndRun(out output) {
 // available.
 func parseDefaultConfigs(parser *flags.Parser) error {
 	app := xdg.App{Name: "yab"}
-	configFile := app.ConfigPath("yab.ini")
-	if _, err := os.Stat(configFile); err == nil {
-		iniParser := flags.NewIniParser(parser)
-		if err := iniParser.ParseFile(configFile); err != nil {
-			return fmt.Errorf("couldn't read %q: %q", configFile, err)
-		}
+
+	configFile := app.ConfigPath("defaults.ini")
+	if _, err := os.Stat(configFile); err != nil {
+		// No defaults file to read
+		return nil
 	}
+
+	iniParser := flags.NewIniParser(parser)
+	if err := iniParser.ParseFile(configFile); err != nil {
+		return fmt.Errorf("couldn't read %v: %v", configFile, err)
+	}
+
 	return nil
 }
 
