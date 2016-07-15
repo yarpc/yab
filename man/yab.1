@@ -1,4 +1,4 @@
-.TH yab 1 "13 July 2016"
+.TH yab 1 "15 July 2016"
 .SH NAME
 yab \- yet another benchmarker
 .SH SYNOPSIS
@@ -21,13 +21,19 @@ To make Thrift requests, specify a Thrift file and pass the Thrift
 service and procedure to the method argument (-m or --method) as
 Service::Method.
 .PP
-.RS 0
-	$ yab -p localhost:9787 kv -t kv.thrift -m KeyValue::Count -r '{}'
+.nf
+.RS
+$ yab -p localhost:9787 kv -t kv.thrift -m KeyValue::Count -r '{}'
+.RE
+.fi
 .PP
 You can also use positional arguments to specify the method and body:
 .PP
-.RS 0
-	$ yab -p localhost:9787  -t kv.thrift kv KeyValue::Count '{}'
+.nf
+.RS
+$ yab -p localhost:9787 -t kv.thrift kv KeyValue::Count '{}'
+.RE
+.fi
 .PP
 The TChannel health endpoint can be hit without specifying a Thrift file
 by passing --health.
@@ -35,26 +41,46 @@ by passing --health.
 Thrift requests can be specified as JSON or YAML. For example, for a method
 defined as:
 .PP
-.RS 0
-	void addUser(1: string name, 2: i32 age)
+.nf
+.RS
+void addUser(1: string name, 2: i32 age)
+.RE
+.fi
 .PP
 You can pass the request as JSON: {"name": "Prashant", age: 100}
 or as YAML:
 .PP
-.RS 0
-	name: Prashant
-.RS 0
-	age: 100
+.nf
+.RS
+name: Prashant
+.RE
+.fi
+.nf
+.RS
+age: 100
+.RE
+.fi
 .PP
 The request body can be specified on the command line using -r or --request:
 .PP
-.RS 0
-	$ yab -p localhost:9787 -t kv.thrift kv KeyValue::Get -r '{"key": "hello"}'
+.nf
+.RS
+$ yab -p localhost:9787 -t kv.thrift kv \\
+.RE
+.fi
+.nf
+.RS
+    KeyValue::Get -r '{"key": "hello"}'
+.RE
+.fi
 .PP
 Or it can be loaded from a file using -f or --file:
 .PP
-.RS 0
-	$ yab -p localhost:9787 -t kv.thrift kv KeyValue::Get --file req.yaml
+.nf
+.RS
+$ yab -p localhost:9787 -t kv.thrift kv KeyValue::Get --file req.yaml
+.RE
+.fi
 .PP
 Binary data can be specified in one of many ways:
 .IP \\[bu]
@@ -66,11 +92,27 @@ Loaded from a file: {"file": "data.bin"}
 .PP
 Examples:
 .PP
-.RS 0
-	$ yab -p localhost:9787 -t kv.thrift kv -m KeyValue::Set -3 '{"key": "hello", "value": [100, 97, 116, 97]}'
+.nf
+.RS
+$ yab -p localhost:9787 -t kv.thrift kv -m KeyValue::Set \\
+.RE
+.fi
+.nf
+.RS
+    -r '{"key": "hello", "value": [100, 97, 116, 97]}'
+.RE
+.fi
 .PP
-.RS 0
-	$ yab -p localhost:9787 -t kv.thrift kv KeyValue::Set -3 '{"key": "hello", "value": {"file": "data.bin"}}'
+.nf
+.RS
+$ yab -p localhost:9787 -t kv.thrift kv KeyValue::Set \\
+.RE
+.fi
+.nf
+.RS
+    -r '{"key": "hello", "value": {"file": "data.bin"}}'
+.RE
+.fi
 
 .TP
 \fB\fB\-e\fR, \fB\-\-encoding\fR\fP
@@ -105,18 +147,27 @@ Configures the network transport used to make requests.
 yab can target both TChannel and HTTP endpoints. To specify a TChannel endpoint,
 specify the peer's host and port:
 .PP
-.RS 0
-	$ yab -p localhost:9787 [options]
+.nf
+.RS
+$ yab -p localhost:9787 [options]
+.RE
+.fi
 .PP
 or
 .PP
-.RS 0
-	$ yab -p tchannel://localhost:9787 [options]
+.nf
+.RS
+$ yab -p tchannel://localhost:9787 [options]
+.RE
+.fi
 .PP
 For HTTP endpoints, specify the URL as the peer,
 .PP
-.RS 0
-	$ yab -p http://localhost:8080/thrift [options]
+.nf
+.RS
+$ yab -p http://localhost:8080/thrift [options]
+.RE
+.fi
 .PP
 The Thrift-encoded body will be POSTed to the specified URL.
 .PP
@@ -125,8 +176,11 @@ When making a single request, a single peer from this list is selected randomly.
 When benchmarking, connections will be established in a round-robin fashion,
 starting with a random peer.
 .PP
-.RS 0
-	$ yab --peer-list hosts.json [options]
+.nf
+.RS
+$ yab --peer-list hosts.json [options]
+.RE
+.fi
 
 .TP
 \fB\fB\-s\fR, \fB\-\-service\fR\fP
@@ -146,8 +200,8 @@ Custom options for the specific transport being used
 .SS Benchmark Options
 Configures benchmarking, which is disabled by default.
 .PP
-By default, yab will only make a single request. To enable benchmarking, you
-must specify the maximum duration for the benchmark by passing -d or --max-duration.
+By default, yab will only make a single request. To enable benchmarking,
+specify the maximum duration for the benchmark by passing -d or --max-duration.
 .PP
 yab will make requests until either the maximum requests (-n or --max-requests)
 or the maximum duration is reached.
@@ -156,8 +210,11 @@ You can control the rate at which yab makes requests using the --rps flag.
 .PP
 An example benchmark command might be:
 .PP
-.RS 0
-	yab -p localhost:9787 moe --health -n 100000 -d 10s --rps 1000
+.nf
+.RS
+$ yab -p localhost:9787 moe --health -n 100000 -d 10s --rps 1000
+.RE
+.fi
 .PP
 This would make requests at 1000 RPS until either the maximum number of
 requests (100,000) or the maximum duration (10 seconds) is reached.
