@@ -162,7 +162,7 @@ func parseAndRun(out output) {
 	runWithOptions(*opts, out)
 }
 
-// parseDefaultConfigs reads defaults from ~/.config/yab/yab.ini if they're
+// parseDefaultConfigs reads defaults from ~/.config/yab/defaults.ini if they're
 // available.
 func parseDefaultConfigs(parser *flags.Parser) error {
 	app := xdg.App{Name: "yab"}
