@@ -8,6 +8,41 @@ yab \- yet another benchmarker
 yab is a benchmarking tool for TChannel and HTTP applications. It's primarily intended for Thrift applications but supports other encodings like JSON and binary (raw).
 .PP
 It can be used in a curl-like fashion when benchmarking features are disabled.
+.PP
+Default options can be specified in a ~/.config/yab/defaults.ini file with contents similar to this:
+.PP
+.nf
+.RS
+[request]
+.RE
+.fi
+.nf
+.RS
+timeout = 2s
+.RE
+.fi
+.PP
+.nf
+.RS
+[transport]
+.RE
+.fi
+.nf
+.RS
+peer-list = "/path/to/peer/list.json"
+.RE
+.fi
+.PP
+.nf
+.RS
+[benchmark]
+.RE
+.fi
+.nf
+.RS
+warmup = 10
+.RE
+.fi
 
 .SH OPTIONS
 .SS Application Options
