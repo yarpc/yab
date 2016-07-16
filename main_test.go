@@ -24,6 +24,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path"
 	"testing"
 	"time"
 
@@ -357,6 +358,42 @@ func TestAlises(t *testing.T) {
 			if assert.NoError(t, err, "getOptions failed for %v", "Args: %v", args) {
 				tt.validate(args, opts)
 			}
+		}
+	}
+}
+
+func TestParseIniFile(t *testing.T) {
+	configHomeEnv := "XDG_CONFIG_HOME"
+	originalConfigHome := os.Getenv(configHomeEnv)
+	defer os.Setenv(configHomeEnv, originalConfigHome)
+
+	tests := []struct {
+		message       string
+		configPath    string
+		expectedError string
+	}{
+		{
+			message:    "valid ini file should parse correctly",
+			configPath: "valid",
+		},
+		{
+			message:    "absent ini file should be ignored",
+			configPath: "missing",
+		},
+		{
+			message:       "invalid ini file should raise error",
+			configPath:    "invalid",
+			expectedError: "couldn't read testdata/ini/invalid/yab/defaults.ini: testdata/ini/invalid/yab/defaults.ini:2: time: unknown unit foo in duration 3foo",
+		},
+	}
+	for _, tt := range tests {
+		os.Setenv(configHomeEnv, path.Join("testdata", "ini", tt.configPath))
+		parser, _ := newParser()
+		err := parseDefaultConfigs(parser)
+		if tt.expectedError == "" {
+			assert.NoError(t, err, tt.message)
+		} else {
+			assert.EqualError(t, err, tt.expectedError, tt.message)
 		}
 	}
 }

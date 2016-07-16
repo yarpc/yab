@@ -23,12 +23,14 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/casimir/xdg-go"
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
 
@@ -89,15 +91,30 @@ func toGroff(s string) string {
 	return s
 }
 
-func getOptions(args []string, out output) (*Options, error) {
+func newParser() (*flags.Parser, *Options) {
 	opts := newOptions()
-	parser := flags.NewParser(opts, flags.HelpFlag|flags.PassDoubleDash)
+	return flags.NewParser(opts, flags.HelpFlag|flags.PassDoubleDash), opts
+}
+
+func getOptions(args []string, out output) (*Options, error) {
+	parser, opts := newParser()
 	parser.Usage = "[<service> <method> <body>] [OPTIONS]"
 	parser.ShortDescription = "yet another benchmarker"
 	parser.LongDescription = toGroff(`
 yab is a benchmarking tool for TChannel and HTTP applications. It's primarily intended for Thrift applications but supports other encodings like JSON and binary (raw).
 
 It can be used in a curl-like fashion when benchmarking features are disabled.
+
+Default options can be specified in a ~/.config/yab/defaults.ini file with contents similar to this:
+
+	[request]
+	timeout = 2s
+
+	[transport]
+	peer-list = "/path/to/peer/list.json"
+
+	[benchmark]
+	warmup = 10
 `)
 
 	setGroupDesc(parser, "request", "Request Options", toGroff(_reqOptsDesc))
@@ -108,6 +125,11 @@ It can be used in a curl-like fashion when benchmarking features are disabled.
 	if len(args) == 0 {
 		parser.WriteHelp(out)
 		return opts, errExit
+	}
+
+	// Read defaults if they're available.
+	if err := parseDefaultConfigs(parser); err != nil {
+		return nil, fmt.Errorf("error reading defaults: %v\n", err)
 	}
 
 	remaining, err := parser.ParseArgs(args)
@@ -157,6 +179,25 @@ func parseAndRun(out output) {
 		out.Fatalf("Failed to parse options: %v", err)
 	}
 	runWithOptions(*opts, out)
+}
+
+// parseDefaultConfigs reads defaults from ~/.config/yab/defaults.ini if they're
+// available.
+func parseDefaultConfigs(parser *flags.Parser) error {
+	app := xdg.App{Name: "yab"}
+
+	configFile := app.ConfigPath("defaults.ini")
+	if _, err := os.Stat(configFile); err != nil {
+		// No defaults file to read
+		return nil
+	}
+
+	iniParser := flags.NewIniParser(parser)
+	if err := iniParser.ParseFile(configFile); err != nil {
+		return fmt.Errorf("couldn't read %v: %v", configFile, err)
+	}
+
+	return nil
 }
 
 func runWithOptions(opts Options, out output) {
