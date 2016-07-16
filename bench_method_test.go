@@ -44,7 +44,7 @@ func benchmarkMethodForTest(t *testing.T, methodString string, p transport.Proto
 	serializer, err := NewSerializer(rOpts)
 	require.NoError(t, err, "Failed to create Thrift serializer")
 
-	serializer = withTransportSerializer(p, serializer)
+	serializer = withTransportSerializer(p, serializer, rOpts)
 
 	req, err := serializer.Request(nil)
 	require.NoError(t, err, "Failed to serialize Thrift body")

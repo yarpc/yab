@@ -29,9 +29,12 @@ import (
 	"time"
 
 	"github.com/yarpc/yab/encoding"
+	"github.com/yarpc/yab/transport"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thriftrw/thriftrw-go/protocol"
+	"github.com/thriftrw/thriftrw-go/wire"
 	"github.com/uber/tchannel-go/testutils"
 	"github.com/uber/tchannel-go/thrift"
 )
@@ -466,4 +469,65 @@ end`,
 	for _, tt := range tests {
 		assert.Equal(t, toGroff(tt.input), tt.expected)
 	}
+}
+
+func TestWithTransportSerializer(t *testing.T) {
+	validRequestOpts := RequestOptions{
+		ThriftFile: validThrift,
+		MethodName: fooMethod,
+	}
+	noEnvelopeOpts := validRequestOpts
+	noEnvelopeOpts.DisableThriftEnvelopes = true
+
+	tests := []struct {
+		protocol transport.Protocol
+		rOpts    RequestOptions
+		want     []byte
+	}{
+		{
+			protocol: transport.HTTP,
+			rOpts:    validRequestOpts,
+			want: encodeEnveloped(wire.Envelope{
+				Name:  "foo",
+				Type:  wire.Call,
+				Value: wire.NewValueStruct(wire.Struct{}),
+			}),
+		},
+		{
+			protocol: transport.HTTP,
+			rOpts:    noEnvelopeOpts,
+			want:     []byte{0},
+		},
+		{
+			protocol: transport.TChannel,
+			rOpts:    validRequestOpts,
+			want:     []byte{0},
+		},
+		{
+			protocol: transport.TChannel,
+			rOpts:    noEnvelopeOpts,
+			want:     []byte{0},
+		},
+	}
+
+	for _, tt := range tests {
+		serializer, err := NewSerializer(tt.rOpts)
+		require.NoError(t, err, "Failed to create serializer for %+v", tt.rOpts)
+
+		serializer = withTransportSerializer(tt.protocol, serializer, tt.rOpts)
+		req, err := serializer.Request(nil)
+		if !assert.NoError(t, err, "Failed to serialize request for %+v", tt.rOpts) {
+			continue
+		}
+
+		assert.Equal(t, tt.want, req.Body, "Body mismatch for %+v", tt.rOpts)
+	}
+}
+
+func encodeEnveloped(e wire.Envelope) []byte {
+	buf := &bytes.Buffer{}
+	if err := protocol.Binary.EncodeEnveloped(e, buf); err != nil {
+		panic(fmt.Errorf("Binary.EncodeEnveloped(%v) failed: %v", e, err))
+	}
+	return buf.Bytes()
 }
