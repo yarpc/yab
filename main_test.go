@@ -226,6 +226,9 @@ func TestHelpOutput(t *testing.T) {
 		buf, out := getOutput(t)
 		parseAndRun(out)
 		assert.Contains(t, buf.String(), "Usage:", "Expected help output")
+
+		// Make sure we didn't leak any groff from the man-page output.
+		assert.NotContains(t, buf.String(), ".PP")
 	}
 }
 

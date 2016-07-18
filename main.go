@@ -100,7 +100,7 @@ func getOptions(args []string, out output) (*Options, error) {
 	parser, opts := newParser()
 	parser.Usage = "[<service> <method> <body>] [OPTIONS]"
 	parser.ShortDescription = "yet another benchmarker"
-	parser.LongDescription = toGroff(`
+	parser.LongDescription = `
 yab is a benchmarking tool for TChannel and HTTP applications. It's primarily intended for Thrift applications but supports other encodings like JSON and binary (raw).
 
 It can be used in a curl-like fashion when benchmarking features are disabled.
@@ -115,11 +115,7 @@ Default options can be specified in a ~/.config/yab/defaults.ini file with conte
 
 	[benchmark]
 	warmup = 10
-`)
-
-	setGroupDesc(parser, "request", "Request Options", toGroff(_reqOptsDesc))
-	setGroupDesc(parser, "transport", "Transport Options", toGroff(_transportOptsDesc))
-	setGroupDesc(parser, "benchmark", "Benchmark Options", toGroff(_benchmarkOptsDesc))
+`
 
 	// If there are no arguments specified, write the help.
 	if len(args) == 0 {
@@ -150,6 +146,10 @@ Default options can be specified in a ~/.config/yab/defaults.ini file with conte
 	}
 
 	if opts.ManPage {
+		parser.LongDescription = toGroff(parser.LongDescription)
+		setGroupDesc(parser, "request", "Request Options", toGroff(_reqOptsDesc))
+		setGroupDesc(parser, "transport", "Transport Options", toGroff(_transportOptsDesc))
+		setGroupDesc(parser, "benchmark", "Benchmark Options", toGroff(_benchmarkOptsDesc))
 		parser.WriteManPage(os.Stdout)
 		return opts, errExit
 	}
