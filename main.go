@@ -222,7 +222,7 @@ func runWithOptions(opts Options, out output) {
 		out.Fatalf("Failed while parsing options: %v\n", err)
 	}
 
-	serializer = withTransportSerializer(transport.Protocol(), serializer)
+	serializer = withTransportSerializer(transport.Protocol(), serializer, opts.ROpts)
 
 	// req is the transport.Request that will be used to make a call.
 	req, err := serializer.Request(reqInput)
@@ -275,8 +275,10 @@ type noEnveloper interface {
 
 // withTransportSerializer may modify the serializer for the transport used.
 // E.g. Thrift payloads are not enveloped when used with TChannel.
-func withTransportSerializer(p transport.Protocol, s encoding.Serializer) encoding.Serializer {
-	if p == transport.TChannel && s.Encoding() == encoding.Thrift {
+func withTransportSerializer(p transport.Protocol, s encoding.Serializer, rOpts RequestOptions) encoding.Serializer {
+	switch {
+	case p == transport.TChannel && s.Encoding() == encoding.Thrift,
+		rOpts.DisableThriftEnvelopes:
 		s = s.(noEnveloper).WithoutEnvelopes()
 	}
 	return s
