@@ -24,13 +24,17 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path"
 	"testing"
 	"time"
 
 	"github.com/yarpc/yab/encoding"
+	"github.com/yarpc/yab/transport"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thriftrw/thriftrw-go/protocol"
+	"github.com/thriftrw/thriftrw-go/wire"
 	"github.com/uber/tchannel-go/testutils"
 	"github.com/uber/tchannel-go/thrift"
 )
@@ -225,6 +229,9 @@ func TestHelpOutput(t *testing.T) {
 		buf, out := getOutput(t)
 		parseAndRun(out)
 		assert.Contains(t, buf.String(), "Usage:", "Expected help output")
+
+		// Make sure we didn't leak any groff from the man-page output.
+		assert.NotContains(t, buf.String(), ".PP")
 	}
 }
 
@@ -359,4 +366,168 @@ func TestAlises(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestParseIniFile(t *testing.T) {
+	configHomeEnv := "XDG_CONFIG_HOME"
+	originalConfigHome := os.Getenv(configHomeEnv)
+	defer os.Setenv(configHomeEnv, originalConfigHome)
+
+	tests := []struct {
+		message       string
+		configPath    string
+		expectedError string
+	}{
+		{
+			message:    "valid ini file should parse correctly",
+			configPath: "valid",
+		},
+		{
+			message:    "absent ini file should be ignored",
+			configPath: "missing",
+		},
+		{
+			message:       "invalid ini file should raise error",
+			configPath:    "invalid",
+			expectedError: "couldn't read testdata/ini/invalid/yab/defaults.ini: testdata/ini/invalid/yab/defaults.ini:2: time: unknown unit foo in duration 3foo",
+		},
+	}
+	for _, tt := range tests {
+		os.Setenv(configHomeEnv, path.Join("testdata", "ini", tt.configPath))
+		parser, _ := newParser()
+		err := parseDefaultConfigs(parser)
+		if tt.expectedError == "" {
+			assert.NoError(t, err, tt.message)
+		} else {
+			assert.EqualError(t, err, tt.expectedError, tt.message)
+		}
+	}
+}
+
+func TestToGroff(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{
+			input: `
+not a bullet list
+
+	* bullet
+	* list
+
+not a bullet list`,
+			expected: `
+not a bullet list
+.PP
+.IP \[bu]
+bullet
+.IP \[bu]
+list
+.PP
+not a bullet list`,
+		},
+
+		{
+			input: `
+beginning
+
+	pre-formatted
+
+middle
+
+	pre-formatted
+	still pre-formatted
+
+end`,
+			expected: `
+beginning
+.PP
+.nf
+.RS
+pre-formatted
+.RE
+.fi
+.PP
+middle
+.PP
+.nf
+.RS
+pre-formatted
+.RE
+.fi
+.nf
+.RS
+still pre-formatted
+.RE
+.fi
+.PP
+end`,
+		},
+	}
+
+	for _, tt := range tests {
+		assert.Equal(t, toGroff(tt.input), tt.expected)
+	}
+}
+
+func TestWithTransportSerializer(t *testing.T) {
+	validRequestOpts := RequestOptions{
+		ThriftFile: validThrift,
+		MethodName: fooMethod,
+	}
+	noEnvelopeOpts := validRequestOpts
+	noEnvelopeOpts.DisableThriftEnvelopes = true
+
+	tests := []struct {
+		protocol transport.Protocol
+		rOpts    RequestOptions
+		want     []byte
+	}{
+		{
+			protocol: transport.HTTP,
+			rOpts:    validRequestOpts,
+			want: encodeEnveloped(wire.Envelope{
+				Name:  "foo",
+				Type:  wire.Call,
+				Value: wire.NewValueStruct(wire.Struct{}),
+			}),
+		},
+		{
+			protocol: transport.HTTP,
+			rOpts:    noEnvelopeOpts,
+			want:     []byte{0},
+		},
+		{
+			protocol: transport.TChannel,
+			rOpts:    validRequestOpts,
+			want:     []byte{0},
+		},
+		{
+			protocol: transport.TChannel,
+			rOpts:    noEnvelopeOpts,
+			want:     []byte{0},
+		},
+	}
+
+	for _, tt := range tests {
+		serializer, err := NewSerializer(tt.rOpts)
+		require.NoError(t, err, "Failed to create serializer for %+v", tt.rOpts)
+
+		serializer = withTransportSerializer(tt.protocol, serializer, tt.rOpts)
+		req, err := serializer.Request(nil)
+		if !assert.NoError(t, err, "Failed to serialize request for %+v", tt.rOpts) {
+			continue
+		}
+
+		assert.Equal(t, tt.want, req.Body, "Body mismatch for %+v", tt.rOpts)
+	}
+}
+
+func encodeEnveloped(e wire.Envelope) []byte {
+	buf := &bytes.Buffer{}
+	if err := protocol.Binary.EncodeEnveloped(e, buf); err != nil {
+		panic(fmt.Errorf("Binary.EncodeEnveloped(%v) failed: %v", e, err))
+	}
+	return buf.Bytes()
 }

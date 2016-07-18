@@ -23,10 +23,14 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"os"
+	"regexp"
+	"strings"
 	"time"
 
+	"github.com/casimir/xdg-go"
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
 
@@ -69,25 +73,59 @@ func main() {
 
 var errExit = errors.New("sentinel error used to exit cleanly")
 
-func getOptions(args []string, out output) (*Options, error) {
+func toGroff(s string) string {
+	// Expand tabbed lines beginning with "-" as items in a bullet list.
+	s = strings.Replace(s, "\n\t* ", "\n.IP \\[bu]\n", -1 /* all occurences */)
+
+	// Two newlines start a new paragraph.
+	s = strings.Replace(s, "\n\n", "\n.PP\n", -1)
+
+	// Lines beginning with a tab are interpreted as example code.
+	//
+	// See http://liw.fi/manpages/ for an explanation of these
+	// commands -- tl;dr: turn of paragraph filling and indent the
+	// block one level.
+	indentRegexp := regexp.MustCompile(`\t(.*)\n`)
+	s = indentRegexp.ReplaceAllString(s, ".nf\n.RS\n$1\n.RE\n.fi\n")
+
+	return s
+}
+
+func newParser() (*flags.Parser, *Options) {
 	opts := newOptions()
-	parser := flags.NewParser(opts, flags.HelpFlag|flags.PassDoubleDash)
+	return flags.NewParser(opts, flags.HelpFlag|flags.PassDoubleDash), opts
+}
+
+func getOptions(args []string, out output) (*Options, error) {
+	parser, opts := newParser()
 	parser.Usage = "[<service> <method> <body>] [OPTIONS]"
 	parser.ShortDescription = "yet another benchmarker"
 	parser.LongDescription = `
 yab is a benchmarking tool for TChannel and HTTP applications. It's primarily intended for Thrift applications but supports other encodings like JSON and binary (raw).
 
 It can be used in a curl-like fashion when benchmarking features are disabled.
-`
 
-	setGroupDesc(parser, "request", "Request Options", _reqOptsDesc)
-	setGroupDesc(parser, "transport", "Transport Options", _transportOptsDesc)
-	setGroupDesc(parser, "benchmark", "Benchmark Options", _benchmarkOptsDesc)
+Default options can be specified in a ~/.config/yab/defaults.ini file with contents similar to this:
+
+	[request]
+	timeout = 2s
+
+	[transport]
+	peer-list = "/path/to/peer/list.json"
+
+	[benchmark]
+	warmup = 10
+`
 
 	// If there are no arguments specified, write the help.
 	if len(args) == 0 {
 		parser.WriteHelp(out)
 		return opts, errExit
+	}
+
+	// Read defaults if they're available.
+	if err := parseDefaultConfigs(parser); err != nil {
+		return nil, fmt.Errorf("error reading defaults: %v\n", err)
 	}
 
 	remaining, err := parser.ParseArgs(args)
@@ -108,6 +146,10 @@ It can be used in a curl-like fashion when benchmarking features are disabled.
 	}
 
 	if opts.ManPage {
+		parser.LongDescription = toGroff(parser.LongDescription)
+		setGroupDesc(parser, "request", "Request Options", toGroff(_reqOptsDesc))
+		setGroupDesc(parser, "transport", "Transport Options", toGroff(_transportOptsDesc))
+		setGroupDesc(parser, "benchmark", "Benchmark Options", toGroff(_benchmarkOptsDesc))
 		parser.WriteManPage(os.Stdout)
 		return opts, errExit
 	}
@@ -139,6 +181,25 @@ func parseAndRun(out output) {
 	runWithOptions(*opts, out)
 }
 
+// parseDefaultConfigs reads defaults from ~/.config/yab/defaults.ini if they're
+// available.
+func parseDefaultConfigs(parser *flags.Parser) error {
+	app := xdg.App{Name: "yab"}
+
+	configFile := app.ConfigPath("defaults.ini")
+	if _, err := os.Stat(configFile); err != nil {
+		// No defaults file to read
+		return nil
+	}
+
+	iniParser := flags.NewIniParser(parser)
+	if err := iniParser.ParseFile(configFile); err != nil {
+		return fmt.Errorf("couldn't read %v: %v", configFile, err)
+	}
+
+	return nil
+}
+
 func runWithOptions(opts Options, out output) {
 	reqInput, err := getRequestInput(opts.ROpts.RequestJSON, opts.ROpts.RequestFile)
 	if err != nil {
@@ -161,7 +222,7 @@ func runWithOptions(opts Options, out output) {
 		out.Fatalf("Failed while parsing options: %v\n", err)
 	}
 
-	serializer = withTransportSerializer(transport.Protocol(), serializer)
+	serializer = withTransportSerializer(transport.Protocol(), serializer, opts.ROpts)
 
 	// req is the transport.Request that will be used to make a call.
 	req, err := serializer.Request(reqInput)
@@ -214,8 +275,10 @@ type noEnveloper interface {
 
 // withTransportSerializer may modify the serializer for the transport used.
 // E.g. Thrift payloads are not enveloped when used with TChannel.
-func withTransportSerializer(p transport.Protocol, s encoding.Serializer) encoding.Serializer {
-	if p == transport.TChannel && s.Encoding() == encoding.Thrift {
+func withTransportSerializer(p transport.Protocol, s encoding.Serializer, rOpts RequestOptions) encoding.Serializer {
+	switch {
+	case p == transport.TChannel && s.Encoding() == encoding.Thrift,
+		rOpts.DisableThriftEnvelopes:
 		s = s.(noEnveloper).WithoutEnvelopes()
 	}
 	return s

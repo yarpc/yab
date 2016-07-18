@@ -28,3 +28,4 @@ import:
   version: master
   subpackages:
   - lib/go/thrift
+- package: github.com/casimir/xdg-go

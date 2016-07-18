@@ -82,7 +82,6 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 	out.Printf("  Max RPS:         %v\n", opts.RPS)
 
 	// Warm up number of connections.
-	// TODO: If we're making N connections, we should try to select N unique peers
 	connections, err := m.WarmTransports(numConns, allOpts.TOpts, opts.WarmupRequests)
 	if err != nil {
 		out.Fatalf("Failed to warmup connections for benchmark: %v", err)
