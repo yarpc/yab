@@ -42,8 +42,8 @@ import (
 
 var (
 	errServiceRequired    = errors.New("specify a target service using --service")
-	errPeerRequired       = errors.New("specify at least one peer using --peer or using --hostfile")
-	errPeerOptions        = errors.New("do not specify peers using --peer and --hostfile")
+	errPeerRequired       = errors.New("specify at least one peer using --peer or using --peer-list")
+	errPeerOptions        = errors.New("do not specify peers using --peer and --peer-list")
 	errPeerListFile       = errors.New("peer list should be a JSON file with a list of strings")
 	errCallerForBenchmark = errors.New("cannot override caller name when running benchmarks")
 )
