@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 	"testing"
 	"time"
 
@@ -210,6 +211,33 @@ func TestHealthIntegration(t *testing.T) {
 		"--health",
 	}
 
+	main()
+}
+
+func TestBenchmarkIntegration(t *testing.T) {
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+
+	const numServers = 5
+	serverHPs := make([]string, numServers)
+	for i := range serverHPs {
+		server := newServer(t)
+		defer server.shutdown()
+		thrift.NewServer(server.ch)
+		serverHPs[i] = server.hostPort()
+	}
+
+	hostFile := writeFile(t, "hostPorts", strings.Join(serverHPs, "\n"))
+	defer os.Remove(hostFile)
+
+	os.Args = []string{
+		"yab",
+		"foo",
+		"-P", hostFile,
+		"--health",
+		"-d", "5s",
+		"-n", "100",
+	}
 	main()
 }
 

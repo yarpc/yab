@@ -107,6 +107,7 @@ func loadTransportHostPorts(opts TransportOptions) (TransportOptions, error) {
 		}
 	}
 
+	opts.HostPortFile = ""
 	opts.HostPorts = hostPorts
 	return opts, nil
 }
@@ -189,7 +190,7 @@ func parseHostsFileNewLines(r io.Reader) ([]string, error) {
 	rdr := bufio.NewReader(r)
 	for {
 		line, err := rdr.ReadString('\n')
-		if err != nil {
+		if line == "" && err != nil {
 			if err == io.EOF {
 				break
 			}
