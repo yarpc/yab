@@ -1,17 +1,16 @@
 package limiter
 
 import (
-	"sync/atomic"
 	"time"
 
+	"github.com/uber-go/atomic"
 	"github.com/yarpc/yab/ratelimit"
 )
 
 // Run represents a single run that is limited by either
 // a number of requests, or can be stopped halfway.
 type Run struct {
-	// TODO: Migrate to uber-go/atomic.
-	requestsLeft int64
+	requestsLeft atomic.Int64
 	limiter      ratelimit.Limiter
 }
 
@@ -23,7 +22,7 @@ func New(maxRequests, rps int, maxDuration time.Duration) *Run {
 	}
 
 	r := &Run{
-		requestsLeft: int64(maxRequests),
+		requestsLeft: *atomic.NewInt64(int64(maxRequests)),
 		limiter:      limiter,
 	}
 	time.AfterFunc(maxDuration, r.Stop)
@@ -35,13 +34,13 @@ func New(maxRequests, rps int, maxDuration time.Duration) *Run {
 // reached some limit. If more requests can be made, it blocks until the rate
 // limiter allows another request.
 func (r *Run) More() bool {
-	if atomic.LoadInt64(&r.requestsLeft) >= 0 {
+	if r.requestsLeft.Load() >= 0 {
 		r.limiter.Take()
 	}
-	return atomic.AddInt64(&r.requestsLeft, -1) >= 0
+	return r.requestsLeft.Dec() >= 0
 }
 
 // Stop will ensure that all future calls to More return false.
 func (r *Run) Stop() {
-	atomic.StoreInt64(&r.requestsLeft, 0)
+	r.requestsLeft.Store(0)
 }

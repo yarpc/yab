@@ -21,21 +21,21 @@
 package main
 
 import (
-	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/yarpc/yab/transport"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/uber-go/atomic"
 )
 
 func TestBenchmark(t *testing.T) {
 
-	var requests int32
+	var requests atomic.Int32
 	s := newServer(t)
 	s.register(fooMethod, methods.errorIf(func() bool {
-		atomic.AddInt32(&requests, 1)
+		requests.Inc()
 		return false
 	}))
 
@@ -59,5 +59,5 @@ func TestBenchmark(t *testing.T) {
 
 	// Due to warm up, we make:
 	// 10 * Connections extra requests
-	assert.EqualValues(t, 1000+10*50, requests, "Invalid number of requests")
+	assert.EqualValues(t, 1000+10*50, requests.Load(), "Invalid number of requests")
 }
