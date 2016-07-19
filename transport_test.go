@@ -97,6 +97,20 @@ func TestEnsureSameProtocol(t *testing.T) {
 	}
 }
 
+func TestLoadTransportHostPorts(t *testing.T) {
+	hostPortFile := writeFile(t, "hostPorts", "a:1\nb:2\nc:3")
+	defer os.Remove(hostPortFile)
+
+	opts, err := loadTransportHostPorts(TransportOptions{
+		HostPortFile: hostPortFile,
+	})
+	require.NoError(t, err, "Failed to load transports")
+
+	assert.Equal(t, TransportOptions{
+		HostPorts: []string{"a:1", "b:2", "c:3"},
+	}, opts, "Unexpected transport options")
+}
+
 func TestGetTransport(t *testing.T) {
 	tests := []struct {
 		opts   TransportOptions
