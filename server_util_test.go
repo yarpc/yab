@@ -22,9 +22,9 @@ package main
 
 import (
 	"errors"
-	"sync/atomic"
 	"testing"
 
+	"github.com/uber-go/atomic"
 	"github.com/uber/tchannel-go"
 	"github.com/uber/tchannel-go/raw"
 	"github.com/uber/tchannel-go/testutils"
@@ -111,10 +111,10 @@ func (methodsT) errorIf(f func() bool) handler {
 	}
 }
 
-func (methodsT) counter() (*int32, handler) {
-	var count int32
+func (methodsT) counter() (*atomic.Int32, handler) {
+	var count atomic.Int32
 	return &count, methods.errorIf(func() bool {
-		atomic.AddInt32(&count, 1)
+		count.Inc()
 		return false
 	})
 }
