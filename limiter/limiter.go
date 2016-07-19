@@ -12,6 +12,8 @@ import (
 type Run struct {
 	requestsLeft atomic.Int64
 	limiter      ratelimit.Limiter
+	cancel       chan struct{}
+	cancelled    atomic.Bool
 }
 
 // New returns
@@ -24,6 +26,7 @@ func New(maxRequests, rps int, maxDuration time.Duration) *Run {
 	r := &Run{
 		requestsLeft: *atomic.NewInt64(int64(maxRequests)),
 		limiter:      limiter,
+		cancel:       make(chan struct{}),
 	}
 	time.AfterFunc(maxDuration, r.Stop)
 
@@ -35,12 +38,17 @@ func New(maxRequests, rps int, maxDuration time.Duration) *Run {
 // limiter allows another request.
 func (r *Run) More() bool {
 	if r.requestsLeft.Load() >= 0 {
-		r.limiter.Take()
+		r.limiter.Take(r.cancel)
 	}
 	return r.requestsLeft.Dec() >= 0
 }
 
 // Stop will ensure that all future calls to More return false.
 func (r *Run) Stop() {
+	if r.cancelled.Swap(true) {
+		// Already stopped
+		return
+	}
 	r.requestsLeft.Store(0)
+	close(r.cancel)
 }

@@ -21,6 +21,7 @@
 package ratelimit
 
 import (
+	"math"
 	"sync"
 	"time"
 )
@@ -32,12 +33,14 @@ import (
 // The process is expected to call Take() before every iteration, which
 // may block to throttle the process.
 type Limiter interface {
-	// Take should block to make sure that the RPS is met.
-	Take()
+	// Take should block to make sure that the RPS is met before returning true.
+	// If the passed in channel is closed, Take should unblock and return false.
+	Take(cancel <-chan struct{}) bool
 }
 
 type timePeriod struct {
 	sync.Mutex
+	timer      *time.Timer
 	last       time.Time
 	sleepFor   time.Duration
 	perRequest time.Duration
@@ -49,12 +52,13 @@ func New(rps int) Limiter {
 	return &timePeriod{
 		perRequest: time.Second / time.Duration(rps),
 		maxSlack:   -10 * time.Second / time.Duration(rps),
+		timer:      time.NewTimer(time.Duration(math.MaxInt64)),
 	}
 }
 
 // Take blocks to ensure that the time spent between multiple
 // Take calls is on average time.Second/rps.
-func (t *timePeriod) Take() {
+func (t *timePeriod) Take(cancel <-chan struct{}) bool {
 	t.Lock()
 	defer t.Unlock()
 
@@ -62,7 +66,7 @@ func (t *timePeriod) Take() {
 	cur := time.Now()
 	if t.last.IsZero() {
 		t.last = cur
-		return
+		return true
 	}
 
 	// sleepFor calculates how much time we should sleep based on
@@ -81,10 +85,18 @@ func (t *timePeriod) Take() {
 
 	// If sleepFor is positive, then we should sleep now.
 	if t.sleepFor > 0 {
-		time.Sleep(t.sleepFor)
+		t.timer.Reset(t.sleepFor)
+		select {
+		case <-t.timer.C:
+		case <-cancel:
+			return false
+		}
+
 		t.last = cur.Add(t.sleepFor)
 		t.sleepFor = 0
 	}
+
+	return true
 }
 
 type dummy struct{}
@@ -94,4 +106,4 @@ func NewInfinite() Limiter {
 	return dummy{}
 }
 
-func (dummy) Take() {}
+func (dummy) Take(_ <-chan struct{}) bool { return true }
