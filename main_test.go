@@ -289,6 +289,17 @@ func TestHelpOutput(t *testing.T) {
 	}
 }
 
+func TestManPage(t *testing.T) {
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+
+	os.Args = []string{"yab", "--man-page"}
+
+	buf, out := getOutput(t)
+	parseAndRun(out)
+	assert.Contains(t, buf.String(), "SYNOPSIS")
+}
+
 func TestVersion(t *testing.T) {
 	origArgs := os.Args
 	defer func() { os.Args = origArgs }()

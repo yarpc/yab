@@ -4,9 +4,6 @@
 `yab` (Yet Another Benchmarker) is tool to benchmark YARPC services. It currently
 supports making Thrift requests to both HTTP and TChannel services.
 
-**NOTE**: HTTP support is not cross-compatible with Apache Thrift yet, due to
-missing message envelope support.
-
 `yab` is currently in **beta** status.
 
 
@@ -25,29 +22,59 @@ This will install `yab` to `$GOPATH/bin/yab`.
 Usage:
   yab [<service> <method> <body>] [OPTIONS]
 
+
+Application Options:
+      --version                  Displays the application version
+
 Request Options:
-  -t, --thrift=      Path of the .thrift file
-  -m, --method=      The full Thrift method name (Svc::Method) to invoke
-  -r, --request=     The request body, in JSON format
-  -f, --file=        Path of a file containing the request body in JSON
+  -e, --encoding=                The encoding of the data, options are: Thrift,
+                                 JSON, raw. Defaults to Thrift if the method
+                                 contains '::' or a Thrift file is specified
+  -t, --thrift=                  Path of the .thrift file
+  -m, --method=                  The full Thrift method name (Svc::Method) to
+                                 invoke
+  -r, --request=                 The request body, in JSON or YAML format
+  -f, --file=                    Path of a file containing the request body in
+                                 JSON or YAML
+      --headers=                 The headers in JSON or YAML format
+      --headers-file=            Path of a file containing the headers in JSON
+                                 or YAML
+      --health                   Hit the health endpoint, Meta::health
+      --timeout=                 The timeout for each request. E.g., 100ms,
+                                 0.5s, 1s. If no unit is specified,
+                                 milliseconds are assumed. (default: 1s)
+      --disable-thrift-envelope  Disables Thrift envelopes (disabled by default
+                                 for TChannel)
 
 Transport Options:
-  -s, --service=     The TChannel/Hyperbahn service name
-  -p, --peer=        The host:port of the service to call
-  -P, --peer-list=   Path of a JSON file containing a list of host:ports
+  -s, --service=                 The TChannel/Hyperbahn service name
+  -p, --peer=                    The host:port of the service to call
+  -P, --peer-list=               Path of a JSON or YAML file containing a list
+                                 of host:ports
+      --caller=                  Caller will override the default caller name
+                                 (which is yab-$USER).
+      --topt=                    Custom options for the specific transport
+                                 being used
 
 Benchmark Options:
-  -n, --maxRequests= The maximum number of requests to make (default: 1000000)
-  -d, --maxDuration= The maximum amount of time to run the benchmark for (default: 0s)
-      --cpus=        The number of OS threads
-      --connections= The number of TCP connections to use
-      --concurrency= The number of concurrent calls per connection (default: 1)
-      --rps=         Limit on the number of requests per second. The default (0) is no limit. (default: 0)
-      --statsd=      Optional host:port of a StatsD server to report metrics
+  -n, --max-requests=            The maximum number of requests to make
+                                 (default: 1000000)
+  -d, --max-duration=            The maximum amount of time to run the
+                                 benchmark for (default: 0s)
+      --cpus=                    The number of OS threads
+      --connections=             The number of TCP connections to use
+      --warmup=                  The number of requests to make to warmup each
+                                 connection (default: 10)
+      --concurrency=             The number of concurrent calls per connection
+                                 (default: 1)
+      --rps=                     Limit on the number of requests per second.
+                                 The default (0) is no limit. (default: 0)
+      --statsd=                  Optional host:port of a StatsD server to
+                                 report metrics
 
 Help Options:
-  -h, --help         Show this help message
-  ```
+  -h, --help                     Show this help message
+```
 
 ### Making a single request
 

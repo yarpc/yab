@@ -1,4 +1,4 @@
-.TH yab 1 "15 July 2016"
+.TH yab 1 "20 July 2016"
 .SH NAME
 yab \- yet another benchmarker
 .SH SYNOPSIS
@@ -176,6 +176,9 @@ Hit the health endpoint, Meta::health
 .TP
 \fB\fB\-\-timeout\fR <default: \fI"1s"\fR>\fP
 The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds are assumed.
+.TP
+\fB\fB\-\-disable-thrift-envelope\fR\fP
+Disables Thrift envelopes (disabled by default for TChannel)
 .SS Transport Options
 Configures the network transport used to make requests.
 .PP
