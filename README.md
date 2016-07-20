@@ -26,12 +26,10 @@ Usage:
 Application Options:
       --version                  Displays the application version
 
-
 Request Options:
-  -e, --encoding=                The encoding of the data, options are:
-                                 Thrift, JSON, raw. Defaults to Thrift if the
-                                 method contains '::' or a Thrift file is
-                                 specified
+  -e, --encoding=                The encoding of the data, options are: Thrift,
+                                 JSON, raw. Defaults to Thrift if the method
+                                 contains '::' or a Thrift file is specified
   -t, --thrift=                  Path of the .thrift file
   -m, --method=                  The full Thrift method name (Svc::Method) to
                                  invoke
@@ -45,8 +43,8 @@ Request Options:
       --timeout=                 The timeout for each request. E.g., 100ms,
                                  0.5s, 1s. If no unit is specified,
                                  milliseconds are assumed. (default: 1s)
-      --disable-thrift-envelope  Disables Thrift envelopes (disabled by
-                                 default for TChannel)
+      --disable-thrift-envelope  Disables Thrift envelopes (disabled by default
+                                 for TChannel)
 
 Transport Options:
   -s, --service=                 The TChannel/Hyperbahn service name
