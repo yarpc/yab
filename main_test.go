@@ -241,6 +241,32 @@ func TestBenchmarkIntegration(t *testing.T) {
 	main()
 }
 
+// Regression test https://github.com/yarpc/yab/issues/73
+func TestBenchmarkLowRPSDuration(t *testing.T) {
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+
+	// Create a server with the Meta::health endpoint.
+	server := newServer(t)
+	thrift.NewServer(server.ch)
+	defer server.shutdown()
+
+	os.Args = []string{
+		"yab",
+		"foo",
+		"-p", server.hostPort(),
+		"--health",
+		"--connections", "3",
+		"-d", "100ms",
+		"--rps", "1",
+	}
+
+	start := time.Now()
+	main()
+	duration := time.Since(start)
+	assert.True(t, duration < 200*time.Millisecond, "Expected 100ms benchmark to complete within 200ms, took %v", duration)
+}
+
 func TestHelpOutput(t *testing.T) {
 	origArgs := os.Args
 	defer func() { os.Args = origArgs }()
@@ -261,6 +287,17 @@ func TestHelpOutput(t *testing.T) {
 		// Make sure we didn't leak any groff from the man-page output.
 		assert.NotContains(t, buf.String(), ".PP")
 	}
+}
+
+func TestManPage(t *testing.T) {
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+
+	os.Args = []string{"yab", "--man-page"}
+
+	buf, out := getOutput(t)
+	parseAndRun(out)
+	assert.Contains(t, buf.String(), "SYNOPSIS")
 }
 
 func TestVersion(t *testing.T) {

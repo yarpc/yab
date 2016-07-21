@@ -23,7 +23,6 @@ package main
 import (
 	"fmt"
 	"math/rand"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -32,6 +31,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/uber-go/atomic"
 	"github.com/uber/tchannel-go/testutils"
 )
 
@@ -211,7 +211,7 @@ func TestBenchmarkMethodWarmTransportsSuccess(t *testing.T) {
 	const numServers = 5
 	m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
 
-	counters := make([]*int32, numServers)
+	counters := make([]*atomic.Int32, numServers)
 	servers := make([]*server, numServers)
 	serverHPs := make([]string, numServers)
 	for i := range servers {
@@ -237,7 +237,7 @@ func TestBenchmarkMethodWarmTransportsSuccess(t *testing.T) {
 
 	// Verify that each server has received one call.
 	for i, counter := range counters {
-		assert.EqualValues(t, 1, *counter, "Server %v received unexpected number of calls", i)
+		assert.EqualValues(t, 1, counter.Load(), "Server %v received unexpected number of calls", i)
 	}
 }
 
@@ -277,9 +277,9 @@ func TestBenchmarkMethodWarmTransportsError(t *testing.T) {
 		msg := fmt.Sprintf("success: %v warmup: %v", tt.success, tt.warmup)
 
 		// Simple::foo will succeed for tt requests, then start failing.
-		var counter int32
+		var counter atomic.Int32
 		s.register(fooMethod, methods.errorIf(func() bool {
-			return atomic.AddInt32(&counter, 1) > int32(tt.success)
+			return counter.Inc() > int32(tt.success)
 		}))
 
 		tOpts := TransportOptions{

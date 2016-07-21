@@ -3,7 +3,6 @@ import:
 - package: github.com/jessevdk/go-flags
   version: master
 - package: github.com/thriftrw/thriftrw-go
-  # TODO: Update to handle removal of wire.{List,Set,Map}
   version: d511d45b9dbe1e412b663ca6186118ad52da2fb8
   subpackages:
   - ast
@@ -29,3 +28,5 @@ import:
   subpackages:
   - lib/go/thrift
 - package: github.com/casimir/xdg-go
+- package: github.com/uber-go/atomic
+  version: v1.0.0

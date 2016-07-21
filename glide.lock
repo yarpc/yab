@@ -1,12 +1,12 @@
-hash: 0badca56130abf1fc7d731d7e6b3adc1e974185c6d63431ac32ec36c7671e2a6
-updated: 2016-07-08T16:43:42.1722035-07:00
+hash: 6e02d73875fcb491b363e83f556d4d9d5fc4ca19f3931cc3ff9e9cf84b44e636
+updated: 2016-07-19T00:05:03.247702869-07:00
 imports:
 - name: github.com/apache/thrift
-  version: 39a09ac5e49481d39dd1bcb6757ffe182e3df20a
+  version: 1654fe99aff4dc69c52ba361124ead1734cd9be8
   subpackages:
   - lib/go/thrift
 - name: github.com/cactus/go-statsd-client
-  version: 725f76bd0300c1f9562e76fd94c27aa17e41243e
+  version: 91c326c3f7bd20f0226d3d1c289dd9f8ce28d33d
   subpackages:
   - statsd
 - name: github.com/casimir/xdg-go
@@ -16,13 +16,13 @@ imports:
   subpackages:
   - spew
 - name: github.com/jessevdk/go-flags
-  version: b9b882a3990882b05e02765f5df2cd3ad02874ee
+  version: f2785f5820ec967043de79c8be97edfc464ca745
 - name: github.com/pmezard/go-difflib
-  version: e8554b8641db39598be7f6342874b958f12ae1d4
+  version: 792786c7400a136282c1664665ae0a8db921c6c2
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
-  version: e3a8ff8ce36581f87a15341206f205b1da467059
+  version: d77da356e56a7428ad25149ca77381849a6a5232
   subpackages:
   - assert
   - require
@@ -38,18 +38,26 @@ imports:
   - envelope/internal/exception
   - protocol/binary
   - idl/internal
+- name: github.com/uber-go/atomic
+  version: 0c9e689d64f004564b79d9a663634756df322902
 - name: github.com/uber/tchannel-go
-  version: 521248db9bf9eb98e86f0d5334e56a890b6a559b
+  version: 21ec325d59112f48506f6d871d3638f6f6571b48
   subpackages:
   - thrift
-  - atomic
+  - raw
+  - testutils
+  - json
+  - relay
   - tnet
+  - trand
   - typed
   - thrift/gen-go/meta
+  - relay/relaytest
+  - testutils/goroutines
 - name: golang.org/x/net
-  version: c4c3ea71919de159c9e246d7be66deb7f0a39a58
+  version: 3797cd8864994d713d909eda5e61ede8683fdc12
   subpackages:
   - context
 - name: gopkg.in/yaml.v2
-  version: a83829b6f1293c91addabc89d0571c246397bbf4
-devImports: []
+  version: e4d366fc3c7938e2958e662b4258c7a89e1f0e3e
+testImports: []

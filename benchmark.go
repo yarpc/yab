@@ -71,6 +71,14 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 		return
 	}
 
+	if opts.RPS > 0 {
+		// The RPS * duration in seconds may cap opts.MaxRequests.
+		rpsMax := int(float64(opts.RPS) * opts.MaxDuration.Seconds())
+		if rpsMax < opts.MaxRequests {
+			opts.MaxRequests = rpsMax
+		}
+	}
+
 	goMaxProcs := opts.setGoMaxProcs()
 	numConns := opts.getNumConnections(goMaxProcs)
 	out.Printf("Benchmark parameters:\n")

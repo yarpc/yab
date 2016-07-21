@@ -48,10 +48,10 @@ func findGroup(parser *flags.Parser, group string) *flags.Group {
 	panic("no group called " + group + " found.")
 }
 
-func setGroupDesc(parser *flags.Parser, groupName, newName, desc string) {
+func setGroupDescs(parser *flags.Parser, groupName, shortDesc, longDesc string) {
 	g := findGroup(parser, groupName)
-	g.ShortDescription = newName
-	g.LongDescription = desc
+	g.ShortDescription = shortDesc
+	g.LongDescription = longDesc
 }
 
 func fromPositional(args []string, index int, s *string) bool {
@@ -117,6 +117,10 @@ Default options can be specified in a ~/.config/yab/defaults.ini file with conte
 	warmup = 10
 `
 
+	setGroupDescs(parser, "request", "Request Options", toGroff(_reqOptsDesc))
+	setGroupDescs(parser, "transport", "Transport Options", toGroff(_transportOptsDesc))
+	setGroupDescs(parser, "benchmark", "Benchmark Options", toGroff(_benchmarkOptsDesc))
+
 	// If there are no arguments specified, write the help.
 	if len(args) == 0 {
 		parser.WriteHelp(out)
@@ -147,10 +151,7 @@ Default options can be specified in a ~/.config/yab/defaults.ini file with conte
 
 	if opts.ManPage {
 		parser.LongDescription = toGroff(parser.LongDescription)
-		setGroupDesc(parser, "request", "Request Options", toGroff(_reqOptsDesc))
-		setGroupDesc(parser, "transport", "Transport Options", toGroff(_transportOptsDesc))
-		setGroupDesc(parser, "benchmark", "Benchmark Options", toGroff(_benchmarkOptsDesc))
-		parser.WriteManPage(os.Stdout)
+		parser.WriteManPage(out)
 		return opts, errExit
 	}
 
