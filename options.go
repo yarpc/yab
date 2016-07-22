@@ -39,16 +39,19 @@ type Options struct {
 
 // RequestOptions are request related options
 type RequestOptions struct {
-	Encoding               encoding.Encoding `short:"e" long:"encoding" description:"The encoding of the data, options are: Thrift, JSON, raw. Defaults to Thrift if the method contains '::' or a Thrift file is specified"`
-	ThriftFile             string            `short:"t" long:"thrift" description:"Path of the .thrift file"`
-	MethodName             string            `short:"m" long:"method" description:"The full Thrift method name (Svc::Method) to invoke"`
-	RequestJSON            string            `short:"r" long:"request" description:"The request body, in JSON or YAML format"`
-	RequestFile            string            `short:"f" long:"file" description:"Path of a file containing the request body in JSON or YAML"`
-	HeadersJSON            string            `long:"headers" description:"The headers in JSON or YAML format"`
-	HeadersFile            string            `long:"headers-file" description:"Path of a file containing the headers in JSON or YAML"`
-	Health                 bool              `long:"health" description:"Hit the health endpoint, Meta::health"`
-	Timeout                timeMillisFlag    `long:"timeout" default:"1s" description:"The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds are assumed."`
-	DisableThriftEnvelopes bool              `long:"disable-thrift-envelope" description:"Disables Thrift envelopes (disabled by default for TChannel)"`
+	Encoding    encoding.Encoding `short:"e" long:"encoding" description:"The encoding of the data, options are: Thrift, JSON, raw. Defaults to Thrift if the method contains '::' or a Thrift file is specified"`
+	ThriftFile  string            `short:"t" long:"thrift" description:"Path of the .thrift file"`
+	MethodName  string            `short:"m" long:"method" description:"The full Thrift method name (Svc::Method) to invoke"`
+	RequestJSON string            `short:"r" long:"request" description:"The request body, in JSON or YAML format"`
+	RequestFile string            `short:"f" long:"file" description:"Path of a file containing the request body in JSON or YAML"`
+	HeadersJSON string            `long:"headers" description:"The headers in JSON or YAML format"`
+	HeadersFile string            `long:"headers-file" description:"Path of a file containing the headers in JSON or YAML"`
+	Health      bool              `long:"health" description:"Hit the health endpoint, Meta::health"`
+	Timeout     timeMillisFlag    `long:"timeout" default:"1s" description:"The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds are assumed."`
+
+	// Thrift options
+	ThriftDisableEnvelopes bool `long:"disable-thrift-envelope" description:"Disables Thrift envelopes (disabled by default for TChannel)"`
+	ThriftMultiplexed      bool `long:"multiplexed-thrift" description:"Enables the Thrift TMultiplexedProtocol used by services that host multiple Thrift services on a single endpoint."`
 
 	// These are aliases for tcurl compatibility.
 	Aliases struct {

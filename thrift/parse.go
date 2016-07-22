@@ -72,7 +72,7 @@ func RequestToBytes(method *compile.FunctionSpec, request map[string]interface{}
 	if opts.UseEnvelopes {
 		// Sequence IDs are unused, so use the default, 0.
 		enveloped := wire.Envelope{
-			Name:  method.Name,
+			Name:  opts.EnvelopeMethodPrefix + method.Name,
 			Type:  wire.Call,
 			Value: wire.NewValueStruct(w),
 		}

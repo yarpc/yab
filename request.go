@@ -99,7 +99,7 @@ func NewSerializer(opts RequestOptions) (encoding.Serializer, error) {
 
 	switch e {
 	case encoding.Thrift:
-		return encoding.NewThrift(opts.ThriftFile, opts.MethodName)
+		return encoding.NewThrift(opts.ThriftFile, opts.MethodName, opts.ThriftMultiplexed)
 	case encoding.JSON:
 		return encoding.NewJSON(opts.MethodName), nil
 	case encoding.Raw:

@@ -33,6 +33,8 @@ import (
 	"github.com/thriftrw/thriftrw-go/compile"
 )
 
+const _multiplexedSeparator = ":"
+
 var defaultOpts = thrift.Options{UseEnvelopes: true}
 
 type thriftSerializer struct {
@@ -42,7 +44,7 @@ type thriftSerializer struct {
 }
 
 // NewThrift returns a Thrift serializer.
-func NewThrift(thriftFile, methodName string) (Serializer, error) {
+func NewThrift(thriftFile, methodName string, multiplexed bool) (Serializer, error) {
 	if thriftFile == "" {
 		return nil, errors.New("specify a Thrift file using --thrift")
 	}
@@ -70,7 +72,12 @@ func NewThrift(thriftFile, methodName string) (Serializer, error) {
 		return nil, err
 	}
 
-	return thriftSerializer{methodName, spec, defaultOpts}, nil
+	opts := defaultOpts
+	if multiplexed {
+		opts.EnvelopeMethodPrefix = thriftSvc + _multiplexedSeparator
+	}
+
+	return thriftSerializer{methodName, spec, opts}, nil
 }
 
 func (e thriftSerializer) Encoding() Encoding {

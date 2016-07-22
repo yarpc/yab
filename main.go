@@ -279,7 +279,7 @@ type noEnveloper interface {
 func withTransportSerializer(p transport.Protocol, s encoding.Serializer, rOpts RequestOptions) encoding.Serializer {
 	switch {
 	case p == transport.TChannel && s.Encoding() == encoding.Thrift,
-		rOpts.DisableThriftEnvelopes:
+		rOpts.ThriftDisableEnvelopes:
 		s = s.(noEnveloper).WithoutEnvelopes()
 	}
 	return s

@@ -542,7 +542,7 @@ func TestWithTransportSerializer(t *testing.T) {
 		MethodName: fooMethod,
 	}
 	noEnvelopeOpts := validRequestOpts
-	noEnvelopeOpts.DisableThriftEnvelopes = true
+	noEnvelopeOpts.ThriftDisableEnvelopes = true
 
 	tests := []struct {
 		protocol transport.Protocol

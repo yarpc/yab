@@ -38,6 +38,7 @@ func TestNewThriftSerializer(t *testing.T) {
 	tests := []struct {
 		desc         string
 		file, method string
+		multiplexed  bool
 		errMsg       string
 		errMsgs      []string
 	}{
@@ -78,10 +79,16 @@ func TestNewThriftSerializer(t *testing.T) {
 			file:   validThrift,
 			method: fooMethod,
 		},
+		{
+			desc:        "Valid Thrift file and method name multiplexed",
+			file:        validThrift,
+			method:      fooMethod,
+			multiplexed: true,
+		},
 	}
 
 	for _, tt := range tests {
-		got, err := NewThrift(tt.file, tt.method)
+		got, err := NewThrift(tt.file, tt.method, tt.multiplexed)
 		if tt.errMsg == "" {
 			assert.NoError(t, err, "%v", tt.desc)
 			if assert.NotNil(t, got, "%v: Invalid request") {
@@ -98,7 +105,7 @@ func TestNewThriftSerializer(t *testing.T) {
 }
 
 func TestRequest(t *testing.T) {
-	serializer, err := NewThrift(validThrift, "Simple::foo")
+	serializer, err := NewThrift(validThrift, "Simple::foo", false /* multiplexed */)
 	require.NoError(t, err, "Failed to create serializer")
 
 	tests := []struct {
@@ -245,17 +252,14 @@ func TestFindMethod(t *testing.T) {
 }
 
 func TestWithoutEnvelopes(t *testing.T) {
-	serializer, err := NewThrift(validThrift, "Simple::foo")
-	require.NoError(t, err, "Failed to create serializer")
-
 	tests := []struct {
-		desc       string
-		serializer Serializer
-		want       []byte
+		desc             string
+		multiplexed      bool
+		withoutEnvelopes bool
+		want             []byte
 	}{
 		{
-			desc:       "with envelope",
-			serializer: serializer,
+			desc: "with envelope",
 			want: []byte{
 				0x80, 0x01, 0x00, 0x01, // version | type = 1 | call
 				0x00, 0x00, 0x00, 0x03, 'f', 'o', 'o', // "foo"
@@ -264,14 +268,38 @@ func TestWithoutEnvelopes(t *testing.T) {
 			},
 		},
 		{
-			desc:       "without envelope",
-			serializer: serializer.(thriftSerializer).WithoutEnvelopes(),
-			want:       []byte{0x00},
+			desc:        "with envelope, multiplexed",
+			multiplexed: true,
+			want: []byte{
+				0x80, 0x01, 0x00, 0x01, // version | type = 1 | call
+				0x00, 0x00, 0x00, 0x0A, // length of method
+				'S', 'i', 'm', 'p', 'l', 'e', ':', 'f', 'o', 'o',
+				0x00, 0x00, 0x00, 0x00, // seqID
+				0x00, // empty struct
+			},
+		},
+		{
+			desc:             "without envelope",
+			withoutEnvelopes: true,
+			want:             []byte{0x00},
+		},
+		{
+			desc:             "without envelope, multiplexed",
+			multiplexed:      true, // has no effect when there are no envelopes.
+			withoutEnvelopes: true,
+			want:             []byte{0x00},
 		},
 	}
 
 	for _, tt := range tests {
-		got, err := tt.serializer.Request([]byte("{}"))
+		serializer, err := NewThrift(validThrift, "Simple::foo", tt.multiplexed)
+		require.NoError(t, err, "Failed to create serializer")
+
+		if tt.withoutEnvelopes {
+			serializer = serializer.(thriftSerializer).WithoutEnvelopes()
+		}
+
+		got, err := serializer.Request([]byte("{}"))
 		require.NoError(t, err, "%v: serialize failed", tt.desc)
 		assert.Equal(t, tt.want, got.Body, "%v: got unexpected bytes", tt.desc)
 	}
