@@ -22,7 +22,6 @@ This will install `yab` to `$GOPATH/bin/yab`.
 Usage:
   yab [<service> <method> <body>] [OPTIONS]
 
-
 Application Options:
       --version                  Displays the application version
 
@@ -45,6 +44,9 @@ Request Options:
                                  milliseconds are assumed. (default: 1s)
       --disable-thrift-envelope  Disables Thrift envelopes (disabled by default
                                  for TChannel)
+      --multiplexed-thrift       Enables the Thrift TMultiplexedProtocol used
+                                 by services that host multiple Thrift services
+                                 on a single endpoint.
 
 Transport Options:
   -s, --service=                 The TChannel/Hyperbahn service name
