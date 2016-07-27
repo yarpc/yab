@@ -40,6 +40,14 @@ import (
 	"github.com/uber/tchannel-go/thrift"
 )
 
+const _configHomeEnv = "XDG_CONFIG_HOME"
+
+func init() {
+	// Set the config home so that tests don't inherit settings from the
+	// running user's config directories.
+	os.Setenv(_configHomeEnv, "./testdata/init/notfound")
+}
+
 func TestRunWithOptions(t *testing.T) {
 	validRequestOpts := RequestOptions{
 		ThriftFile: validThrift,
@@ -434,9 +442,8 @@ func TestAlises(t *testing.T) {
 }
 
 func TestParseIniFile(t *testing.T) {
-	configHomeEnv := "XDG_CONFIG_HOME"
-	originalConfigHome := os.Getenv(configHomeEnv)
-	defer os.Setenv(configHomeEnv, originalConfigHome)
+	originalConfigHome := os.Getenv(_configHomeEnv)
+	defer os.Setenv(_configHomeEnv, originalConfigHome)
 
 	tests := []struct {
 		message       string
@@ -458,13 +465,15 @@ func TestParseIniFile(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		os.Setenv(configHomeEnv, path.Join("testdata", "ini", tt.configPath))
-		parser, _ := newParser()
-		err := parseDefaultConfigs(parser)
+		os.Setenv(_configHomeEnv, path.Join("testdata", "ini", tt.configPath))
+
+		_, out := getOutput(t)
+		_, err := getOptions(nil, out)
 		if tt.expectedError == "" {
-			assert.NoError(t, err, tt.message)
+			// Since we pass no args, getOptions will print the help and return errExit.
+			assert.Equal(t, errExit, err, tt.message)
 		} else {
-			assert.EqualError(t, err, tt.expectedError, tt.message)
+			assert.EqualError(t, err, "error reading defaults: "+tt.expectedError, tt.message)
 		}
 	}
 }
