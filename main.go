@@ -117,6 +117,11 @@ Default options can be specified in a ~/.config/yab/defaults.ini file with conte
 	warmup = 10
 `
 
+	// Read defaults if they're available, before we change the group names.
+	if err := parseDefaultConfigs(parser); err != nil {
+		return nil, fmt.Errorf("error reading defaults: %v", err)
+	}
+
 	setGroupDescs(parser, "request", "Request Options", toGroff(_reqOptsDesc))
 	setGroupDescs(parser, "transport", "Transport Options", toGroff(_transportOptsDesc))
 	setGroupDescs(parser, "benchmark", "Benchmark Options", toGroff(_benchmarkOptsDesc))
@@ -125,11 +130,6 @@ Default options can be specified in a ~/.config/yab/defaults.ini file with conte
 	if len(args) == 0 {
 		parser.WriteHelp(out)
 		return opts, errExit
-	}
-
-	// Read defaults if they're available.
-	if err := parseDefaultConfigs(parser); err != nil {
-		return nil, fmt.Errorf("error reading defaults: %v\n", err)
 	}
 
 	remaining, err := parser.ParseArgs(args)
