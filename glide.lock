@@ -1,8 +1,8 @@
-hash: 6e02d73875fcb491b363e83f556d4d9d5fc4ca19f3931cc3ff9e9cf84b44e636
-updated: 2016-07-19T00:05:03.247702869-07:00
+hash: 81380fb6c2d7a32bc83fb8fe15313d17b47dfb1082bd8d5b4a3a6f52fb675aa5
+updated: 2016-07-28T08:29:32.716799534-07:00
 imports:
 - name: github.com/apache/thrift
-  version: 1654fe99aff4dc69c52ba361124ead1734cd9be8
+  version: bcad91771b7f0bff28a1cac1981d7ef2b9bcef3c
   subpackages:
   - lib/go/thrift
 - name: github.com/cactus/go-statsd-client
@@ -27,7 +27,7 @@ imports:
   - assert
   - require
 - name: github.com/thriftrw/thriftrw-go
-  version: d511d45b9dbe1e412b663ca6186118ad52da2fb8
+  version: 13abcf75760f008b6f92ee3185a9534e286b64a0
   subpackages:
   - ast
   - compile
@@ -41,7 +41,7 @@ imports:
 - name: github.com/uber-go/atomic
   version: 0c9e689d64f004564b79d9a663634756df322902
 - name: github.com/uber/tchannel-go
-  version: 21ec325d59112f48506f6d871d3638f6f6571b48
+  version: cddba8c9bdf3a761b261382a6d7e7253e332790c
   subpackages:
   - thrift
   - raw
@@ -55,7 +55,7 @@ imports:
   - relay/relaytest
   - testutils/goroutines
 - name: golang.org/x/net
-  version: 3797cd8864994d713d909eda5e61ede8683fdc12
+  version: 6a513affb38dc9788b449d59ffed099b8de18fa0
   subpackages:
   - context
 - name: gopkg.in/yaml.v2
