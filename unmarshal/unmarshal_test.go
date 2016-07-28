@@ -39,12 +39,12 @@ func mustRead(fname string) []byte {
 func TestJSON(t *testing.T) {
 	tests := []struct {
 		input   []byte
-		want    map[string]interface{}
+		want    interface{}
 		wantErr bool
 	}{
 		{
 			input: nil,
-			want:  map[string]interface{}{},
+			want:  nil,
 		},
 		{
 			input: []byte("{}"),
@@ -60,6 +60,14 @@ func TestJSON(t *testing.T) {
 		{
 			input:   []byte("{"),
 			wantErr: true,
+		},
+		{
+			input: []byte(`"hello"`),
+			want:  "hello",
+		},
+		{
+			input: []byte(`true`),
+			want:  true,
 		},
 	}
 
