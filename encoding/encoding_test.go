@@ -143,7 +143,7 @@ func TestJSONEncodingResponse(t *testing.T) {
 
 	tests := []struct {
 		data   string
-		want   map[string]interface{}
+		want   interface{}
 		errMsg string
 	}{
 		{
@@ -159,6 +159,14 @@ func TestJSONEncodingResponse(t *testing.T) {
 				"key": 123
 			}`,
 			want: map[string]interface{}{"key": json.Number("123")},
+		},
+		{
+			data: `1`,
+			want: json.Number("1"),
+		},
+		{
+			data: `"hello world"`,
+			want: "hello world",
 		},
 	}
 
