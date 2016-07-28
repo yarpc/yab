@@ -266,15 +266,14 @@ func TestParseRequest(t *testing.T) {
 			},
 			want: []wire.Field{{
 				ID: 13,
-				Value: wire.NewValueList(wire.List{
-					ValueType: wire.TBinary,
-					Size:      3,
-					Items: wire.ValueListFromSlice([]wire.Value{
+				Value: wire.NewValueList(wire.ValueListFromSlice(
+					wire.TBinary,
+					[]wire.Value{
 						wire.NewValueString("a"),
 						wire.NewValueString("b"),
 						wire.NewValueString("c"),
-					}),
-				}),
+					},
+				)),
 			}},
 		},
 		{
@@ -297,15 +296,14 @@ func TestParseRequest(t *testing.T) {
 			},
 			want: []wire.Field{{
 				ID: 14,
-				Value: wire.NewValueSet(wire.Set{
-					ValueType: wire.TBinary,
-					Size:      3,
-					Items: wire.ValueListFromSlice([]wire.Value{
+				Value: wire.NewValueSet(wire.ValueListFromSlice(
+					wire.TBinary,
+					[]wire.Value{
 						wire.NewValueString("a"),
 						wire.NewValueString("b"),
 						wire.NewValueString("c"),
-					}),
-				}),
+					},
+				)),
 			}},
 		},
 		{
@@ -318,16 +316,15 @@ func TestParseRequest(t *testing.T) {
 			},
 			want: []wire.Field{{
 				ID: 15,
-				Value: wire.NewValueMap(wire.Map{
-					KeyType:   wire.TBinary,
-					ValueType: wire.TI32,
-					Size:      3,
-					Items: wire.MapItemListFromSlice([]wire.MapItem{
+				Value: wire.NewValueMap(wire.MapItemListFromSlice(
+					wire.TBinary,
+					wire.TI32,
+					[]wire.MapItem{
 						{wire.NewValueString("a"), wire.NewValueI32(1)},
 						{wire.NewValueString("b"), wire.NewValueI32(2)},
 						{wire.NewValueString("c"), wire.NewValueI32(3)},
-					}),
-				}),
+					},
+				)),
 			}},
 		},
 		{
@@ -339,15 +336,14 @@ func TestParseRequest(t *testing.T) {
 			},
 			want: []wire.Field{{
 				ID: 16,
-				Value: wire.NewValueMap(wire.Map{
-					KeyType:   wire.TI32,
-					ValueType: wire.TI32,
-					Size:      2,
-					Items: wire.MapItemListFromSlice([]wire.MapItem{
+				Value: wire.NewValueMap(wire.MapItemListFromSlice(
+					wire.TI32,
+					wire.TI32,
+					[]wire.MapItem{
 						{wire.NewValueI32(2), wire.NewValueI32(1)},
 						{wire.NewValueI32(1), wire.NewValueI32(2)},
-					}),
-				}),
+					},
+				)),
 			}},
 		},
 		{
@@ -359,15 +355,14 @@ func TestParseRequest(t *testing.T) {
 			},
 			want: []wire.Field{{
 				ID: 16,
-				Value: wire.NewValueMap(wire.Map{
-					KeyType:   wire.TI32,
-					ValueType: wire.TI32,
-					Size:      2,
-					Items: wire.MapItemListFromSlice([]wire.MapItem{
+				Value: wire.NewValueMap(wire.MapItemListFromSlice(
+					wire.TI32,
+					wire.TI32,
+					[]wire.MapItem{
 						{wire.NewValueI32(2), wire.NewValueI32(1)},
 						{wire.NewValueI32(1), wire.NewValueI32(2)},
-					}),
-				}),
+					},
+				)),
 			}},
 		},
 		{
