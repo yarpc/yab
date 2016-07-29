@@ -59,7 +59,7 @@ func TestRunWithOptions(t *testing.T) {
 		desc   string
 		opts   Options
 		errMsg string
-		want   string
+		wants  []string
 	}{
 		{
 			desc:   "No thrift file, fail to get method spec",
@@ -133,7 +133,11 @@ func TestRunWithOptions(t *testing.T) {
 					HostPorts:   []string{echoServer(t, fooMethod, nil)},
 				},
 			},
-			want: "{}",
+			wants: []string{
+				"{}",
+				`"ok": true`,
+				`"trace": "`,
+			},
 		},
 	}
 
@@ -167,7 +171,9 @@ func TestRunWithOptions(t *testing.T) {
 		}
 
 		assert.Empty(t, errBuf.String(), "%v: should not error", tt.desc)
-		assert.Contains(t, outBuf.String(), tt.want, "%v: expected output", tt.desc)
+		for _, want := range tt.wants {
+			assert.Contains(t, outBuf.String(), want, "%v: expected output", tt.desc)
+		}
 	}
 }
 

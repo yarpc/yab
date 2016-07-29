@@ -130,7 +130,7 @@ func (t *tchan) Call(ctx context.Context, r *Request) (*Response, error) {
 	}
 
 	span := tchannel.CurrentSpan(ctx)
-	res.Trace = fmt.Sprintf("%x", span.TraceID())
+	res.TransportFields["trace"] = fmt.Sprintf("%x", span.TraceID())
 	return res, nil
 }
 
@@ -180,6 +180,9 @@ func (t *tchan) readResponse(call *tchannel.OutboundCall) (*Response, error) {
 	return &Response{
 		Headers: headers,
 		Body:    responseBytes,
+		TransportFields: map[string]interface{}{
+			"ok": !response.ApplicationError(),
+		},
 	}, nil
 }
 
