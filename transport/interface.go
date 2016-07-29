@@ -38,7 +38,9 @@ type Request struct {
 type Response struct {
 	Headers map[string]string
 	Body    []byte
-	Trace   string
+
+	// TransportFields contains fields that are transport-specific.
+	TransportFields map[string]interface{}
 }
 
 // Protocol represents the wire protocol used to send the request.

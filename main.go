@@ -255,8 +255,8 @@ func runWithOptions(opts Options, out output) {
 	if len(response.Headers) > 0 {
 		outSerialized["headers"] = response.Headers
 	}
-	if response.Trace != "" {
-		outSerialized["trace"] = response.Trace
+	for k, v := range response.TransportFields {
+		outSerialized[k] = v
 	}
 	bs, err := json.MarshalIndent(outSerialized, "", "  ")
 	if err != nil {
