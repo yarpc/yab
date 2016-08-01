@@ -29,7 +29,7 @@ install_ci: install
 .PHONY: update_man
 update_man:
 	go install .
-	yab --man-page > man/yab.1
+	$$GOPATH/bin/yab --man-page > man/yab.1
 	groff -man -T html man/yab.1 > man/yab.html
 	[[ -d ../yab_ghpages ]] && cp man/yab.html ../yab_ghpages/man.html
 	@echo "Please update gh-pages"

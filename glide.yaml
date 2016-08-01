@@ -3,7 +3,7 @@ import:
 - package: github.com/jessevdk/go-flags
   version: master
 - package: github.com/thriftrw/thriftrw-go
-  version: d511d45b9dbe1e412b663ca6186118ad52da2fb8
+  version: 13abcf75760f008b6f92ee3185a9534e286b64a0
   subpackages:
   - ast
   - compile

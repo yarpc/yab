@@ -37,17 +37,13 @@ func makeWireList(t wire.Type, num int, f func(i int) wire.Value) wire.Value {
 		elems[i] = f(i)
 	}
 
-	return wire.NewValueList(wire.List{
-		ValueType: t,
-		Size:      num,
-		Items:     wire.ValueListFromSlice(elems),
-	})
+	return wire.NewValueList(wire.ValueListFromSlice(t, elems))
 }
 
 func makeWireSet(t wire.Type, num int, f func(i int) wire.Value) wire.Value {
 	// Since wire.Set and wire.List are the exact same type, we can cast between them.
 	vlist := makeWireList(t, num, f)
-	return wire.NewValueSet(wire.Set(vlist.GetList()))
+	return wire.NewValueSet(vlist.GetList())
 }
 
 func makeWireMap(keyType, valueType wire.Type, num int, f func(i int) (key, value wire.Value)) wire.Value {
@@ -57,12 +53,7 @@ func makeWireMap(keyType, valueType wire.Type, num int, f func(i int) (key, valu
 		elems[i] = wire.MapItem{Key: k, Value: v}
 	}
 
-	return wire.NewValueMap(wire.Map{
-		KeyType:   keyType,
-		ValueType: valueType,
-		Size:      num,
-		Items:     wire.MapItemListFromSlice(elems),
-	})
+	return wire.NewValueMap(wire.MapItemListFromSlice(keyType, valueType, elems))
 }
 
 func TestValueFromWireSuccess(t *testing.T) {

@@ -72,9 +72,9 @@ func valueFromWireStruct(spec *compile.StructSpec, w wire.Struct) (map[string]in
 	return result, nil
 }
 
-func valueFromWireList(spec *compile.ListSpec, w wire.List) ([]interface{}, error) {
-	result := make([]interface{}, w.Size)
-	values := wire.ValueListToSlice(w.Items, w.Size)
+func valueFromWireList(spec *compile.ListSpec, w wire.ValueList) ([]interface{}, error) {
+	result := make([]interface{}, w.Size())
+	values := wire.ValueListToSlice(w)
 	for i, v := range values {
 		var err error
 		result[i], err = valueFromWire(spec.ValueSpec, v)
@@ -85,16 +85,16 @@ func valueFromWireList(spec *compile.ListSpec, w wire.List) ([]interface{}, erro
 	return result, nil
 }
 
-func valueFromWireSet(spec *compile.SetSpec, w wire.Set) ([]interface{}, error) {
+func valueFromWireSet(spec *compile.SetSpec, w wire.ValueList) ([]interface{}, error) {
 	// Since wire.Set and wire.List are exactly the same type, we can cast one to the other.
 	return valueFromWireList(&compile.ListSpec{
 		ValueSpec: spec.ValueSpec,
-	}, wire.List(w))
+	}, w)
 }
 
-func valueFromWireMap(spec *compile.MapSpec, w wire.Map) (map[string]interface{}, error) {
-	result := make(map[string]interface{}, w.Size)
-	values := wire.MapItemListToSlice(w.Items, w.Size)
+func valueFromWireMap(spec *compile.MapSpec, w wire.MapItemList) (map[string]interface{}, error) {
+	result := make(map[string]interface{}, w.Size())
+	values := wire.MapItemListToSlice(w)
 	for _, v := range values {
 		key, err := valueFromWire(spec.KeySpec, v.Key)
 		if err != nil {

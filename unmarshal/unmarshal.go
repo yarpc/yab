@@ -38,17 +38,17 @@ func YAML(bs []byte) (map[string]interface{}, error) {
 	return m, nil
 }
 
-// JSON unmarshals the given JSON input to a map.
-func JSON(bs []byte) (map[string]interface{}, error) {
+// JSON unmarshals the given JSON input to an interface{}.
+func JSON(bs []byte) (interface{}, error) {
 	// An empty body should produce an empty input map.
 	if len(bs) == 0 {
-		return make(map[string]interface{}), nil
+		return nil, nil
 	}
 
 	decoder := json.NewDecoder(bytes.NewReader(bs))
 	decoder.UseNumber()
 
-	var data map[string]interface{}
+	var data interface{}
 	if err := decoder.Decode(&data); err != nil {
 		return nil, fmt.Errorf("failed to parse JSON: %v", err)
 	}

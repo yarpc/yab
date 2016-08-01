@@ -81,25 +81,47 @@ func (httpHandler) Bar(arg int32) (int32, error) {
 }
 
 func TestIntegrationProtocols(t *testing.T) {
-	ch := setupTChannelIntegrationServer(t)
-	defer ch.Close()
-
-	httpServer := setupHTTPIntegrationServer(t)
-	defer httpServer.Close()
-
-	tests := []string{
-		ch.PeerInfo().HostPort,
-		httpServer.URL,
+	cases := []struct {
+		desc        string
+		setup       func() (hostPort string, shutdown func())
+		multiplexed bool
+	}{
+		{
+			desc: "TChannel",
+			setup: func() (hostPort string, shutdown func()) {
+				ch := setupTChannelIntegrationServer(t)
+				return ch.PeerInfo().HostPort, ch.Close
+			},
+		},
+		{
+			desc: "Non-multiplexed HTTP",
+			setup: func() (hostPort string, shutdown func()) {
+				httpServer := setupHTTPIntegrationServer(t, false /* multiplexed */)
+				return httpServer.URL, httpServer.Close
+			},
+		},
+		{
+			desc: "Multiplexed HTTP",
+			setup: func() (hostPort string, shutdown func()) {
+				httpServer := setupHTTPIntegrationServer(t, true /* multiplexed */)
+				return httpServer.URL, httpServer.Close
+			},
+			multiplexed: true,
+		},
 	}
 
-	for _, peer := range tests {
+	for _, c := range cases {
+		peer, shutdown := c.setup()
+		defer shutdown()
+
 		for _, tt := range integrationTests {
 			opts := Options{
 				ROpts: RequestOptions{
-					ThriftFile:  "testdata/integration.thrift",
-					MethodName:  "Foo::bar",
-					Timeout:     timeMillisFlag(time.Second),
-					RequestJSON: fmt.Sprintf(`{"arg": %v}`, tt.call),
+					ThriftFile:        "testdata/integration.thrift",
+					MethodName:        "Foo::bar",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       fmt.Sprintf(`{"arg": %v}`, tt.call),
+					ThriftMultiplexed: c.multiplexed,
 				},
 				TOpts: TransportOptions{
 					ServiceName: "foo",
@@ -108,8 +130,8 @@ func TestIntegrationProtocols(t *testing.T) {
 			}
 
 			gotOut, gotErr := runTestWithOpts(opts)
-			assert.Contains(t, gotOut, tt.wantRes, "Unexpected result for %v", tt.call)
-			assert.Contains(t, gotErr, tt.wantErr, "Unexpected error for %v", tt.call)
+			assert.Contains(t, gotOut, tt.wantRes, "%v: Unexpected result for %v", c.desc, tt.call)
+			assert.Contains(t, gotErr, tt.wantErr, "%v: Unexpected error for %v", c.desc, tt.call)
 		}
 	}
 }
@@ -146,9 +168,16 @@ func setupTChannelIntegrationServer(t *testing.T) *tchannel.Channel {
 	return ch
 }
 
-func setupHTTPIntegrationServer(t *testing.T) *httptest.Server {
+func setupHTTPIntegrationServer(t *testing.T, multiplexed bool) *httptest.Server {
+	var processor athrift.TProcessor = integration.NewFooProcessor(httpHandler{})
 	protocolFactory := athrift.NewTBinaryProtocolFactoryDefault()
-	processor := integration.NewFooProcessor(httpHandler{})
+
+	if multiplexed {
+		multiProcessor := athrift.NewTMultiplexedProcessor()
+		multiProcessor.RegisterProcessor("Foo", processor)
+		processor = multiProcessor
+	}
+
 	handler := athrift.NewThriftHandlerFunc(processor, protocolFactory, protocolFactory)
 	return httptest.NewServer(http.HandlerFunc(handler))
 }

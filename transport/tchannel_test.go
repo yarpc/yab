@@ -23,6 +23,7 @@ package transport
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -155,6 +156,7 @@ func TestTChannelCallSuccessRaw(t *testing.T) {
 	tests := []struct {
 		headers         map[string]string
 		arg2            []byte
+		appError        bool
 		responseHeaders map[string]string
 	}{
 		{
@@ -170,13 +172,16 @@ func TestTChannelCallSuccessRaw(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		var lastSpan uint64
 		testutils.RegisterFunc(svr, "echo", func(ctx context.Context, args *raw.Args) (*raw.Res, error) {
 			assert.False(t, tchannel.CurrentSpan(ctx).TracingEnabled(), "Tracing should be disabled")
+			lastSpan = tchannel.CurrentSpan(ctx).TraceID()
 
 			assert.Equal(t, tt.arg2, args.Arg2, "Arg2 mismatch")
 			return &raw.Res{
-				Arg2: args.Arg2,
-				Arg3: args.Arg3,
+				IsErr: tt.appError,
+				Arg2:  args.Arg2,
+				Arg3:  args.Arg3,
 			}, nil
 		})
 
@@ -193,6 +198,8 @@ func TestTChannelCallSuccessRaw(t *testing.T) {
 
 		assert.Equal(t, req.Headers, res.Headers, "Response headers mismatch")
 		assert.Equal(t, req.Body, res.Body, "Response body mismatch")
+		assert.Equal(t, !tt.appError, res.TransportFields["ok"], "Response should be ok")
+		assert.Equal(t, fmt.Sprintf("%x", lastSpan), res.TransportFields["trace"], "Response trace")
 	}
 }
 

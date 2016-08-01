@@ -22,5 +22,6 @@ package thrift
 
 // Options controls the serialization of the Thrift request/response.
 type Options struct {
-	UseEnvelopes bool
+	UseEnvelopes         bool
+	EnvelopeMethodPrefix string
 }

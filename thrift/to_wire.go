@@ -73,27 +73,23 @@ func structToValue(fieldGroup compile.FieldGroup, value interface{}) (wire.Struc
 	return wire.Struct{Fields: fields}, nil
 }
 
-func listToValue(t string, spec compile.TypeSpec, value interface{}) (wire.List, error) {
+func listToValue(t string, spec compile.TypeSpec, value interface{}) (wire.ValueList, error) {
 	valueList, ok := value.([]interface{})
 	if !ok {
-		return wire.List{}, fmt.Errorf("%v must be specified using list[*]", t)
+		return nil, fmt.Errorf("%v must be specified using list[*]", t)
 	}
 
 	values := make([]wire.Value, len(valueList))
 	for i, v := range valueList {
 		wv, err := toWireValue(spec, v)
 		if err != nil {
-			return wire.List{}, fmt.Errorf("%v item failed: %v", t, err)
+			return nil, fmt.Errorf("%v item failed: %v", t, err)
 		}
 
 		values[i] = wv
 	}
 
-	return wire.List{
-		ValueType: spec.TypeCode(),
-		Size:      len(values),
-		Items:     wire.ValueListFromSlice(values),
-	}, nil
+	return wire.ValueListFromSlice(spec.TypeCode(), values), nil
 }
 
 func convertStringMap(m map[string]interface{}) map[interface{}]interface{} {
@@ -129,14 +125,14 @@ func convertMapKey(keySpec compile.TypeSpec, value interface{}) interface{} {
 // mapToValue converts a map from JSON to a wire.Map.
 // TODO: Allow specifying maps using a []MapItem form so the user
 // can cleanly use non-string/int keys.
-func mapToValue(keySpec, valueSpec compile.TypeSpec, value interface{}) (wire.Map, error) {
+func mapToValue(keySpec, valueSpec compile.TypeSpec, value interface{}) (wire.MapItemList, error) {
 	var valueMap map[interface{}]interface{}
 	if vm, ok := value.(map[interface{}]interface{}); ok {
 		valueMap = vm
 	} else if vm, ok := value.(map[string]interface{}); ok {
 		valueMap = convertStringMap(vm)
 	} else {
-		return wire.Map{}, errMapUnknownType
+		return nil, errMapUnknownType
 	}
 
 	items := make([]wire.MapItem, 0, len(valueMap))
@@ -144,12 +140,12 @@ func mapToValue(keySpec, valueSpec compile.TypeSpec, value interface{}) (wire.Ma
 		keyValue := convertMapKey(keySpec, k)
 		kw, err := toWireValue(keySpec, keyValue)
 		if err != nil {
-			return wire.Map{}, fmt.Errorf("map key (%v) failed: %v", k, err)
+			return nil, fmt.Errorf("map key (%v) failed: %v", k, err)
 		}
 
 		vw, err := toWireValue(valueSpec, v)
 		if err != nil {
-			return wire.Map{}, fmt.Errorf("map value (%v) for key (%v) failed: %v", v, k, err)
+			return nil, fmt.Errorf("map value (%v) for key (%v) failed: %v", v, k, err)
 		}
 
 		items = append(items, wire.MapItem{
@@ -158,12 +154,11 @@ func mapToValue(keySpec, valueSpec compile.TypeSpec, value interface{}) (wire.Ma
 		})
 	}
 
-	return wire.Map{
-		KeyType:   keySpec.TypeCode(),
-		ValueType: valueSpec.TypeCode(),
-		Size:      len(valueMap),
-		Items:     wire.MapItemListFromSlice(items),
-	}, nil
+	return wire.MapItemListFromSlice(
+		keySpec.TypeCode(),
+		valueSpec.TypeCode(),
+		items,
+	), nil
 }
 
 // checkStructValue checks that the given wire.Struct is valid for the given spec.
@@ -252,17 +247,17 @@ func toWireValue(spec compile.TypeSpec, value interface{}) (w wire.Value, err er
 		w = wire.NewValueStruct(structValue)
 	case wire.TList:
 		lspec := spec.(*compile.ListSpec)
-		var wireValue wire.List
+		var wireValue wire.ValueList
 		wireValue, err = listToValue("list", lspec.ValueSpec, value)
 		w = wire.NewValueList(wireValue)
 	case wire.TSet:
 		lspec := spec.(*compile.SetSpec)
-		var wireValue wire.List
+		var wireValue wire.ValueList
 		wireValue, err = listToValue("set", lspec.ValueSpec, value)
-		w = wire.NewValueSet(wire.Set(wireValue))
+		w = wire.NewValueSet(wireValue)
 	case wire.TMap:
 		mspec := spec.(*compile.MapSpec)
-		var wireValue wire.Map
+		var wireValue wire.MapItemList
 		wireValue, err = mapToValue(mspec.KeySpec, mspec.ValueSpec, value)
 		w = wire.NewValueMap(wireValue)
 	default:

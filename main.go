@@ -117,6 +117,11 @@ Default options can be specified in a ~/.config/yab/defaults.ini file with conte
 	warmup = 10
 `
 
+	// Read defaults if they're available, before we change the group names.
+	if err := parseDefaultConfigs(parser); err != nil {
+		return nil, fmt.Errorf("error reading defaults: %v", err)
+	}
+
 	setGroupDescs(parser, "request", "Request Options", toGroff(_reqOptsDesc))
 	setGroupDescs(parser, "transport", "Transport Options", toGroff(_transportOptsDesc))
 	setGroupDescs(parser, "benchmark", "Benchmark Options", toGroff(_benchmarkOptsDesc))
@@ -125,11 +130,6 @@ Default options can be specified in a ~/.config/yab/defaults.ini file with conte
 	if len(args) == 0 {
 		parser.WriteHelp(out)
 		return opts, errExit
-	}
-
-	// Read defaults if they're available.
-	if err := parseDefaultConfigs(parser); err != nil {
-		return nil, fmt.Errorf("error reading defaults: %v\n", err)
 	}
 
 	remaining, err := parser.ParseArgs(args)
@@ -255,8 +255,8 @@ func runWithOptions(opts Options, out output) {
 	if len(response.Headers) > 0 {
 		outSerialized["headers"] = response.Headers
 	}
-	if response.Trace != "" {
-		outSerialized["trace"] = response.Trace
+	for k, v := range response.TransportFields {
+		outSerialized[k] = v
 	}
 	bs, err := json.MarshalIndent(outSerialized, "", "  ")
 	if err != nil {
@@ -279,7 +279,7 @@ type noEnveloper interface {
 func withTransportSerializer(p transport.Protocol, s encoding.Serializer, rOpts RequestOptions) encoding.Serializer {
 	switch {
 	case p == transport.TChannel && s.Encoding() == encoding.Thrift,
-		rOpts.DisableThriftEnvelopes:
+		rOpts.ThriftDisableEnvelopes:
 		s = s.(noEnveloper).WithoutEnvelopes()
 	}
 	return s

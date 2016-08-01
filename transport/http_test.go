@@ -74,50 +74,67 @@ func TestHTTPCall(t *testing.T) {
 	timeoutCtx, _ := context.WithTimeout(context.Background(), 3*time.Second)
 
 	tests := []struct {
-		ctx    context.Context
-		r      *Request
-		errMsg string
-		ttlMin time.Duration
-		ttlMax time.Duration
+		ctx      context.Context
+		hook     string
+		r        *Request
+		errMsg   string
+		ttlMin   time.Duration
+		ttlMax   time.Duration
+		wantCode int
+		wantBody []byte // If nil, uses the request body
 	}{
 		{
-			ctx:    context.Background(),
-			r:      &Request{Method: "method", Body: []byte{1, 2, 3}},
-			ttlMin: time.Second,
-			ttlMax: time.Second,
+			ctx:      context.Background(),
+			r:        &Request{Method: "method", Body: []byte{1, 2, 3}},
+			ttlMin:   time.Second,
+			ttlMax:   time.Second,
+			wantCode: http.StatusOK,
 		},
 		{
-			ctx:    timeoutCtx,
-			r:      &Request{Method: "method", Body: []byte{1, 2, 3}},
-			ttlMin: 3*time.Second - 100*time.Millisecond,
-			ttlMax: 3 * time.Second,
+			ctx:      timeoutCtx,
+			r:        &Request{Method: "method", Body: []byte{1, 2, 3}},
+			ttlMin:   3*time.Second - 100*time.Millisecond,
+			ttlMax:   3 * time.Second,
+			wantCode: http.StatusOK,
 		},
 		{
-			ctx: context.Background(),
+			ctx:  context.Background(),
+			hook: "kill_conn",
 			r: &Request{
-				Method:  "method",
-				Body:    []byte{1, 2, 3},
-				Headers: map[string]string{"fail": "kill_conn"},
+				Method: "method",
+				Body:   []byte{1, 2, 3},
 			},
 			errMsg: "EOF",
 		},
 		{
-			ctx: context.Background(),
+			ctx:  context.Background(),
+			hook: "bad_req",
 			r: &Request{
-				Method:  "method",
-				Body:    []byte{1, 2, 3},
-				Headers: map[string]string{"fail": "bad_req"},
+				Method: "method",
+				Body:   []byte{1, 2, 3},
 			},
-			errMsg: "non-success response code: 400",
+			errMsg: "non-success response code: 400, body: bad request",
 		},
 		{
-			ctx: context.Background(),
+			ctx:  context.Background(),
+			hook: "flush_and_kill",
 			r: &Request{
-				Method:  "method",
-				Body:    []byte{1, 2, 3},
-				Headers: map[string]string{"fail": "flush_and_kill"},
+				Method: "method",
+				Body:   []byte{1, 2, 3},
 			},
 			errMsg: "unexpected EOF",
+		},
+		{
+			ctx:  context.Background(),
+			hook: "no_content",
+			r: &Request{
+				Method: "method",
+				Body:   []byte{1, 2, 3},
+			},
+			ttlMin:   time.Second,
+			ttlMax:   time.Second,
+			wantCode: http.StatusNoContent,
+			wantBody: []byte{},
 		},
 	}
 
@@ -129,11 +146,20 @@ func TestHTTPCall(t *testing.T) {
 
 	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
+		lastReq.url = r.URL
+		lastReq.headers = r.Header
+		lastReq.body, err = ioutil.ReadAll(r.Body)
+		require.NoError(t, err, "Failed to read body from request")
 
-		// Test hooks to make the request fail.
-		switch f := r.Header.Get("fail"); f {
+		// Test hooks to change hthe request behaviour.
+		switch f := r.Header.Get("hook"); f {
+		case "no_content":
+			w.Header().Set("Custom-Header", "ok")
+			w.WriteHeader(http.StatusNoContent)
+			return
 		case "bad_req":
 			w.WriteHeader(http.StatusBadRequest)
+			io.WriteString(w, "bad request")
 			return
 		case "server_err":
 			w.WriteHeader(http.StatusInternalServerError)
@@ -150,14 +176,6 @@ func TestHTTPCall(t *testing.T) {
 			return
 		}
 
-		lastReq.url = r.URL
-		lastReq.headers = r.Header
-		lastReq.body, err = ioutil.ReadAll(r.Body)
-		if err != nil {
-			io.WriteString(w, "failed")
-			return
-		}
-
 		w.Header().Set("Custom-Header", "ok")
 		io.WriteString(w, "ok")
 	}))
@@ -171,6 +189,7 @@ func TestHTTPCall(t *testing.T) {
 	require.NoError(t, err, "Failed to create HTTP transport")
 
 	for _, tt := range tests {
+		tt.r.Headers = map[string]string{"hook": tt.hook}
 		got, err := transport.Call(tt.ctx, tt.r)
 		if tt.errMsg != "" {
 			if assert.Error(t, err, "Call(%v, %v) should fail", tt.ctx, tt.r) {
@@ -183,7 +202,11 @@ func TestHTTPCall(t *testing.T) {
 			continue
 		}
 
-		if !assert.Equal(t, []byte("ok"), got.Body) {
+		wantBody := tt.wantBody
+		if wantBody == nil {
+			wantBody = []byte("ok")
+		}
+		if !assert.Equal(t, wantBody, got.Body, "Response body mismatch") {
 			continue
 		}
 
@@ -200,6 +223,7 @@ func TestHTTPCall(t *testing.T) {
 		}
 
 		assert.Equal(t, "ok", got.Headers["Custom-Header"], "Header mismatch")
+		assert.Equal(t, tt.wantCode, got.TransportFields["statusCode"], "Status code mismatch")
 		assert.Equal(t, lastReq.body, tt.r.Body, "Body mismatch")
 	}
 }
