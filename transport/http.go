@@ -113,13 +113,13 @@ func (h *httpTransport) Call(ctx context.Context, r *Request) (*Response, error)
 		return nil, err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("HTTP call got non-success response code: %v", resp.StatusCode)
-	}
 
 	body, err := ioutil.ReadAll(resp.Body)
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("HTTP call got non-success response code: %v, body: %s", resp.StatusCode, body)
+	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read HTTP response body: %v", err)
 	}
 
 	headers := make(map[string]string)
@@ -130,5 +130,8 @@ func (h *httpTransport) Call(ctx context.Context, r *Request) (*Response, error)
 	return &Response{
 		Headers: headers,
 		Body:    body,
+		TransportFields: map[string]interface{}{
+			"statusCode": resp.StatusCode,
+		},
 	}, nil
 }
