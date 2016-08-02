@@ -300,6 +300,7 @@ func TestHelpOutput(t *testing.T) {
 
 		// Make sure we didn't leak any groff from the man-page output.
 		assert.NotContains(t, buf.String(), ".PP")
+		assert.NotContains(t, buf.String(), "~/.config/yab/defaults.ini")
 	}
 }
 
@@ -312,6 +313,7 @@ func TestManPage(t *testing.T) {
 	buf, out := getOutput(t)
 	parseAndRun(out)
 	assert.Contains(t, buf.String(), "SYNOPSIS")
+	assert.Contains(t, buf.String(), "~/.config/yab/defaults.ini")
 }
 
 func TestVersion(t *testing.T) {
