@@ -38,6 +38,8 @@ import (
 	"github.com/uber/tchannel-go/thrift"
 )
 
+//go:generate thriftrw-go --yarpc -out ./testdata/yarpc ./testdata/integration.thrift
+
 var integrationTests = []struct {
 	call    int32
 	wantRes string
