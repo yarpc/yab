@@ -30,3 +30,10 @@ import:
 - package: github.com/casimir/xdg-go
 - package: github.com/uber-go/atomic
   version: v1.0.0
+- package: github.com/yarpc/yarpc-go
+  subpackages:
+  - encoding/thrift
+  - transport
+  - transport/http
+  - transport/tchannel
+  version: master

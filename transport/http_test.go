@@ -185,6 +185,7 @@ func TestHTTPCall(t *testing.T) {
 		URLs:          []string{svr.URL + "/rpc"},
 		SourceService: "source",
 		TargetService: "target",
+		Encoding:      "raw",
 	})
 	require.NoError(t, err, "Failed to create HTTP transport")
 
@@ -214,6 +215,7 @@ func TestHTTPCall(t *testing.T) {
 		assert.Equal(t, lastReq.headers.Get("RPC-Service"), "target", "Service header mismatch")
 		assert.Equal(t, lastReq.headers.Get("RPC-Caller"), "source", "Caller header mismatch")
 		assert.Equal(t, lastReq.headers.Get("RPC-Procedure"), tt.r.Method, "Method header mismatch")
+		assert.Equal(t, lastReq.headers.Get("RPC-Encoding"), "raw", "Encoding header mismatch")
 
 		ttlMS, err := strconv.Atoi(lastReq.headers.Get("Context-TTL-MS"))
 		if assert.NoError(t, err, "Failed to parse TTLms header: %v", lastReq.headers.Get("YARPC-TTLms")) {

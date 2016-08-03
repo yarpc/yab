@@ -34,9 +34,8 @@ import (
 )
 
 type httpTransport struct {
-	urls           []string
-	source, target string
-	client         *http.Client
+	opts   HTTPOptions
+	client *http.Client
 }
 
 // HTTPOptions are used to create a HTTP transport.
@@ -44,6 +43,7 @@ type HTTPOptions struct {
 	URLs          []string
 	SourceService string
 	TargetService string
+	Encoding      string
 }
 
 var (
@@ -61,9 +61,7 @@ func NewHTTP(opts HTTPOptions) (Transport, error) {
 	}
 
 	return &httpTransport{
-		urls:   opts.URLs,
-		source: opts.SourceService,
-		target: opts.TargetService,
+		opts: opts,
 		// Use independent HTTP clients for each transport.
 		client: &http.Client{
 			Transport: &http.Transport{},
@@ -72,7 +70,7 @@ func NewHTTP(opts HTTPOptions) (Transport, error) {
 }
 
 func (h *httpTransport) newReq(ctx context.Context, r *Request) (*http.Request, error) {
-	url := h.urls[rand.Intn(len(h.urls))]
+	url := h.opts.URLs[rand.Intn(len(h.opts.URLs))]
 
 	// TODO: We should envelope Thrift paylods here.
 	req, err := http.NewRequest("POST", url, bytes.NewReader(r.Body))
@@ -86,9 +84,10 @@ func (h *httpTransport) newReq(ctx context.Context, r *Request) (*http.Request, 
 	}
 
 	// TODO: We shouldn't always set YARPC headers, bit maybe have a flag to enable these.
-	req.Header.Add("RPC-Service", h.target)
+	req.Header.Add("RPC-Service", h.opts.TargetService)
 	req.Header.Add("RPC-Procedure", r.Method)
-	req.Header.Add("RPC-Caller", h.source)
+	req.Header.Add("RPC-Caller", h.opts.SourceService)
+	req.Header.Add("RPC-Encoding", h.opts.Encoding)
 	req.Header.Add("Context-TTL-MS", strconv.Itoa(int(timeout/time.Millisecond)))
 
 	for hdr, val := range r.Headers {
