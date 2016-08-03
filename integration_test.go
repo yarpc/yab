@@ -24,18 +24,27 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/yarpc/yab/testdata/gen-go/integration"
+	yintegration "github.com/yarpc/yab/testdata/yarpc/integration"
+	"github.com/yarpc/yab/testdata/yarpc/integration/yarpc/fooserver"
 
 	athrift "github.com/apache/thrift/lib/go/thrift"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/uber/tchannel-go"
 	"github.com/uber/tchannel-go/testutils"
 	"github.com/uber/tchannel-go/thrift"
+	"github.com/yarpc/yarpc-go"
+	ythrift "github.com/yarpc/yarpc-go/encoding/thrift"
+	ytransport "github.com/yarpc/yarpc-go/transport"
+	yhttp "github.com/yarpc/yarpc-go/transport/http"
+	ytchan "github.com/yarpc/yarpc-go/transport/tchannel"
 )
 
 //go:generate thriftrw-go --yarpc -out ./testdata/yarpc ./testdata/integration.thrift
@@ -82,6 +91,20 @@ func (httpHandler) Bar(arg int32) (int32, error) {
 	return argHandler(arg)
 }
 
+type yarpcHandler struct{}
+
+func (yarpcHandler) Bar(reqMeta yarpc.ReqMeta, arg *int32) (int32, yarpc.ResMeta, error) {
+	argVal := int32(0)
+	if arg != nil {
+		argVal = *arg
+	}
+	res, err := argHandler(argVal)
+	if _, ok := err.(*integration.NotFound); ok {
+		err = &yintegration.NotFound{}
+	}
+	return res, yarpc.NewResMeta(reqMeta.Context()), err
+}
+
 func TestIntegrationProtocols(t *testing.T) {
 	cases := []struct {
 		desc        string
@@ -109,6 +132,24 @@ func TestIntegrationProtocols(t *testing.T) {
 				return httpServer.URL, httpServer.Close
 			},
 			multiplexed: true,
+		},
+		{
+			desc: "YARPC TChannel",
+			setup: func() (hostPort string, shutdown func()) {
+				ch, dispatcher := setupYARPCTchannel(t)
+				return ch.PeerInfo().HostPort, func() {
+					dispatcher.Stop()
+				}
+			},
+		},
+		{
+			desc: "YARPC HTTP",
+			setup: func() (hostPort string, shutdown func()) {
+				addr, dispatcher := setupYARPCHTTP(t)
+				return "http://" + addr.String(), func() {
+					dispatcher.Stop()
+				}
+			},
 		},
 	}
 
@@ -182,4 +223,27 @@ func setupHTTPIntegrationServer(t *testing.T, multiplexed bool) *httptest.Server
 
 	handler := athrift.NewThriftHandlerFunc(processor, protocolFactory, protocolFactory)
 	return httptest.NewServer(http.HandlerFunc(handler))
+}
+
+func setupYARPCTchannel(t *testing.T) (*tchannel.Channel, yarpc.Dispatcher) {
+	ch := testutils.NewServer(t, testutils.NewOpts().SetServiceName("foo"))
+	inbound := ytchan.NewInbound(ch)
+	return ch, setupYARPCServer(t, inbound)
+}
+
+func setupYARPCHTTP(t *testing.T) (net.Addr, yarpc.Dispatcher) {
+	inbound := yhttp.NewInbound("127.0.0.1:0")
+	dispatcher := setupYARPCServer(t, inbound)
+	return inbound.Addr(), dispatcher
+}
+
+func setupYARPCServer(t *testing.T, inbound ytransport.Inbound) yarpc.Dispatcher {
+	cfg := yarpc.Config{
+		Name:     "foo",
+		Inbounds: []ytransport.Inbound{inbound},
+	}
+	dispatcher := yarpc.NewDispatcher(cfg)
+	ythrift.Register(dispatcher, fooserver.New(&yarpcHandler{}))
+	require.NoError(t, dispatcher.Start(), "Failed to start Dispatcher")
+	return dispatcher
 }
