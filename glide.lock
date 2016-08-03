@@ -1,5 +1,5 @@
-hash: 81380fb6c2d7a32bc83fb8fe15313d17b47dfb1082bd8d5b4a3a6f52fb675aa5
-updated: 2016-07-28T08:29:32.716799534-07:00
+hash: 8e5d5d46415cfa0f686537efda563c9d39bc2cad2ae2b9b6c5bece08e710f3d5
+updated: 2016-08-03T09:34:42.07213616-07:00
 imports:
 - name: github.com/apache/thrift
   version: bcad91771b7f0bff28a1cac1981d7ef2b9bcef3c
@@ -54,8 +54,25 @@ imports:
   - thrift/gen-go/meta
   - relay/relaytest
   - testutils/goroutines
+- name: github.com/yarpc/yarpc-go
+  version: d722930e6be36d490b702fe375858b9bbd17370b
+  subpackages:
+  - encoding/thrift
+  - transport
+  - transport/tchannel
+  - encoding/thrift/internal
+  - internal/encoding
+  - internal/meta
+  - internal
+  - internal/errors
+  - internal/baggage
+  - internal/request
+  - transport/tchannel/internal
+  - internal/filter
+  - internal/interceptor
+  - internal/sync
 - name: golang.org/x/net
-  version: 6a513affb38dc9788b449d59ffed099b8de18fa0
+  version: 57bfaa875b96fb91b4766077f34470528d4b03e9
   subpackages:
   - context
 - name: gopkg.in/yaml.v2
