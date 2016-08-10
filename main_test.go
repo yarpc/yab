@@ -442,9 +442,49 @@ func TestAlises(t *testing.T) {
 	for _, tt := range tests {
 		for _, args := range tt.args {
 			opts, err := getOptions([]string(args), out)
-			if assert.NoError(t, err, "getOptions failed for %v", "Args: %v", args) {
+			if assert.NoError(t, err, "Args: %v", args) {
 				tt.validate(args, opts)
 			}
+		}
+	}
+}
+
+func TestGetOptionsQuotes(t *testing.T) {
+	tests := []struct {
+		args            []string
+		wantRequestJSON string
+		wantHeadersJSON string
+	}{
+		{
+			args:            []string{"--body", `"quoted"`},
+			wantRequestJSON: `"quoted"`,
+		},
+		{
+			args:            []string{"-3", `"quoted"`},
+			wantRequestJSON: `"quoted"`,
+		},
+		{
+			args:            []string{"-r", `"quoted"`},
+			wantRequestJSON: `"quoted"`,
+		},
+		{
+			args:            []string{"--headers", `"quoted"`},
+			wantHeadersJSON: `"quoted"`,
+		},
+		{
+			args:            []string{"-2", `"quoted"`},
+			wantHeadersJSON: `"quoted"`,
+		},
+	}
+
+	_, out := getOutput(t)
+	for _, tt := range tests {
+		opts, err := getOptions(tt.args, out)
+		if assert.NoError(t, err, "Args: %v", tt.args) {
+			assert.Equal(t, tt.wantRequestJSON, opts.ROpts.RequestJSON,
+				"RequestJSON mismatch for %v", tt.args)
+			assert.Equal(t, tt.wantHeadersJSON, opts.ROpts.HeadersJSON,
+				"HeadersJSON mismatch for %v", tt.args)
 		}
 	}
 }
