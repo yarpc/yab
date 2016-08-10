@@ -201,6 +201,11 @@ func TestNewSerializer(t *testing.T) {
 			want:     encoding.Thrift,
 		},
 		{
+			encoding: encoding.UnspecifiedEncoding,
+			opts:     RequestOptions{MethodName: "hello"},
+			want:     encoding.JSON,
+		},
+		{
 			encoding: encoding.JSON,
 			opts:     RequestOptions{MethodName: "Test::foo"},
 			want:     encoding.JSON,

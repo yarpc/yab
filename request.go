@@ -93,8 +93,12 @@ func NewSerializer(opts RequestOptions) (encoding.Serializer, error) {
 		return nil, errMissingMethodName
 	}
 
-	if e == encoding.UnspecifiedEncoding && strings.Contains(opts.MethodName, "::") {
-		e = encoding.Thrift
+	if e == encoding.UnspecifiedEncoding {
+		if strings.Contains(opts.MethodName, "::") {
+			e = encoding.Thrift
+		} else {
+			e = encoding.JSON
+		}
 	}
 
 	switch e {
