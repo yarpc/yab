@@ -247,3 +247,32 @@ func TestNewSerializer(t *testing.T) {
 		}
 	}
 }
+
+func TestDetectEncoding(t *testing.T) {
+	tests := []struct {
+		opts RequestOptions
+		want encoding.Encoding
+	}{
+		{
+			opts: RequestOptions{Encoding: encoding.Raw, MethodName: "method"},
+			want: encoding.Raw,
+		},
+		{
+			opts: RequestOptions{MethodName: "method"},
+			want: encoding.JSON,
+		},
+		{
+			opts: RequestOptions{MethodName: "Svc::foo"},
+			want: encoding.Thrift,
+		},
+		{
+			opts: RequestOptions{ThriftFile: validThrift, MethodName: "method"},
+			want: encoding.Thrift,
+		},
+	}
+
+	for _, tt := range tests {
+		got := detectEncoding(tt.opts)
+		assert.Equal(t, tt.want, got, "detectEncoding(%+v)", tt.opts)
+	}
+}
