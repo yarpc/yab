@@ -1,18 +1,18 @@
-hash: 8e5d5d46415cfa0f686537efda563c9d39bc2cad2ae2b9b6c5bece08e710f3d5
-updated: 2016-08-03T09:34:42.07213616-07:00
+hash: 55fd0a7525390f35a5dfcc739bd4aee790f7cc81aa3ce4576de948675bb3fca1
+updated: 2016-08-24T23:17:59.856656069-07:00
 imports:
 - name: github.com/apache/thrift
-  version: bcad91771b7f0bff28a1cac1981d7ef2b9bcef3c
+  version: e4ba16495e8d8177eb85d6bfcc69089b38753e39
   subpackages:
   - lib/go/thrift
 - name: github.com/cactus/go-statsd-client
-  version: 91c326c3f7bd20f0226d3d1c289dd9f8ce28d33d
+  version: 1c27c506c7a0584d017ca479f91b88d6a6538332
   subpackages:
   - statsd
 - name: github.com/casimir/xdg-go
   version: 372ccc2180dab73316615641d5617c5ed3e35529
 - name: github.com/davecgh/go-spew
-  version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
+  version: 6cf5744a041a0022271cefed95ba843f6d87fd51
   subpackages:
   - spew
 - name: github.com/jessevdk/go-flags
@@ -31,50 +31,52 @@ imports:
   subpackages:
   - ast
   - compile
-  - protocol
-  - wire
   - envelope
-  - idl
   - envelope/internal/exception
-  - protocol/binary
+  - idl
   - idl/internal
+  - protocol
+  - protocol/binary
+  - wire
 - name: github.com/uber-go/atomic
   version: 0c9e689d64f004564b79d9a663634756df322902
 - name: github.com/uber/tchannel-go
   version: cddba8c9bdf3a761b261382a6d7e7253e332790c
   subpackages:
-  - thrift
-  - raw
-  - testutils
   - json
+  - raw
   - relay
+  - relay/relaytest
+  - testutils
+  - testutils/goroutines
+  - thrift
+  - thrift/gen-go/meta
   - tnet
   - trand
   - typed
-  - thrift/gen-go/meta
-  - relay/relaytest
-  - testutils/goroutines
 - name: github.com/yarpc/yarpc-go
-  version: d722930e6be36d490b702fe375858b9bbd17370b
+  version: bb96e40a398063240ea18ed77810fd8470a22bec
   subpackages:
   - encoding/thrift
-  - transport
-  - transport/tchannel
   - encoding/thrift/internal
-  - internal/encoding
-  - internal/meta
   - internal
-  - internal/errors
   - internal/baggage
-  - internal/request
-  - transport/tchannel/internal
+  - internal/encoding
+  - internal/errors
   - internal/filter
   - internal/interceptor
+  - internal/meta
+  - internal/request
   - internal/sync
+  - transport
+  - transport/http
+  - transport/tchannel
+  - transport/tchannel/internal
 - name: golang.org/x/net
-  version: 57bfaa875b96fb91b4766077f34470528d4b03e9
+  version: 3a1f9ef983bc408afd0a9e63fd9c962ae853e543
   subpackages:
   - context
+  - context/ctxhttp
 - name: gopkg.in/yaml.v2
   version: e4d366fc3c7938e2958e662b4258c7a89e1f0e3e
 testImports: []

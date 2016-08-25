@@ -1,16 +1,29 @@
 package: github.com/yarpc/yab
 import:
+- package: github.com/cactus/go-statsd-client
+  version: master
+  subpackages:
+  - statsd
+- package: github.com/casimir/xdg-go
+  version: master
 - package: github.com/jessevdk/go-flags
   version: master
+- package: github.com/stretchr/testify
+  version: master
+  subpackages:
+  - require
 - package: github.com/thriftrw/thriftrw-go
-  version: 13abcf75760f008b6f92ee3185a9534e286b64a0
+  version: master
   subpackages:
   - ast
   - compile
+  - envelope
   - protocol
   - wire
+- package: github.com/uber-go/atomic
+  version: ^1.0.0
 - package: github.com/uber/tchannel-go
-  version: master
+  version: ^1.0.9
   subpackages:
   - thrift
 - package: golang.org/x/net
@@ -19,21 +32,15 @@ import:
   - context
 - package: gopkg.in/yaml.v2
   version: master
-- package: github.com/stretchr/testify
-  subpackages:
-  - assert
-  - require
+testImport:
 - package: github.com/apache/thrift
   version: master
   subpackages:
   - lib/go/thrift
-- package: github.com/casimir/xdg-go
-- package: github.com/uber-go/atomic
-  version: v1.0.0
 - package: github.com/yarpc/yarpc-go
+  version: master
   subpackages:
   - encoding/thrift
   - transport
   - transport/http
   - transport/tchannel
-  version: master
