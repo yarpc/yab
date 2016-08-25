@@ -9,10 +9,11 @@ import (
 	"github.com/yarpc/yab/testdata/yarpc/integration/service/foo"
 	yarpc "github.com/yarpc/yarpc-go"
 	"github.com/yarpc/yarpc-go/encoding/thrift"
+	"golang.org/x/net/context"
 )
 
 type Interface interface {
-	Bar(reqMeta yarpc.ReqMeta, arg *int32) (int32, yarpc.ResMeta, error)
+	Bar(ctx context.Context, reqMeta yarpc.ReqMeta, arg *int32) (int32, yarpc.ResMeta, error)
 }
 
 func New(impl Interface) thrift.Service {
@@ -35,12 +36,12 @@ func (s service) Handlers() map[string]thrift.Handler {
 
 type handler struct{ impl Interface }
 
-func (h handler) Bar(reqMeta yarpc.ReqMeta, body wire.Value) (thrift.Response, error) {
+func (h handler) Bar(ctx context.Context, reqMeta yarpc.ReqMeta, body wire.Value) (thrift.Response, error) {
 	var args foo.BarArgs
 	if err := args.FromWire(body); err != nil {
 		return thrift.Response{}, err
 	}
-	success, resMeta, err := h.impl.Bar(reqMeta, args.Arg)
+	success, resMeta, err := h.impl.Bar(ctx, reqMeta, args.Arg)
 	hadError := err != nil
 	result, err := foo.BarHelper.WrapResponse(success, err)
 	var response thrift.Response

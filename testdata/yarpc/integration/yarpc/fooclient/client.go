@@ -10,10 +10,11 @@ import (
 	yarpc "github.com/yarpc/yarpc-go"
 	"github.com/yarpc/yarpc-go/encoding/thrift"
 	"github.com/yarpc/yarpc-go/transport"
+	"golang.org/x/net/context"
 )
 
 type Interface interface {
-	Bar(reqMeta yarpc.CallReqMeta, arg *int32) (int32, yarpc.CallResMeta, error)
+	Bar(ctx context.Context, reqMeta yarpc.CallReqMeta, arg *int32) (int32, yarpc.CallResMeta, error)
 }
 
 func New(c transport.Channel, opts ...thrift.ClientOption) Interface {
@@ -22,10 +23,10 @@ func New(c transport.Channel, opts ...thrift.ClientOption) Interface {
 
 type client struct{ c thrift.Client }
 
-func (c client) Bar(reqMeta yarpc.CallReqMeta, arg *int32) (success int32, resMeta yarpc.CallResMeta, err error) {
+func (c client) Bar(ctx context.Context, reqMeta yarpc.CallReqMeta, arg *int32) (success int32, resMeta yarpc.CallResMeta, err error) {
 	args := foo.BarHelper.Args(arg)
 	var body wire.Value
-	body, resMeta, err = c.c.Call(reqMeta, args)
+	body, resMeta, err = c.c.Call(ctx, reqMeta, args)
 	if err != nil {
 		return
 	}
