@@ -45,6 +45,7 @@ import (
 	ytransport "github.com/yarpc/yarpc-go/transport"
 	yhttp "github.com/yarpc/yarpc-go/transport/http"
 	ytchan "github.com/yarpc/yarpc-go/transport/tchannel"
+	"golang.org/x/net/context"
 )
 
 //go:generate thriftrw-go --yarpc -out ./testdata/yarpc ./testdata/integration.thrift
@@ -93,7 +94,7 @@ func (httpHandler) Bar(arg int32) (int32, error) {
 
 type yarpcHandler struct{}
 
-func (yarpcHandler) Bar(reqMeta yarpc.ReqMeta, arg *int32) (int32, yarpc.ResMeta, error) {
+func (yarpcHandler) Bar(ctx context.Context, reqMeta yarpc.ReqMeta, arg *int32) (int32, yarpc.ResMeta, error) {
 	argVal := int32(0)
 	if arg != nil {
 		argVal = *arg
@@ -102,7 +103,7 @@ func (yarpcHandler) Bar(reqMeta yarpc.ReqMeta, arg *int32) (int32, yarpc.ResMeta
 	if _, ok := err.(*integration.NotFound); ok {
 		err = &yintegration.NotFound{}
 	}
-	return res, yarpc.NewResMeta(reqMeta.Context()), err
+	return res, yarpc.NewResMeta(), err
 }
 
 func TestIntegrationProtocols(t *testing.T) {
