@@ -109,6 +109,8 @@ yab is a benchmarking tool for TChannel and HTTP applications. It's primarily in
 		return nil, fmt.Errorf("error reading defaults: %v", err)
 	}
 
+	overrideDefaults(opts, args)
+
 	setGroupDescs(parser, "request", "Request Options", toGroff(_reqOptsDesc))
 	setGroupDescs(parser, "transport", "Transport Options", toGroff(_transportOptsDesc))
 	setGroupDescs(parser, "benchmark", "Benchmark Options", toGroff(_benchmarkOptsDesc))
@@ -179,6 +181,24 @@ func parseAndRun(out output) {
 		out.Fatalf("Failed to parse options: %v", err)
 	}
 	runWithOptions(*opts, out)
+}
+
+// overrideDefaults clears fields in the default options that may
+// clash with user-specified options.
+// E.g., if the defaults has a peer list file, and the user has specifed
+// a peer through the command line, then the final options should only
+// contain the peer specified in the args.
+func overrideDefaults(defaults *Options, args []string) {
+	argsParser, argsOnly := newParser()
+	argsParser.ParseArgs(args)
+
+	// Clear default peers if the user has specified peer options in args.
+	if len(argsOnly.TOpts.HostPorts) > 0 {
+		defaults.TOpts.HostPortFile = ""
+	}
+	if len(argsOnly.TOpts.HostPortFile) > 0 {
+		defaults.TOpts.HostPorts = nil
+	}
 }
 
 // parseDefaultConfigs reads defaults from ~/.config/yab/defaults.ini if they're
