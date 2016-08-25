@@ -1,6 +1,17 @@
 Changelog
 =========
 
+# 0.6.1
+
+* Improve default format detection:
+  - If `-t` is specified, assume Thrift
+  - Otherwise, assume JSON
+* Improved support for quoted strings as JSON payloads.
+* Add RPC-Encoding header for HTTP requests for compatibility
+  with the latest version of YARPC.
+* Any peers specified on the command-line should override all
+  peer options set in the defaults.ini. (#104)
+
 # 0.6.0
 
 * Allow JSON to be used with non-map requests and responses.
