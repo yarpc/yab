@@ -1,15 +1,13 @@
-.TH yab 1 "25 July 2016"
+.TH yab 1 "25 August 2016"
 .SH NAME
 yab \- yet another benchmarker
 .SH SYNOPSIS
 \fByab\fP [<service> <method> <body>] [OPTIONS]
 .SH DESCRIPTION
 
-yab is a benchmarking tool for TChannel and HTTP applications. It's primarily intended for Thrift applications but supports other encodings like JSON and binary (raw).
+yab is a benchmarking tool for TChannel and HTTP applications. It's primarily intended for Thrift applications but supports other encodings like JSON and binary (raw). It can be used in a curl-like fashion when benchmarking features are disabled.
 .PP
-It can be used in a curl-like fashion when benchmarking features are disabled.
-.PP
-Default options can be specified in a ~/.config/yab/defaults.ini file with contents similar to this:
+Default options can be specified in a ~/.config/yab/defaults.ini file (or ~/Library/Preferences/yab/defaults.ini on Mac OS) with contents similar to this:
 .PP
 .nf
 .RS

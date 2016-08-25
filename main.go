@@ -138,7 +138,7 @@ yab is a benchmarking tool for TChannel and HTTP applications. It's primarily in
 
 	if opts.ManPage {
 		parser.LongDescription += `
-Default options can be specified in a ~/.config/yab/defaults.ini file with contents similar to this:
+Default options can be specified in a ~/.config/yab/defaults.ini file (or ~/Library/Preferences/yab/defaults.ini on Mac) with contents similar to this:
 
 	[request]
 	timeout = 2s
