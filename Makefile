@@ -1,12 +1,17 @@
-PACKAGES := $(shell glide novendor)
+PACKAGES := $(filter-out ., $(shell glide novendor))
 
 export GO15VENDOREXPERIMENT=1
+
+.DEFAULT_GOAL:=build
 
 
 .PHONY: build
 build:
 	go build -i $(PACKAGES)
+	go build -i .
 
+build_prod:
+	env GOOS=linux GOARCH=amd64 $(MAKE)
 
 .PHONY: install
 install:
