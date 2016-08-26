@@ -86,6 +86,7 @@ func (s *benchmarkState) printErrors(out output) {
 		total += v
 	}
 	out.Printf("Total errors: %v\n", total)
+	out.Printf("Error rate: %.4f\n", float32(total)/float32(len(s.latencies)))
 }
 
 func (s *benchmarkState) getQuantile(q float64) time.Duration {
