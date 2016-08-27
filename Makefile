@@ -2,11 +2,13 @@ PACKAGES := $(shell glide novendor)
 
 export GO15VENDOREXPERIMENT=1
 
+.DEFAULT_GOAL:=build
+
 
 .PHONY: build
 build:
 	go build -i $(PACKAGES)
-
+	go build -i .
 
 .PHONY: install
 install:
