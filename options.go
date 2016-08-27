@@ -42,9 +42,9 @@ type RequestOptions struct {
 	Encoding    encoding.Encoding `short:"e" long:"encoding" description:"The encoding of the data, options are: Thrift, JSON, raw. Defaults to Thrift if the method contains '::' or a Thrift file is specified"`
 	ThriftFile  string            `short:"t" long:"thrift" description:"Path of the .thrift file"`
 	MethodName  string            `short:"m" long:"method" description:"The full Thrift method name (Svc::Method) to invoke"`
-	RequestJSON string            `short:"r" long:"request" description:"The request body, in JSON or YAML format"`
+	RequestJSON string            `short:"r" long:"request" unquote:"false" description:"The request body, in JSON or YAML format"`
 	RequestFile string            `short:"f" long:"file" description:"Path of a file containing the request body in JSON or YAML"`
-	HeadersJSON string            `long:"headers" description:"The headers in JSON or YAML format"`
+	HeadersJSON string            `long:"headers" unquote:"false" description:"The headers in JSON or YAML format"`
 	HeadersFile string            `long:"headers-file" description:"Path of a file containing the headers in JSON or YAML"`
 	Health      bool              `long:"health" description:"Hit the health endpoint, Meta::health"`
 	Timeout     timeMillisFlag    `long:"timeout" default:"1s" description:"The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds are assumed."`
@@ -57,9 +57,9 @@ type RequestOptions struct {
 	Aliases struct {
 		Endpoint stringAlias `long:"endpoint" hidden:"true"`
 		Arg1     stringAlias `short:"1" long:"arg1" hidden:"true"`
-		Arg2     stringAlias `short:"2" long:"arg2" hidden:"true"`
-		Arg3     stringAlias `short:"3" long:"arg3" hidden:"true"`
-		Body     stringAlias `long:"body" hidden:"true"`
+		Arg2     stringAlias `short:"2" long:"arg2" unquote:"false" hidden:"true"`
+		Arg3     stringAlias `short:"3" long:"arg3" unquote:"false" hidden:"true"`
+		Body     stringAlias `long:"body" unquote:"false" hidden:"true"`
 		JSON     bool        `long:"json" hidden:"true"`
 		Raw      bool        `long:"raw" hidden:"true"`
 	}

@@ -157,6 +157,7 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding) (transport.
 	hopts := transport.HTTPOptions{
 		SourceService: sourceService,
 		TargetService: opts.ServiceName,
+		Encoding:      encoding.String(),
 		URLs:          opts.HostPorts,
 	}
 	return transport.NewHTTP(hopts)

@@ -79,25 +79,19 @@ func getHeaders(inline, file string) (map[string]string, error) {
 
 // NewSerializer creates a Serializer for the specific encoding.
 func NewSerializer(opts RequestOptions) (encoding.Serializer, error) {
-	e := opts.Encoding
-
 	if opts.Health {
 		if opts.MethodName != "" {
 			return nil, errHealthAndMethod
 		}
 
-		return e.GetHealth()
+		return opts.Encoding.GetHealth()
 	}
 
 	if opts.MethodName == "" {
 		return nil, errMissingMethodName
 	}
 
-	if e == encoding.UnspecifiedEncoding && strings.Contains(opts.MethodName, "::") {
-		e = encoding.Thrift
-	}
-
-	switch e {
+	switch e := detectEncoding(opts); e {
 	case encoding.Thrift:
 		return encoding.NewThrift(opts.ThriftFile, opts.MethodName, opts.ThriftMultiplexed)
 	case encoding.JSON:
@@ -107,4 +101,16 @@ func NewSerializer(opts RequestOptions) (encoding.Serializer, error) {
 	}
 
 	return nil, errUnrecognizedEncoding
+}
+
+func detectEncoding(opts RequestOptions) encoding.Encoding {
+	if opts.Encoding != encoding.UnspecifiedEncoding {
+		return opts.Encoding
+	}
+
+	if strings.Contains(opts.MethodName, "::") || opts.ThriftFile != "" {
+		return encoding.Thrift
+	}
+
+	return encoding.JSON
 }

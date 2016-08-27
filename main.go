@@ -101,26 +101,15 @@ func getOptions(args []string, out output) (*Options, error) {
 	parser.Usage = "[<service> <method> <body>] [OPTIONS]"
 	parser.ShortDescription = "yet another benchmarker"
 	parser.LongDescription = `
-yab is a benchmarking tool for TChannel and HTTP applications. It's primarily intended for Thrift applications but supports other encodings like JSON and binary (raw).
-
-It can be used in a curl-like fashion when benchmarking features are disabled.
-
-Default options can be specified in a ~/.config/yab/defaults.ini file with contents similar to this:
-
-	[request]
-	timeout = 2s
-
-	[transport]
-	peer-list = "/path/to/peer/list.json"
-
-	[benchmark]
-	warmup = 10
+yab is a benchmarking tool for TChannel and HTTP applications. It's primarily intended for Thrift applications but supports other encodings like JSON and binary (raw). It can be used in a curl-like fashion when benchmarking features are disabled.
 `
 
 	// Read defaults if they're available, before we change the group names.
 	if err := parseDefaultConfigs(parser); err != nil {
 		return nil, fmt.Errorf("error reading defaults: %v", err)
 	}
+
+	overrideDefaults(opts, args)
 
 	setGroupDescs(parser, "request", "Request Options", toGroff(_reqOptsDesc))
 	setGroupDescs(parser, "transport", "Transport Options", toGroff(_transportOptsDesc))
@@ -150,6 +139,18 @@ Default options can be specified in a ~/.config/yab/defaults.ini file with conte
 	}
 
 	if opts.ManPage {
+		parser.LongDescription += `
+Default options can be specified in a ~/.config/yab/defaults.ini file (or ~/Library/Preferences/yab/defaults.ini on Mac) with contents similar to this:
+
+	[request]
+	timeout = 2s
+
+	[transport]
+	peer-list = "/path/to/peer/list.json"
+
+	[benchmark]
+	warmup = 10
+`
 		parser.LongDescription = toGroff(parser.LongDescription)
 		parser.WriteManPage(out)
 		return opts, errExit
@@ -180,6 +181,24 @@ func parseAndRun(out output) {
 		out.Fatalf("Failed to parse options: %v", err)
 	}
 	runWithOptions(*opts, out)
+}
+
+// overrideDefaults clears fields in the default options that may
+// clash with user-specified options.
+// E.g., if the defaults has a peer list file, and the user has specifed
+// a peer through the command line, then the final options should only
+// contain the peer specified in the args.
+func overrideDefaults(defaults *Options, args []string) {
+	argsParser, argsOnly := newParser()
+	argsParser.ParseArgs(args)
+
+	// Clear default peers if the user has specified peer options in args.
+	if len(argsOnly.TOpts.HostPorts) > 0 {
+		defaults.TOpts.HostPortFile = ""
+	}
+	if len(argsOnly.TOpts.HostPortFile) > 0 {
+		defaults.TOpts.HostPorts = nil
+	}
 }
 
 // parseDefaultConfigs reads defaults from ~/.config/yab/defaults.ini if they're

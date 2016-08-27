@@ -22,6 +22,12 @@ This will install `yab` to `$GOPATH/bin/yab`.
 Usage:
   yab [<service> <method> <body>] [OPTIONS]
 
+yab is a benchmarking tool for TChannel and HTTP applications. It's primarily
+intended for Thrift applications but supports other encodings like JSON and
+binary (raw). It can be used in a curl-like fashion when benchmarking features
+are disabled.
+
+
 Application Options:
       --version                  Displays the application version
 

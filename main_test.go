@@ -23,8 +23,10 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -300,6 +302,7 @@ func TestHelpOutput(t *testing.T) {
 
 		// Make sure we didn't leak any groff from the man-page output.
 		assert.NotContains(t, buf.String(), ".PP")
+		assert.NotContains(t, buf.String(), "~/.config/yab/defaults.ini")
 	}
 }
 
@@ -312,6 +315,7 @@ func TestManPage(t *testing.T) {
 	buf, out := getOutput(t)
 	parseAndRun(out)
 	assert.Contains(t, buf.String(), "SYNOPSIS")
+	assert.Contains(t, buf.String(), "~/.config/yab/defaults.ini")
 }
 
 func TestVersion(t *testing.T) {
@@ -440,9 +444,49 @@ func TestAlises(t *testing.T) {
 	for _, tt := range tests {
 		for _, args := range tt.args {
 			opts, err := getOptions([]string(args), out)
-			if assert.NoError(t, err, "getOptions failed for %v", "Args: %v", args) {
+			if assert.NoError(t, err, "Args: %v", args) {
 				tt.validate(args, opts)
 			}
+		}
+	}
+}
+
+func TestGetOptionsQuotes(t *testing.T) {
+	tests := []struct {
+		args            []string
+		wantRequestJSON string
+		wantHeadersJSON string
+	}{
+		{
+			args:            []string{"--body", `"quoted"`},
+			wantRequestJSON: `"quoted"`,
+		},
+		{
+			args:            []string{"-3", `"quoted"`},
+			wantRequestJSON: `"quoted"`,
+		},
+		{
+			args:            []string{"-r", `"quoted"`},
+			wantRequestJSON: `"quoted"`,
+		},
+		{
+			args:            []string{"--headers", `"quoted"`},
+			wantHeadersJSON: `"quoted"`,
+		},
+		{
+			args:            []string{"-2", `"quoted"`},
+			wantHeadersJSON: `"quoted"`,
+		},
+	}
+
+	_, out := getOutput(t)
+	for _, tt := range tests {
+		opts, err := getOptions(tt.args, out)
+		if assert.NoError(t, err, "Args: %v", tt.args) {
+			assert.Equal(t, tt.wantRequestJSON, opts.ROpts.RequestJSON,
+				"RequestJSON mismatch for %v", tt.args)
+			assert.Equal(t, tt.wantHeadersJSON, opts.ROpts.HeadersJSON,
+				"HeadersJSON mismatch for %v", tt.args)
 		}
 	}
 }
@@ -458,7 +502,7 @@ func TestParseIniFile(t *testing.T) {
 	}{
 		{
 			message:    "valid ini file should parse correctly",
-			configPath: "valid",
+			configPath: "valid/timeout",
 		},
 		{
 			message:    "absent ini file should be ignored",
@@ -481,6 +525,108 @@ func TestParseIniFile(t *testing.T) {
 		} else {
 			assert.EqualError(t, err, "error reading defaults: "+tt.expectedError, tt.message)
 		}
+	}
+}
+
+func TestConfigOverride(t *testing.T) {
+	originalConfigHome := os.Getenv(_configHomeEnv)
+	defer os.Setenv(_configHomeEnv, originalConfigHome)
+
+	tests := []struct {
+		msg            string
+		configContents string
+		args           []string
+		validateFn     func(*Options, string)
+		wantErr        string
+	}{
+		{
+			msg:            "peer list in config",
+			configContents: `peer-list = "/hosts.json"`,
+			validateFn: func(opts *Options, msg string) {
+				assert.Equal(t, "/hosts.json", opts.TOpts.HostPortFile, msg)
+				assert.Empty(t, opts.TOpts.HostPorts, msg)
+			},
+		},
+		{
+			msg:            "peer list in config and args",
+			configContents: `peer-list = "/hosts.json"`,
+			args:           []string{"-P", "/hosts2.json"},
+			validateFn: func(opts *Options, msg string) {
+				assert.Equal(t, "/hosts2.json", opts.TOpts.HostPortFile, msg)
+				assert.Empty(t, opts.TOpts.HostPorts, msg)
+			},
+		},
+		{
+			msg: "peer and peer list in config",
+			configContents: `
+				peer-list = "/hosts.json"
+				peer = 1.1.1.1:1
+			`,
+			validateFn: func(opts *Options, msg string) {
+				assert.Equal(t, "/hosts.json", opts.TOpts.HostPortFile, msg)
+				assert.Equal(t, []string{"1.1.1.1:1"}, opts.TOpts.HostPorts, msg)
+			},
+		},
+		{
+			msg:            "peer list in config, peer in args",
+			configContents: `peer-list = "/hosts.json"`,
+			args:           []string{"-p", "1.1.1.1:1"},
+			validateFn: func(opts *Options, msg string) {
+				assert.Empty(t, opts.TOpts.HostPortFile, "%v: hosts file should be cleared", msg)
+				assert.Equal(t, []string{"1.1.1.1:1"}, opts.TOpts.HostPorts, "%v: hostPorts", msg)
+			},
+		},
+		{
+			msg: "peer and peer list in config, peer in args",
+			configContents: `
+				peer-list = "/hosts.json"
+				peer = 1.1.1.1:1
+			`,
+			args: []string{"-p", "1.1.1.1:2"},
+			validateFn: func(opts *Options, msg string) {
+				assert.Empty(t, opts.TOpts.HostPortFile, "%v: hosts file should be cleared", msg)
+				assert.Equal(t, []string{"1.1.1.1:2"}, opts.TOpts.HostPorts, "%v: hostPorts", msg)
+			},
+		},
+		{
+			msg: "peer and peer list in config, peerlist in args",
+			configContents: `
+				peer-list = "/hosts.json"
+				peer = 1.1.1.1:1
+			`,
+			args: []string{"-P", "/hosts2.json"},
+			validateFn: func(opts *Options, msg string) {
+				assert.Equal(t, "/hosts2.json", opts.TOpts.HostPortFile, msg)
+				assert.Empty(t, opts.TOpts.HostPorts, msg)
+			},
+		},
+	}
+
+	tempDir, err := ioutil.TempDir("", "config")
+	require.NoError(t, err, "Failed to create temporary directory")
+	err = os.Mkdir(filepath.Join(tempDir, "yab"), os.ModeDir|0777)
+	require.NoError(t, err, "failed to create yab directory in temporary config dir")
+	configPath := filepath.Join(tempDir, "yab", "defaults.ini")
+
+	os.Setenv(_configHomeEnv, tempDir)
+	for _, tt := range tests {
+		err := ioutil.WriteFile(configPath, []byte(tt.configContents), 0777)
+		require.NoError(t, err, "Failed to write out defaults file")
+
+		_, out := getOutput(t)
+		opts, err := getOptions(tt.args, out)
+		if err == errExit {
+			err = nil
+		}
+		if tt.wantErr != "" {
+			if assert.Error(t, err, tt.msg) {
+				assert.Contains(t, err.Error(), tt.wantErr, tt.msg)
+			}
+			continue
+		}
+
+		assert.NoError(t, err, tt.msg)
+		tt.validateFn(opts, tt.msg)
 	}
 }
 
