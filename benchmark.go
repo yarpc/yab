@@ -138,8 +138,8 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 	overall.printLatencies(out)
 
 	out.Printf("Elapsed time:      %v\n", (total / time.Millisecond * time.Millisecond))
-	out.Printf("Total requests:    %v\n", len(overall.latencies))
-	out.Printf("RPS:               %.2f\n", float64(len(overall.latencies))/total.Seconds())
+	out.Printf("Total requests:    %v\n", overall.totalRequests)
+	out.Printf("RPS:               %.2f\n", float64(overall.totalRequests)/total.Seconds())
 }
 
 // stopOnInterrupt sets up a signal that will trigger the run to stop.

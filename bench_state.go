@@ -30,9 +30,12 @@ import (
 )
 
 type benchmarkState struct {
-	statter   statsd.Client
-	errors    map[string]int
-	latencies []time.Duration
+	statter       statsd.Client
+	errors        map[string]int
+	totalErrors   int
+	totalSuccess  int
+	totalRequests int
+	latencies     []time.Duration
 }
 
 func newBenchmarkState(statter statsd.Client) *benchmarkState {
@@ -42,13 +45,19 @@ func newBenchmarkState(statter statsd.Client) *benchmarkState {
 	}
 }
 
+func (s *benchmarkState) recordRequest() {
+	s.totalRequests++
+}
+
 func (s *benchmarkState) recordError(err error) {
 	if err == nil {
 		panic("recordError not passed error")
 	}
+	s.recordRequest()
 
 	msg := errorToMessage(err)
 	s.errors[msg]++
+	s.totalErrors++
 	s.statter.Inc("error")
 }
 
@@ -57,10 +66,15 @@ func (s *benchmarkState) merge(other *benchmarkState) {
 		s.errors[k] += v
 	}
 	s.latencies = append(s.latencies, other.latencies...)
+	s.totalErrors += other.totalErrors
+	s.totalSuccess += other.totalSuccess
+	s.totalRequests += other.totalRequests
 }
 
 func (s *benchmarkState) recordLatency(d time.Duration) {
+	s.recordRequest()
 	s.latencies = append(s.latencies, d)
+	s.totalSuccess++
 	s.statter.Inc("success")
 	s.statter.Timing("latency", d)
 }
@@ -79,14 +93,12 @@ func (s *benchmarkState) printErrors(out output) {
 		return
 	}
 	out.Printf("Errors:\n")
-	total := 0
 	for _, k := range sorted.MapKeys(s.errors) {
 		v := s.errors[k]
 		out.Printf("  %4d: %v\n", v, k)
-		total += v
 	}
-	out.Printf("Total errors: %v\n", total)
-	out.Printf("Error rate: %.4f\n", float32(total)/float32(len(s.latencies)))
+	out.Printf("Total errors: %v\n", s.totalErrors)
+	out.Printf("Error rate: %.4f\n", float32(s.totalErrors)/float32(s.totalRequests))
 }
 
 func (s *benchmarkState) getQuantile(q float64) time.Duration {
