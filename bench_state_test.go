@@ -50,14 +50,14 @@ func TestBenchmarkStateErrors(t *testing.T) {
 
 	buf, out := getOutput(t)
 
-	//before merge
+	// before merge
 	assert.Equal(t, state1.totalErrors, 4, "Error count mismatch")
 	assert.Equal(t, state1.totalSuccess, 0, "Success count mismatch")
 	assert.Equal(t, state1.totalRequests, 4, "Request count mismatch")
 
 	state1.merge(state2)
 
-	//after merge
+	// after merge
 	assert.Equal(t, state1.totalErrors, 7, "Error count mismatch")
 	assert.Equal(t, state1.totalSuccess, 0, "Success count mismatch")
 	assert.Equal(t, state1.totalRequests, 7, "Request count mismatch")
