@@ -16,6 +16,8 @@ go get -u -f github.com/yarpc/yab
 
 This will install `yab` to `$GOPATH/bin/yab`.
 
+Optionally, you can get precompiled binaries from [Releases][releases].
+
 ### Usage
 
 ```
@@ -136,6 +138,7 @@ connection (`--concurrency`).
 yab -t ~/keyvalue.thrift -p localhost:12345 keyvalue KeyValue::get -r '{"key": "hello"}' -d 5s --rps 100 --connections 4
 ```
 
+[releases]: https://github.com/yarpc/yab/releases
 [ci-img]: https://travis-ci.org/yarpc/yab.svg?branch=master
 [ci]: https://travis-ci.org/yarpc/yab
 [cov-img]: https://coveralls.io/repos/github/yarpc/yab/badge.svg?branch=master
