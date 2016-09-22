@@ -42,15 +42,15 @@ func TestBenchmark(t *testing.T) {
 	}{
 		{
 			msg:  "Capped by max requests",
-			n:    1000,
+			n:    100,
 			d:    100 * time.Second,
-			want: 1000,
+			want: 100,
 		},
 		{
 			msg:          "Capped by RPS * duration",
 			d:            500 * time.Millisecond,
-			rps:          1200,
-			want:         600,
+			rps:          120,
+			want:         60,
 			wantDuration: 500 * time.Millisecond,
 		},
 		{
