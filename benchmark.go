@@ -65,16 +65,23 @@ func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run 
 func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 	opts := allOpts.BOpts
 
-	// By default, benchmarks are disabled. At least MaxDuration needs to
-	// be set to enable them.
-	if opts.MaxDuration == 0 {
+	// By default, benchmarks are disabled. At least MaxDuration or MaxRequests
+	// should be > 0 for the benchmark to start.
+	if opts.MaxDuration == 0 && opts.MaxRequests == 0 {
 		return
 	}
 
-	if opts.RPS > 0 {
+	if opts.MaxDuration < 0 {
+		out.Fatalf("Benchmark duration cannot be negative")
+	}
+	if opts.MaxRequests < 0 {
+		out.Fatalf("Benchmark max requests cannot be negative")
+	}
+
+	if opts.RPS > 0 && opts.MaxDuration > 0 {
 		// The RPS * duration in seconds may cap opts.MaxRequests.
 		rpsMax := int(float64(opts.RPS) * opts.MaxDuration.Seconds())
-		if rpsMax < opts.MaxRequests {
+		if rpsMax < opts.MaxRequests || opts.MaxRequests == 0 {
 			opts.MaxRequests = rpsMax
 		}
 	}
@@ -138,8 +145,8 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 	overall.printLatencies(out)
 
 	out.Printf("Elapsed time:      %v\n", (total / time.Millisecond * time.Millisecond))
-	out.Printf("Total requests:    %v\n", len(overall.latencies))
-	out.Printf("RPS:               %.2f\n", float64(len(overall.latencies))/total.Seconds())
+	out.Printf("Total requests:    %v\n", overall.totalRequests)
+	out.Printf("RPS:               %.2f\n", float64(overall.totalRequests)/total.Seconds())
 }
 
 // stopOnInterrupt sets up a signal that will trigger the run to stop.

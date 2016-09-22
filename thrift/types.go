@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"strconv"
 	"strings"
 )
 
@@ -42,18 +43,6 @@ func parseBoolNumber(v int) (bool, error) {
 	return false, fmt.Errorf("cannot parse bool from int %v", v)
 }
 
-func parseBoolString(v string) (bool, error) {
-	if strings.EqualFold(v, "true") {
-		return true, nil
-	}
-	if strings.EqualFold(v, "false") {
-		return false, nil
-	}
-
-	// We only support true/false as strings.
-	return false, fmt.Errorf("cannot parse bool from %q", v)
-}
-
 // parseBool parses a boolean from a bool, string or a number.
 // If a string is given, it must be "true" or "false" (case insensitive)
 // If a number is given, it must be 1 for true, or 0 for false.
@@ -66,7 +55,7 @@ func parseBool(value interface{}) (bool, error) {
 		// but those are not valid bool values anyway, so we don't need to check them.
 		return parseBoolNumber(v)
 	case string:
-		return parseBoolString(v)
+		return strconv.ParseBool(strings.ToLower(v))
 	default:
 		return false, fmt.Errorf("cannot parse bool %T: %v", value, value)
 	}

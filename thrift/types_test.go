@@ -57,12 +57,12 @@ func TestParseBool(t *testing.T) {
 			want:  false,
 		},
 		{
-			value:   "f",
-			wantErr: true,
+			value: "f",
+			want:  false,
 		},
 		{
-			value:   "t",
-			wantErr: true,
+			value: "t",
+			want:  true,
 		},
 		{
 			value:   "",

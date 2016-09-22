@@ -10,6 +10,7 @@ import (
 // Run represents a single run that is limited by either
 // a number of requests, or can be stopped halfway.
 type Run struct {
+	unlimited    atomic.Bool
 	requestsLeft atomic.Int64
 	limiter      ratelimit.Limiter
 	cancel       chan struct{}
@@ -24,11 +25,15 @@ func New(maxRequests, rps int, maxDuration time.Duration) *Run {
 	}
 
 	r := &Run{
+		unlimited:    *atomic.NewBool(maxRequests == 0),
 		requestsLeft: *atomic.NewInt64(int64(maxRequests)),
 		limiter:      limiter,
 		cancel:       make(chan struct{}),
 	}
-	time.AfterFunc(maxDuration, r.Stop)
+
+	if maxDuration > 0 {
+		time.AfterFunc(maxDuration, r.Stop)
+	}
 
 	return r
 }
@@ -37,6 +42,11 @@ func New(maxRequests, rps int, maxDuration time.Duration) *Run {
 // reached some limit. If more requests can be made, it blocks until the rate
 // limiter allows another request.
 func (r *Run) More() bool {
+	if r.unlimited.Load() {
+		r.limiter.Take(r.cancel)
+		return true
+	}
+
 	if r.requestsLeft.Load() >= 0 {
 		r.limiter.Take(r.cancel)
 	}
@@ -50,5 +60,6 @@ func (r *Run) Stop() {
 		return
 	}
 	r.requestsLeft.Store(0)
+	r.unlimited.Store(false)
 	close(r.cancel)
 }

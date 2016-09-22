@@ -1,6 +1,13 @@
 Changelog
 =========
 
+# 0.6.2
+
+* Add error rate to benchmarking output.
+* Improve boolean parsing for Thrift input.
+* Check the system XDG directory for a config file.
+* Allow unlimited duration or requests when benchmarking. (#105)
+
 # 0.6.1
 
 * Improve default format detection:
