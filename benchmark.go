@@ -71,6 +71,13 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 		return
 	}
 
+	if opts.MaxDuration < 0 {
+		out.Fatalf("Benchmark duration cannot be negative")
+	}
+	if opts.MaxRequests < 0 {
+		out.Fatalf("Benchmark max requests cannot be negative")
+	}
+
 	if opts.RPS > 0 && opts.MaxDuration > 0 {
 		// The RPS * duration in seconds may cap opts.MaxRequests.
 		rpsMax := int(float64(opts.RPS) * opts.MaxDuration.Seconds())

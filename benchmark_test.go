@@ -21,6 +21,8 @@
 package main
 
 import (
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -103,5 +105,48 @@ func TestBenchmark(t *testing.T) {
 			assert.True(t, duration <= tt.wantDuration+slack && duration >= tt.wantDuration-slack,
 				"%v: Took %v, wanted duration %v", tt.msg, duration, tt.wantDuration)
 		}
+	}
+}
+
+func TestRunBenchmarkErrors(t *testing.T) {
+	tests := []struct {
+		opts    BenchmarkOptions
+		wantErr string
+	}{
+		{
+			opts: BenchmarkOptions{
+				MaxRequests: -1,
+			},
+			wantErr: "max requests cannot be negative",
+		},
+		{
+			opts: BenchmarkOptions{
+				MaxDuration: -time.Second,
+			},
+			wantErr: "duration cannot be negative",
+		},
+	}
+
+	for _, tt := range tests {
+		var fatalMessage string
+		out := &testOutput{
+			fatalf: func(msg string, args ...interface{}) {
+				fatalMessage = fmt.Sprintf(msg, args...)
+			},
+		}
+		m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
+		opts := Options{BOpts: tt.opts}
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+		// Since the benchmark calls Fatalf which kills the current goroutine, we
+		// need to run the benchmark in a separate goroutine.
+		go func() {
+			defer wg.Done()
+			runBenchmark(out, opts, m)
+		}()
+
+		wg.Wait()
+		assert.Contains(t, fatalMessage, tt.wantErr, "Missing error for %+v", tt.opts)
 	}
 }
