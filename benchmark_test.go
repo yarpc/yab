@@ -21,6 +21,8 @@
 package main
 
 import (
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -28,9 +30,37 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/uber-go/atomic"
+	"github.com/uber/tchannel-go/testutils"
 )
 
 func TestBenchmark(t *testing.T) {
+	tests := []struct {
+		msg          string
+		n            int
+		d            time.Duration
+		rps          int
+		want         int
+		wantDuration time.Duration
+	}{
+		{
+			msg:  "Capped by max requests",
+			n:    100,
+			d:    100 * time.Second,
+			want: 100,
+		},
+		{
+			msg:          "Capped by RPS * duration",
+			d:            500 * time.Millisecond,
+			rps:          120,
+			want:         60,
+			wantDuration: 500 * time.Millisecond,
+		},
+		{
+			msg:          "Capped by duration",
+			d:            500 * time.Millisecond,
+			wantDuration: 500 * time.Millisecond,
+		},
+	}
 
 	var requests atomic.Int32
 	s := newServer(t)
@@ -40,24 +70,83 @@ func TestBenchmark(t *testing.T) {
 	}))
 
 	m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
-	buf, out := getOutput(t)
 
-	runBenchmark(out, Options{
-		BOpts: BenchmarkOptions{
-			MaxRequests:    1000,
-			MaxDuration:    time.Second,
-			Connections:    50,
-			WarmupRequests: 10,
-			Concurrency:    2,
+	for _, tt := range tests {
+		requests.Store(0)
+
+		start := time.Now()
+		buf, out := getOutput(t)
+		runBenchmark(out, Options{
+			BOpts: BenchmarkOptions{
+				MaxRequests:    tt.n,
+				MaxDuration:    tt.d,
+				RPS:            tt.rps,
+				Connections:    50,
+				WarmupRequests: 10,
+				Concurrency:    2,
+			},
+			TOpts: s.transportOpts(),
+		}, m)
+
+		bufStr := buf.String()
+		assert.Contains(t, bufStr, "Max RPS")
+		assert.NotContains(t, bufStr, "Errors")
+
+		warmupExtra := 10 * 50 // warmup requests * connections
+		if tt.want != 0 {
+			assert.EqualValues(t, tt.want+warmupExtra, requests.Load(),
+				"%v: Invalid number of requests", tt.msg)
+		}
+
+		if tt.wantDuration != 0 {
+			// Make sure the total duration is within a delta.
+			slack := testutils.Timeout(500 * time.Millisecond)
+			duration := time.Since(start)
+			assert.True(t, duration <= tt.wantDuration+slack && duration >= tt.wantDuration-slack,
+				"%v: Took %v, wanted duration %v", tt.msg, duration, tt.wantDuration)
+		}
+	}
+}
+
+func TestRunBenchmarkErrors(t *testing.T) {
+	tests := []struct {
+		opts    BenchmarkOptions
+		wantErr string
+	}{
+		{
+			opts: BenchmarkOptions{
+				MaxRequests: -1,
+			},
+			wantErr: "max requests cannot be negative",
 		},
-		TOpts: s.transportOpts(),
-	}, m)
+		{
+			opts: BenchmarkOptions{
+				MaxDuration: -time.Second,
+			},
+			wantErr: "duration cannot be negative",
+		},
+	}
 
-	bufStr := buf.String()
-	assert.Contains(t, bufStr, "Max RPS")
-	assert.NotContains(t, bufStr, "Errors")
+	for _, tt := range tests {
+		var fatalMessage string
+		out := &testOutput{
+			fatalf: func(msg string, args ...interface{}) {
+				fatalMessage = fmt.Sprintf(msg, args...)
+			},
+		}
+		m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
+		opts := Options{BOpts: tt.opts}
 
-	// Due to warm up, we make:
-	// 10 * Connections extra requests
-	assert.EqualValues(t, 1000+10*50, requests.Load(), "Invalid number of requests")
+		var wg sync.WaitGroup
+		wg.Add(1)
+		// Since the benchmark calls Fatalf which kills the current goroutine, we
+		// need to run the benchmark in a separate goroutine.
+		go func() {
+			defer wg.Done()
+			runBenchmark(out, opts, m)
+		}()
+
+		wg.Wait()
+		assert.Contains(t, fatalMessage, tt.wantErr, "Missing error for %+v", tt.opts)
+	}
 }
