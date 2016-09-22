@@ -42,7 +42,10 @@ import (
 	"github.com/uber/tchannel-go/thrift"
 )
 
-const _configHomeEnv = "XDG_CONFIG_HOME"
+const (
+	_configHomeEnv = "XDG_CONFIG_HOME"
+	_configSysEnv  = "XDG_CONFIG_DIRS"
+)
 
 func init() {
 	// Set the config home so that tests don't inherit settings from the
@@ -748,6 +751,61 @@ func TestWithTransportSerializer(t *testing.T) {
 
 		assert.Equal(t, tt.want, req.Body, "Body mismatch for %+v", tt.rOpts)
 	}
+}
+
+func cleanEnv(key, val string, wasSet bool) {
+	if wasSet {
+		os.Setenv(key, val)
+	} else {
+		os.Unsetenv(key)
+	}
+}
+
+func createXDGConfigFile(t *testing.T, prefix string) (string, string) {
+	dir, err := ioutil.TempDir("", prefix)
+	if err != nil {
+		t.Error(err)
+	}
+	yabDir := path.Join(dir, "yab")
+	if err := os.Mkdir(yabDir, 0755); err != nil {
+		t.Error(err)
+	}
+	configPath := path.Join(yabDir, "defaults.ini")
+	cfg, err := os.Create(configPath)
+	if err != nil {
+		t.Error(err)
+	}
+	cfg.Close()
+	return dir, configPath
+}
+
+func TestFindBestConfigFile(t *testing.T) {
+	userDir, userCfg := createXDGConfigFile(t, "user")
+	defer os.RemoveAll(userDir)
+
+	sysDir, sysCfg := createXDGConfigFile(t, "system")
+	defer os.RemoveAll(sysDir)
+
+	// set up XDG_CONFIG_HOME
+	xdgConfigDir, xdgConfigOk := os.LookupEnv(_configHomeEnv)
+	defer cleanEnv(_configHomeEnv, xdgConfigDir, xdgConfigOk)
+	os.Setenv(_configHomeEnv, userDir)
+
+	// set up XDG_CONFIG_DIRS
+	xdgSysDir, xdgSysOk := os.LookupEnv(_configSysEnv)
+	defer cleanEnv(_configHomeEnv, xdgSysDir, xdgSysOk)
+	os.Setenv(_configSysEnv, sysDir)
+
+	// if the home file is present, we should use it
+	assert.Equal(t, userCfg, findBestConfigFile(), "expected home config to take precedence")
+
+	// now set the home file so it can't be found, and ensure we get the system file
+	os.Setenv(_configHomeEnv, "/now-you-see-me-now-you-dont")
+	assert.Equal(t, sysCfg, findBestConfigFile(), "expected to use system file")
+
+	// now remove the sys file and ensure we get nothing
+	os.Setenv(_configSysEnv, "/now-you-see-me-now-you-dont")
+	assert.Equal(t, "", findBestConfigFile(), "expected to use no file")
 }
 
 func encodeEnveloped(e wire.Envelope) []byte {

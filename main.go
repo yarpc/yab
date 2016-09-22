@@ -201,15 +201,31 @@ func overrideDefaults(defaults *Options, args []string) {
 	}
 }
 
+// findBestConfigFile finds the best config file to use. An empty string will be
+// returned if no config file should be used.
+func findBestConfigFile() string {
+	app := xdg.App{Name: "yab"}
+
+	// Find the best config path to use, preferring the user's config path and
+	// falling back to the system config path.
+	configPaths := []string{app.ConfigPath("defaults.ini")}
+	configPaths = append(configPaths, app.SystemConfigPaths("defaults.ini")...)
+	var configFile string
+	for _, path := range configPaths {
+		if _, err := os.Stat(path); err == nil {
+			configFile = path
+			break
+		}
+	}
+	return configFile
+}
+
 // parseDefaultConfigs reads defaults from ~/.config/yab/defaults.ini if they're
 // available.
 func parseDefaultConfigs(parser *flags.Parser) error {
-	app := xdg.App{Name: "yab"}
-
-	configFile := app.ConfigPath("defaults.ini")
-	if _, err := os.Stat(configFile); err != nil {
-		// No defaults file to read
-		return nil
+	configFile := findBestConfigFile()
+	if configFile == "" {
+		return nil // no defaults file was found
 	}
 
 	iniParser := flags.NewIniParser(parser)
