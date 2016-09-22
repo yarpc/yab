@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/uber/tchannel-go/testutils"
 )
 
 func TestSerial(t *testing.T) {
@@ -65,6 +66,26 @@ func TestStop(t *testing.T) {
 func TestTimeout(t *testing.T) {
 	run := New(1000 /* maxRequests */, 1000 /* rps */, time.Millisecond)
 	assert.True(t, run.More(), "Succeed within the timeout")
+	time.Sleep(5 * time.Millisecond)
+	assert.False(t, run.More(), "Fail after the timeout")
+}
+
+func TestUnlimitedRequests(t *testing.T) {
+	timeout := testutils.Timeout(100 * time.Millisecond)
+	run := New(0 /* maxRequests */, 1000 /* rps */, timeout)
+	for i := 0; i < 5; i++ {
+		assert.True(t, run.More(), "Unlimited should suceed till timeout")
+	}
+	time.Sleep(timeout)
+	assert.False(t, run.More(), "Fail after the timeout")
+}
+
+func TestUnlimitedStop(t *testing.T) {
+	run := New(0 /* maxRequests */, 0 /* rps */, 0 /* maxDuration */)
+	for i := 0; i < 5; i++ {
+		assert.True(t, run.More(), "Unlimited should suceed till Stop")
+	}
+	run.Stop()
 	time.Sleep(5 * time.Millisecond)
 	assert.False(t, run.More(), "Fail after the timeout")
 }
