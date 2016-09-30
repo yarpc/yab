@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"gopkg.in/yaml.v2"
+	"time"
 )
 
 type template struct {
@@ -13,6 +14,7 @@ type template struct {
 	Method  string            `yaml:"method"`
 	Headers map[string]string `yaml:"headers"`
 	Request interface{}       `yaml:"request"`
+	Timeout time.Duration     `yaml:"timeout"`
 }
 
 func readYamlRequest(opts *Options) {
@@ -44,4 +46,5 @@ func readYamlRequest(opts *Options) {
 	opts.TOpts.ServiceName = t.Service
 	opts.ROpts.HeadersJSON = string(headers)
 	opts.ROpts.RequestJSON = string(body)
+	opts.ROpts.Timeout = timeMillisFlag(t.Timeout)
 }
