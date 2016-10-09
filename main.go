@@ -272,32 +272,10 @@ func runWithOptions(opts Options, out output) {
 		req.Timeout = time.Second
 	}
 
-	response, err := makeRequest(transport, req)
-	if err != nil {
-		out.Fatalf("Failed while making call: %v\n", err)
+	// Only make the request if the user hasn't specified 0 warmup.
+	if !(opts.BOpts.enabled() && opts.BOpts.WarmupRequests == 0) {
+		makeInitialRequest(out, transport, serializer, req)
 	}
-
-	// responseMap converts the Thrift bytes response to a map.
-	responseMap, err := serializer.Response(response)
-	if err != nil {
-		out.Fatalf("Failed while parsing response: %v\n", err)
-	}
-
-	// Print the initial output body.
-	outSerialized := map[string]interface{}{
-		"body": responseMap,
-	}
-	if len(response.Headers) > 0 {
-		outSerialized["headers"] = response.Headers
-	}
-	for k, v := range response.TransportFields {
-		outSerialized[k] = v
-	}
-	bs, err := json.MarshalIndent(outSerialized, "", "  ")
-	if err != nil {
-		out.Fatalf("Failed to convert map to JSON: %v\nMap: %+v\n", err, responseMap)
-	}
-	out.Printf("%s\n\n", bs)
 
 	runBenchmark(out, opts, benchmarkMethod{
 		serializer: serializer,
@@ -326,4 +304,33 @@ func makeRequest(t transport.Transport, request *transport.Request) (*transport.
 	defer cancel()
 
 	return t.Call(ctx, request)
+}
+
+func makeInitialRequest(out output, transport transport.Transport, serializer encoding.Serializer, req *transport.Request) {
+	response, err := makeRequest(transport, req)
+	if err != nil {
+		out.Fatalf("Failed while making call: %v\n", err)
+	}
+
+	// responseMap converts the Thrift bytes response to a map.
+	responseMap, err := serializer.Response(response)
+	if err != nil {
+		out.Fatalf("Failed while parsing response: %v\n", err)
+	}
+
+	// Print the initial output body.
+	outSerialized := map[string]interface{}{
+		"body": responseMap,
+	}
+	if len(response.Headers) > 0 {
+		outSerialized["headers"] = response.Headers
+	}
+	for k, v := range response.TransportFields {
+		outSerialized[k] = v
+	}
+	bs, err := json.MarshalIndent(outSerialized, "", "  ")
+	if err != nil {
+		out.Fatalf("Failed to convert map to JSON: %v\nMap: %+v\n", err, responseMap)
+	}
+	out.Printf("%s\n\n", bs)
 }

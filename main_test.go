@@ -815,3 +815,27 @@ func encodeEnveloped(e wire.Envelope) []byte {
 	}
 	return buf.Bytes()
 }
+
+func TestNoWarmupBenchmark(t *testing.T) {
+	s := newServer(t)
+	defer s.shutdown()
+	s.register(fooMethod, methods.errorIf(func() bool { return true }))
+
+	validRequestOpts := RequestOptions{
+		ThriftFile: validThrift,
+		MethodName: fooMethod,
+	}
+	buf, out := getOutput(t)
+	runWithOptions(Options{
+		ROpts: validRequestOpts,
+		TOpts: s.transportOpts(),
+		BOpts: BenchmarkOptions{
+			MaxRequests:    100,
+			WarmupRequests: 0,
+			Connections:    50,
+			Concurrency:    2,
+		},
+	}, out)
+	assert.Contains(t, buf.String(), "Total errors: 100")
+	assert.Contains(t, buf.String(), "Error rate: 100")
+}
