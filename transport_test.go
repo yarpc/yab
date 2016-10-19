@@ -230,38 +230,40 @@ func TestGetTransportCallerName(t *testing.T) {
 	}
 }
 
-// func TestGetTransportTraceEnabled(t *testing.T) {
-// 	s := newServer(t)
-// 	defer s.shutdown()
-// 	s.register("test", methods.traceEnabled())
-//
-// 	tests := []struct {
-// 		benchmarking bool
-// 		traceEnabled byte
-// 	}{
-// 		{true, 0},
-// 		{false, 1},
-// 	}
-//
-// 	opts := TransportOptions{
-// 		ServiceName: s.ch.ServiceName(),
-// 		HostPorts:   []string{s.hostPort()},
-// 	}
-//
-// 	for _, tt := range tests {
-// 		opts.benchmarking = tt.benchmarking
-//
-// 		ctx, cancel := tchannel.NewContext(time.Second)
-// 		defer cancel()
-//
-// 		tchan, err := getTransport(opts, encoding.Raw)
-// 		require.NoError(t, err, "getTransport failed")
-// 		res, err := tchan.Call(ctx, &transport.Request{Method: "test"})
-// 		require.NoError(t, err, "transport.Call failed")
-//
-// 		assert.Equal(t, tt.traceEnabled, res.Body[0], "TraceEnabled mismatch")
-// 	}
-// }
+func TestGetTransportTraceEnabled(t *testing.T) {
+	t.Skip("trace enabled test with tchannel 1.2 will be possible when we reintegrate jaeger")
+
+	s := newServer(t)
+	defer s.shutdown()
+	s.register("test", methods.traceEnabled())
+
+	tests := []struct {
+		benchmarking bool
+		traceEnabled byte
+	}{
+		{true, 0},
+		{false, 1},
+	}
+
+	opts := TransportOptions{
+		ServiceName: s.ch.ServiceName(),
+		HostPorts:   []string{s.hostPort()},
+	}
+
+	for _, tt := range tests {
+		opts.benchmarking = tt.benchmarking
+
+		ctx, cancel := tchannel.NewContext(time.Second)
+		defer cancel()
+
+		tchan, err := getTransport(opts, encoding.Raw)
+		require.NoError(t, err, "getTransport failed")
+		res, err := tchan.Call(ctx, &transport.Request{Method: "test"})
+		require.NoError(t, err, "transport.Call failed")
+
+		assert.Equal(t, tt.traceEnabled, res.Body[0], "TraceEnabled mismatch")
+	}
+}
 
 func TestParseHostFile(t *testing.T) {
 	tests := []struct {
