@@ -141,7 +141,7 @@ func TestGetHeaders(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got, err := getHeaders(tt.inline, tt.file)
+		got, err := getHeaders(tt.inline, tt.file, nil)
 		if tt.errMsg != "" {
 			if assert.Error(t, err, "getHeaders(%v, %v) should fail", tt.inline, tt.file) {
 				assert.Contains(t, err.Error(), tt.errMsg, "getHeaders(%v, %v) got unexpected error", tt.inline, tt.file)

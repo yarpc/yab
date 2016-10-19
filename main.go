@@ -24,17 +24,21 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"regexp"
 	"strings"
 	"time"
 
-	"github.com/casimir/xdg-go"
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
 
+	"github.com/casimir/xdg-go"
 	"github.com/jessevdk/go-flags"
+	"github.com/opentracing/opentracing-go"
+	jaeger "github.com/uber/jaeger-client-go"
+	jaeger_config "github.com/uber/jaeger-client-go/config"
 	"github.com/uber/tchannel-go"
 )
 
@@ -242,7 +246,7 @@ func runWithOptions(opts Options, out output) {
 		out.Fatalf("Failed while loading body input: %v\n", err)
 	}
 
-	headers, err := getHeaders(opts.ROpts.HeadersJSON, opts.ROpts.HeadersFile)
+	headers, err := getHeaders(opts.ROpts.HeadersJSON, opts.ROpts.HeadersFile, opts.ROpts.Headers)
 	if err != nil {
 		out.Fatalf("Failed while loading headers input: %v\n", err)
 	}
@@ -252,8 +256,30 @@ func runWithOptions(opts Options, out output) {
 		out.Fatalf("Failed while parsing input: %v\n", err)
 	}
 
+	if opts.TOpts.CallerName != "" {
+		if opts.TOpts.benchmarking {
+			out.Fatalf("Cannot override caller name when running benchmarks\n")
+		}
+	} else {
+		opts.TOpts.CallerName = "yab-" + os.Getenv("USER")
+	}
+
+	var tracer opentracing.Tracer
+	if opts.TOpts.Jaeger {
+		var jaegerConfig jaeger_config.Configuration
+		var closer io.Closer
+		tracer, closer, err = jaegerConfig.New(opts.TOpts.CallerName, jaeger.NullStatsReporter)
+		if err != nil {
+			out.Fatalf("Failed to create Jaeger tracer: %v\n", err)
+		}
+		defer closer.Close()
+		opentracing.InitGlobalTracer(tracer)
+	} else if len(opts.ROpts.Baggage) > 0 {
+		out.Fatalf("To propagate baggage, you must opt-into a tracing client, i.e., --jaeger")
+	}
+
 	// transport abstracts the underlying wire protocol used to make the call.
-	transport, err := getTransport(opts.TOpts, serializer.Encoding())
+	transport, err := getTransport(opts.TOpts, serializer.Encoding(), tracer)
 	if err != nil {
 		out.Fatalf("Failed while parsing options: %v\n", err)
 	}
@@ -271,6 +297,8 @@ func runWithOptions(opts Options, out output) {
 	if req.Timeout == 0 {
 		req.Timeout = time.Second
 	}
+	req.Tracer = tracer
+	req.Baggage = opts.ROpts.Baggage
 
 	// Only make the request if the user hasn't specified 0 warmup.
 	if !(opts.BOpts.enabled() && opts.BOpts.WarmupRequests == 0) {
@@ -302,6 +330,14 @@ func withTransportSerializer(p transport.Protocol, s encoding.Serializer, rOpts 
 func makeRequest(t transport.Transport, request *transport.Request) (*transport.Response, error) {
 	ctx, cancel := tchannel.NewContext(request.Timeout)
 	defer cancel()
+
+	if request.Tracer != nil {
+		span := request.Tracer.StartSpan(request.Method)
+		for k, v := range request.Baggage {
+			span = span.SetBaggageItem(k, v)
+		}
+		ctx = opentracing.ContextWithSpan(ctx, span)
+	}
 
 	return t.Call(ctx, request)
 }

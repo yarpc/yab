@@ -25,6 +25,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
 )
@@ -38,7 +39,7 @@ type benchmarkMethod struct {
 // up by making some number of requests through it.
 func (m benchmarkMethod) WarmTransport(opts TransportOptions, warmupRequests int) (transport.Transport, error) {
 	opts.benchmarking = true
-	transport, err := getTransport(opts, m.serializer.Encoding())
+	transport, err := getTransport(opts, m.serializer.Encoding(), opentracing.NoopTracer{})
 	if err != nil {
 		return nil, err
 	}

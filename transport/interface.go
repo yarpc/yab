@@ -23,15 +23,21 @@ package transport
 import (
 	"time"
 
+	"github.com/opentracing/opentracing-go"
 	"golang.org/x/net/context"
 )
 
 // Request is the fields used to make an RPC.
 type Request struct {
-	Method  string
-	Timeout time.Duration
-	Headers map[string]string
-	Body    []byte
+	Method          string
+	Timeout         time.Duration
+	Headers         map[string]string
+	Baggage         map[string]string
+	RoutingKey      string
+	RoutingDelegate string
+	ShardKey        string
+	Body            []byte
+	Tracer          opentracing.Tracer
 }
 
 // Response represents the result of an RPC.

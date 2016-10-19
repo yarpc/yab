@@ -30,6 +30,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/opentracing/opentracing-go"
+
 	"golang.org/x/net/context"
 )
 
@@ -92,6 +94,15 @@ func (h *httpTransport) newReq(ctx context.Context, r *Request) (*http.Request, 
 
 	for hdr, val := range r.Headers {
 		req.Header.Add(hdr, val)
+	}
+
+	span := opentracing.SpanFromContext(ctx)
+	if span != nil && r.Tracer != nil {
+		r.Tracer.Inject(
+			span.Context(),
+			opentracing.HTTPHeaders,
+			opentracing.HTTPHeadersCarrier(req.Header),
+		)
 	}
 
 	return req, nil

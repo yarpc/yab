@@ -155,7 +155,8 @@ func TestGetTransport(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		transport, err := getTransport(tt.opts, encoding.Thrift)
+		tt.opts.CallerName = "svc"
+		transport, err := getTransport(tt.opts, encoding.Thrift, nil)
 		if tt.errMsg != "" {
 			if assert.Error(t, err, "getTransport(%v) should fail", tt.opts) {
 				assert.Contains(t, err.Error(), tt.errMsg, "Unexpected error for getTransport(%v)", tt.opts)
@@ -171,28 +172,23 @@ func TestGetTransport(t *testing.T) {
 
 func TestGetTransportCallerName(t *testing.T) {
 	tests := []struct {
-		callerOverride string
-		want           string
-		benchmark      bool
-		wantErr        bool
+		caller    string
+		want      string
+		benchmark bool
+		wantErr   bool
 	}{
 		{
-			callerOverride: "",
-			want:           "yab-" + os.Getenv("USER"),
+			caller: "",
+			want:   "yab-" + os.Getenv("USER"),
 		},
 		{
-			callerOverride: "override",
-			want:           "override",
+			caller: "override",
+			want:   "override",
 		},
 		{
-			benchmark:      true,
-			callerOverride: "",
-			want:           "yab-" + os.Getenv("USER"),
-		},
-		{
-			benchmark:      true,
-			callerOverride: "override",
-			wantErr:        true,
+			benchmark: true,
+			caller:    "",
+			want:      "yab-" + os.Getenv("USER"),
 		},
 	}
 
@@ -206,12 +202,12 @@ func TestGetTransportCallerName(t *testing.T) {
 		})
 
 		opts := TransportOptions{
-			ServiceName:    server.ch.ServiceName(),
-			HostPorts:      []string{server.hostPort()},
-			CallerOverride: tt.callerOverride,
-			benchmarking:   tt.benchmark,
+			ServiceName:  server.ch.ServiceName(),
+			HostPorts:    []string{server.hostPort()},
+			CallerName:   tt.caller,
+			benchmarking: tt.benchmark,
 		}
-		tchan, err := getTransport(opts, encoding.Raw)
+		tchan, err := getTransport(opts, encoding.Raw, nil)
 		if tt.wantErr {
 			assert.Error(t, err, "Expect fail: %+v", tt)
 			continue

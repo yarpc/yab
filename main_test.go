@@ -384,8 +384,7 @@ func TestAlises(t *testing.T) {
 		{
 			args: []cmdArgs{
 				{"-P", "file"},
-				{"-H", "file"},
-				{"--hostlist", "file"},
+				{"--peer-list", "file"},
 			},
 			validate: func(args cmdArgs, opts *Options) {
 				assert.Equal(t, "file", opts.TOpts.HostPortFile, "Args: %v", args)

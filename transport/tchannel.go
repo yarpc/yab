@@ -28,6 +28,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/uber/tchannel-go"
 	"github.com/uber/tchannel-go/thrift"
 	"golang.org/x/net/context"
@@ -65,6 +66,10 @@ type TChannelOptions struct {
 	// TransportOpts are a list of options, mostly used to add or override
 	// TChannel's transport headers.
 	TransportOpts map[string]string
+
+	// Tracer is an instance of an opentracing tracer for baggage propagation
+	// and/or span submission.
+	Tracer opentracing.Tracer
 }
 
 // NewTChannel returns a Transport that calls a TChannel service.
@@ -75,7 +80,7 @@ func NewTChannel(opts TChannelOptions) (Transport, error) {
 	}
 
 	callerName := opts.SourceService
-	if cn, ok := opts.TransportOpts["cn"]; ok {
+	if cn, ok := opts.TransportOpts["cn"]; ok && cn != "" {
 		callerName = cn
 	}
 
@@ -88,6 +93,7 @@ func NewTChannel(opts TChannelOptions) (Transport, error) {
 	ch, err := tchannel.NewChannel(callerName, &tchannel.ChannelOptions{
 		Logger:      tchannel.NewLevelLogger(tchannel.SimpleLogger, level),
 		ProcessName: processName,
+		Tracer:      opts.Tracer,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create TChannel: %v", err)
@@ -113,7 +119,13 @@ func (t *tchan) Protocol() Protocol {
 }
 
 func (t *tchan) Call(ctx context.Context, r *Request) (*Response, error) {
+
 	call, err := t.sc.BeginCall(ctx, r.Method, t.callOptions)
+
+	if r.Tracer != nil {
+		r.Headers = tchannel.InjectOutboundSpan(call.Response(), r.Headers)
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("begin call failed: %v", err)
 	}

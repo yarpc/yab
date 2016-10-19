@@ -50,6 +50,7 @@ func (s *server) register(name string, f handler) {
 
 func (s *server) transportOpts() TransportOptions {
 	return TransportOptions{
+		CallerName:  "bar",
 		ServiceName: "foo",
 		HostPorts:   []string{s.hostPort()},
 	}

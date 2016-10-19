@@ -29,23 +29,22 @@ import (
 	"io/ioutil"
 	"net"
 	"net/url"
-	"os"
 	"strings"
 
+	"github.com/opentracing/opentracing-go"
+	"github.com/uber/tchannel-go"
 	"gopkg.in/yaml.v2"
 
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
-
-	"github.com/uber/tchannel-go"
 )
 
 var (
-	errServiceRequired    = errors.New("specify a target service using --service")
-	errPeerRequired       = errors.New("specify at least one peer using --peer or using --peer-list")
-	errPeerOptions        = errors.New("do not specify peers using --peer and --peer-list")
-	errPeerListFile       = errors.New("peer list should be a JSON file with a list of strings")
-	errCallerForBenchmark = errors.New("cannot override caller name when running benchmarks")
+	errServiceRequired = errors.New("specify a target service using --service")
+	errCallerRequired  = errors.New("caller name is required")
+	errPeerRequired    = errors.New("specify at least one peer using --peer or using --peer-list")
+	errPeerOptions     = errors.New("do not specify peers using --peer and --peer-list")
+	errPeerListFile    = errors.New("peer list should be a JSON file with a list of strings")
 )
 
 func remapLocalHost(hostPorts []string) {
@@ -112,9 +111,14 @@ func loadTransportHostPorts(opts TransportOptions) (TransportOptions, error) {
 	return opts, nil
 }
 
-func getTransport(opts TransportOptions, encoding encoding.Encoding) (transport.Transport, error) {
+func getTransport(opts TransportOptions, encoding encoding.Encoding, tracer opentracing.Tracer) (transport.Transport, error) {
+
 	if opts.ServiceName == "" {
 		return nil, errServiceRequired
+	}
+
+	if opts.CallerName == "" {
+		return nil, errCallerRequired
 	}
 
 	opts, err := loadTransportHostPorts(opts)
@@ -127,35 +131,23 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding) (transport.
 		return nil, err
 	}
 
-	sourceService := "yab-" + os.Getenv("USER")
-	if opts.CallerOverride != "" {
-		if opts.benchmarking {
-			return nil, errCallerForBenchmark
-		}
-		sourceService = opts.CallerOverride
-	}
-
 	if protocol == "tchannel" {
 		remapLocalHost(opts.HostPorts)
 
-		traceSampleRate := 1.0
-		if opts.benchmarking {
-			traceSampleRate = 0
-		}
-
 		topts := transport.TChannelOptions{
-			SourceService:   sourceService,
-			TargetService:   opts.ServiceName,
-			HostPorts:       opts.HostPorts,
-			Encoding:        encoding.String(),
-			TransportOpts:   opts.TransportOptions,
-			TraceSampleRate: traceSampleRate,
+			SourceService: opts.CallerName,
+			TargetService: opts.ServiceName,
+			HostPorts:     opts.HostPorts,
+			Encoding:      encoding.String(),
+			TransportOpts: opts.TransportOptions,
+			Tracer:        tracer,
 		}
 		return transport.NewTChannel(topts)
 	}
 
+	// TODO thread tracer through HTTP
 	hopts := transport.HTTPOptions{
-		SourceService: sourceService,
+		SourceService: opts.CallerName,
 		TargetService: opts.ServiceName,
 		Encoding:      encoding.String(),
 		URLs:          opts.HostPorts,
