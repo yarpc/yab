@@ -1,6 +1,8 @@
 Changelog
 =========
 
+* Upgrade to TChannel 1.2.0 and add Open Tracing support.
+
 # 0.6.2
 
 * Add error rate to benchmarking output.

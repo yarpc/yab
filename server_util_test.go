@@ -76,18 +76,18 @@ func (methodsT) echo() handler {
 	}
 }
 
-func (methodsT) traceEnabled() handler {
-	return func(ctx context.Context, args *raw.Args) (*raw.Res, error) {
-		span := tchannel.CurrentSpan(ctx)
-		ret := byte(0)
-		if span.TracingEnabled() {
-			ret = 1
-		}
-		return &raw.Res{
-			Arg3: []byte{ret},
-		}, nil
-	}
-}
+// func (methodsT) traceEnabled() handler {
+// 	return func(ctx context.Context, args *raw.Args) (*raw.Res, error) {
+// 		span := tchannel.CurrentSpan(ctx)
+// 		ret := byte(0)
+// 		if span.TracingEnabled() {
+// 			ret = 1
+// 		}
+// 		return &raw.Res{
+// 			Arg3: []byte{ret},
+// 		}, nil
+// 	}
+// }
 
 func (methodsT) customArg3(arg3 []byte) handler {
 	return func(ctx context.Context, args *raw.Args) (*raw.Res, error) {
