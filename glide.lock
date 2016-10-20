@@ -1,8 +1,8 @@
-hash: 7a48a8fd1e820211172fb163a2aec3b3a8f83d5f232a0715b677153d17ef444e
-updated: 2016-10-18T20:09:33.84360716-07:00
+hash: ebb78934af0449d997e30b6efca8ab568ea5dfb0d66bd092632c487e90a88793
+updated: 2016-10-20T16:45:08.074748147-07:00
 imports:
 - name: github.com/apache/thrift
-  version: 015fe5272cdcfc14063384ad9cc2d083cd5e2b09
+  version: 59cb6661bcee265d39ad524154472ebe27760f1e
   subpackages:
   - lib/go/thrift
 - name: github.com/cactus/go-statsd-client
@@ -60,7 +60,7 @@ imports:
   - trand
   - typed
 - name: golang.org/x/net
-  version: a625e3953219464fdd5611bb48bf87c927717295
+  version: daba796358cd2742b75aae05761f1b898c9f6a5c
   subpackages:
   - context
   - context/ctxhttp
