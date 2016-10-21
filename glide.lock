@@ -1,8 +1,8 @@
-hash: 55fd0a7525390f35a5dfcc739bd4aee790f7cc81aa3ce4576de948675bb3fca1
-updated: 2016-08-24T23:17:59.856656069-07:00
+hash: ebb78934af0449d997e30b6efca8ab568ea5dfb0d66bd092632c487e90a88793
+updated: 2016-10-20T16:45:08.074748147-07:00
 imports:
 - name: github.com/apache/thrift
-  version: e4ba16495e8d8177eb85d6bfcc69089b38753e39
+  version: 59cb6661bcee265d39ad524154472ebe27760f1e
   subpackages:
   - lib/go/thrift
 - name: github.com/cactus/go-statsd-client
@@ -12,36 +12,41 @@ imports:
 - name: github.com/casimir/xdg-go
   version: 372ccc2180dab73316615641d5617c5ed3e35529
 - name: github.com/davecgh/go-spew
-  version: 6cf5744a041a0022271cefed95ba843f6d87fd51
+  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
   subpackages:
   - spew
 - name: github.com/jessevdk/go-flags
-  version: f2785f5820ec967043de79c8be97edfc464ca745
+  version: 4cc2832a6e6d1d3b815e2b9d544b2a4dfb3ce8fa
+- name: github.com/opentracing/opentracing-go
+  version: 0c3154a3c2ce79d3271985848659870599dfb77c
+  subpackages:
+  - ext
+  - log
 - name: github.com/pmezard/go-difflib
   version: 792786c7400a136282c1664665ae0a8db921c6c2
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
-  version: d77da356e56a7428ad25149ca77381849a6a5232
+  version: 976c720a22c8eb4eb6a0b4348ad85ad12491a506
   subpackages:
   - assert
   - require
 - name: github.com/thriftrw/thriftrw-go
-  version: 13abcf75760f008b6f92ee3185a9534e286b64a0
+  version: 486fe6340c8acc600a44a3a698becb9725d578fb
   subpackages:
   - ast
   - compile
   - envelope
-  - envelope/internal/exception
   - idl
   - idl/internal
+  - internal/envelope/exception
   - protocol
   - protocol/binary
   - wire
 - name: github.com/uber-go/atomic
   version: 0c9e689d64f004564b79d9a663634756df322902
 - name: github.com/uber/tchannel-go
-  version: cddba8c9bdf3a761b261382a6d7e7253e332790c
+  version: 4a23f3aae76694b21107f118ece763a61b98ea07
   subpackages:
   - json
   - raw
@@ -54,8 +59,16 @@ imports:
   - tnet
   - trand
   - typed
+- name: golang.org/x/net
+  version: daba796358cd2742b75aae05761f1b898c9f6a5c
+  subpackages:
+  - context
+  - context/ctxhttp
+- name: gopkg.in/yaml.v2
+  version: a5b47d31c556af34a302ce5d659e6fea44d90de0
+testImports:
 - name: github.com/yarpc/yarpc-go
-  version: bb96e40a398063240ea18ed77810fd8470a22bec
+  version: 7aba6209d33e2d16608e8b203c2becd015ebe45f
   subpackages:
   - encoding/thrift
   - encoding/thrift/internal
@@ -70,13 +83,6 @@ imports:
   - internal/sync
   - transport
   - transport/http
+  - transport/internal
   - transport/tchannel
   - transport/tchannel/internal
-- name: golang.org/x/net
-  version: 3a1f9ef983bc408afd0a9e63fd9c962ae853e543
-  subpackages:
-  - context
-  - context/ctxhttp
-- name: gopkg.in/yaml.v2
-  version: e4d366fc3c7938e2958e662b4258c7a89e1f0e3e
-testImports: []

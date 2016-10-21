@@ -85,11 +85,9 @@ func NewTChannel(opts TChannelOptions) (Transport, error) {
 	}
 	processName := fmt.Sprintf("%v@%v:%v[%v]", os.Getenv("USER"), hostname, os.Args[0], os.Getpid())
 
-	// TODO: set trace sample rate to 1 for the initial request.
 	ch, err := tchannel.NewChannel(callerName, &tchannel.ChannelOptions{
-		Logger:          tchannel.NewLevelLogger(tchannel.SimpleLogger, level),
-		ProcessName:     processName,
-		TraceSampleRate: &opts.TraceSampleRate,
+		Logger:      tchannel.NewLevelLogger(tchannel.SimpleLogger, level),
+		ProcessName: processName,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create TChannel: %v", err)

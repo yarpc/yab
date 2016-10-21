@@ -231,6 +231,8 @@ func TestGetTransportCallerName(t *testing.T) {
 }
 
 func TestGetTransportTraceEnabled(t *testing.T) {
+	t.Skip("trace enabled test with tchannel 1.2 will be possible when we reintegrate jaeger")
+
 	s := newServer(t)
 	defer s.shutdown()
 	s.register("test", methods.traceEnabled())
