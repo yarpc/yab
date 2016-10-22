@@ -73,8 +73,6 @@ type TransportOptions struct {
 	HostPorts        []string          `short:"p" long:"peer" description:"The host:port of the service to call"`
 	HostPortFile     string            `short:"P" long:"peer-list" description:"Path of a JSON or YAML file containing a list of host:ports"`
 	CallerName       string            `long:"caller" description:"Caller will override the default caller name (which is yab-$USER)."`
-	RoutingKey       string            `long:"rk" description:""`
-	RoutingDelegate  string            `long:"rd" description:""`
 	Jaeger           bool              `long:"jaeger" description:"Use the Jaeger tracing client to send Uber style traces and baggage headers"`
 	TransportOptions map[string]string `long:"topt" description:"Custom options for the specific transport being used"`
 
