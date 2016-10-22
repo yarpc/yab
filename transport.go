@@ -150,7 +150,6 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding, tracer open
 		return transport.NewTChannel(topts)
 	}
 
-	// TODO thread tracer through HTTP
 	hopts := transport.HTTPOptions{
 		SourceService: opts.CallerName,
 		TargetService: opts.ServiceName,
