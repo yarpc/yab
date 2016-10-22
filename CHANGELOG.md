@@ -5,9 +5,9 @@ Changelog
 
 * Upgrade to TChannel 1.2.0 and add Open Tracing support.
 * Support set constants in Thrift files.
-* Add support for -H key:value header arguments.
-* Add support for -B key:value for baggage header arguments, with support for
-  Jaeger's Uber-styled baggage for HTTP and TChannel with --jaeger.
+* Add support for headers with flags like -H key:value.
+* Add support for baggage headers with flags like -B key:value when baggage
+  propagation is enabled with --jaeger.
 
 # 0.6.2
 
