@@ -264,20 +264,7 @@ func runWithOptions(opts Options, out output) {
 		opts.TOpts.CallerName = "yab-" + os.Getenv("USER")
 	}
 
-	var tracer opentracing.Tracer
-	tracer = opentracing.NoopTracer{}
-	if opts.TOpts.Jaeger {
-		var jaegerConfig jaeger_config.Configuration
-		var closer io.Closer
-		tracer, closer, err = jaegerConfig.New(opts.TOpts.CallerName, jaeger.NullStatsReporter)
-		if err != nil {
-			out.Fatalf("Failed to create Jaeger tracer: %v\n", err)
-		}
-		defer closer.Close()
-		opentracing.InitGlobalTracer(tracer)
-	} else if len(opts.ROpts.Baggage) > 0 {
-		out.Fatalf("To propagate baggage, you must opt-into a tracing client, i.e., --jaeger")
-	}
+	tracer := getTracer(opts, out)
 
 	// transport abstracts the underlying wire protocol used to make the call.
 	transport, err := getTransport(opts.TOpts, serializer.Encoding(), tracer)
@@ -313,6 +300,24 @@ func runWithOptions(opts Options, out output) {
 
 type noEnveloper interface {
 	WithoutEnvelopes() encoding.Serializer
+}
+
+func getTracer(opts Options, out output) opentracing.Tracer {
+	var tracer opentracing.Tracer
+	tracer = opentracing.NoopTracer{}
+	if opts.TOpts.Jaeger {
+		var jaegerConfig jaeger_config.Configuration
+		var closer io.Closer
+		tracer, closer, err := jaegerConfig.New(opts.TOpts.CallerName, jaeger.NullStatsReporter)
+		if err != nil {
+			out.Fatalf("Failed to create Jaeger tracer: %v\n", err)
+		}
+		defer closer.Close()
+		opentracing.InitGlobalTracer(tracer)
+	} else if len(opts.ROpts.Baggage) > 0 {
+		out.Fatalf("To propagate baggage, you must opt-into a tracing client, i.e., --jaeger")
+	}
+	return tracer
 }
 
 // withTransportSerializer may modify the serializer for the transport used.
