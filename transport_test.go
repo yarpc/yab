@@ -252,7 +252,7 @@ func TestGetTransportTraceEnabled(t *testing.T) {
 		ctx, cancel := tchannel.NewContext(time.Second)
 		defer cancel()
 
-		tchan, err := getTransport(opts, encoding.Raw)
+		tchan, err := getTransport(opts, encoding.Raw, nil)
 		require.NoError(t, err, "getTransport failed")
 		res, err := tchan.Call(ctx, &transport.Request{Method: "test"})
 		require.NoError(t, err, "transport.Call failed")

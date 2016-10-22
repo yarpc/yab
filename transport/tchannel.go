@@ -41,6 +41,7 @@ const rawHeadersKey = "_raw_"
 type tchan struct {
 	sc          *tchannel.SubChannel
 	callOptions *tchannel.CallOptions
+	tracer      opentracing.Tracer
 }
 
 // TChannelOptions are used to create a TChannel transport.
@@ -111,7 +112,12 @@ func NewTChannel(opts TChannelOptions) (Transport, error) {
 	return &tchan{
 		sc:          ch.GetSubChannel(opts.TargetService),
 		callOptions: callOpts,
+		tracer:      opts.Tracer,
 	}, nil
+}
+
+func (t *tchan) Tracer() opentracing.Tracer {
+	return t.tracer
 }
 
 func (t *tchan) Protocol() Protocol {
@@ -119,18 +125,17 @@ func (t *tchan) Protocol() Protocol {
 }
 
 func (t *tchan) Call(ctx context.Context, r *Request) (*Response, error) {
+	req := *r
 
-	call, err := t.sc.BeginCall(ctx, r.Method, t.callOptions)
-
-	if r.Tracer != nil {
-		r.Headers = tchannel.InjectOutboundSpan(call.Response(), r.Headers)
-	}
+	call, err := t.sc.BeginCall(ctx, req.Method, t.callOptions)
 
 	if err != nil {
 		return nil, fmt.Errorf("begin call failed: %v", err)
 	}
 
-	if err := t.writeArgs(call, r); err != nil {
+	req.Headers = tchannel.InjectOutboundSpan(call.Response(), req.Headers)
+
+	if err := t.writeArgs(call, &req); err != nil {
 		return nil, err
 	}
 
@@ -139,8 +144,8 @@ func (t *tchan) Call(ctx context.Context, r *Request) (*Response, error) {
 		return nil, err
 	}
 
-	span := tchannel.CurrentSpan(ctx)
-	res.TransportFields["trace"] = fmt.Sprintf("%x", span.TraceID())
+	tchSpan := tchannel.CurrentSpan(ctx)
+	res.TransportFields["trace"] = fmt.Sprintf("%x", tchSpan.TraceID())
 	return res, nil
 }
 

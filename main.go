@@ -297,7 +297,6 @@ func runWithOptions(opts Options, out output) {
 	if req.Timeout == 0 {
 		req.Timeout = time.Second
 	}
-	req.Tracer = tracer
 	req.Baggage = opts.ROpts.Baggage
 
 	// Only make the request if the user hasn't specified 0 warmup.
@@ -331,8 +330,8 @@ func makeRequest(t transport.Transport, request *transport.Request) (*transport.
 	ctx, cancel := tchannel.NewContext(request.Timeout)
 	defer cancel()
 
-	if request.Tracer != nil {
-		span := request.Tracer.StartSpan(request.Method)
+	if tracer := t.Tracer(); tracer != nil {
+		span := tracer.StartSpan(request.Method)
 		for k, v := range request.Baggage {
 			span = span.SetBaggageItem(k, v)
 		}

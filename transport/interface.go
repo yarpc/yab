@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
+
 	"golang.org/x/net/context"
 )
 
@@ -37,7 +38,6 @@ type Request struct {
 	RoutingDelegate string
 	ShardKey        string
 	Body            []byte
-	Tracer          opentracing.Tracer
 }
 
 // Response represents the result of an RPC.
@@ -63,4 +63,5 @@ const (
 type Transport interface {
 	Call(ctx context.Context, request *Request) (*Response, error)
 	Protocol() Protocol
+	Tracer() opentracing.Tracer
 }

@@ -151,6 +151,7 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding, tracer open
 		TargetService: opts.ServiceName,
 		Encoding:      encoding.String(),
 		URLs:          opts.HostPorts,
+		Tracer:        tracer,
 	}
 	return transport.NewHTTP(hopts)
 }
