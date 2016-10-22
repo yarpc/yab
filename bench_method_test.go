@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
 
@@ -142,7 +143,7 @@ func TestBenchmarkMethodCall(t *testing.T) {
 		ServiceName: "foo",
 		HostPorts:   []string{s.hostPort()},
 	}
-	tp, err := getTransport(tOpts, encoding.Thrift, nil)
+	tp, err := getTransport(tOpts, encoding.Thrift, opentracing.NoopTracer{})
 	require.NoError(t, err, "Failed to get transport")
 
 	for _, tt := range tests {

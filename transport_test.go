@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
 
@@ -156,7 +157,7 @@ func TestGetTransport(t *testing.T) {
 
 	for _, tt := range tests {
 		tt.opts.CallerName = "svc"
-		transport, err := getTransport(tt.opts, encoding.Thrift, nil)
+		transport, err := getTransport(tt.opts, encoding.Thrift, opentracing.NoopTracer{})
 		if tt.errMsg != "" {
 			if assert.Error(t, err, "getTransport(%v) should fail", tt.opts) {
 				assert.Contains(t, err.Error(), tt.errMsg, "Unexpected error for getTransport(%v)", tt.opts)
@@ -207,7 +208,7 @@ func TestGetTransportCallerName(t *testing.T) {
 			CallerName:   tt.caller,
 			benchmarking: tt.benchmark,
 		}
-		tchan, err := getTransport(opts, encoding.Raw, nil)
+		tchan, err := getTransport(opts, encoding.Raw, opentracing.NoopTracer{})
 		if tt.wantErr {
 			assert.Error(t, err, "Expect fail: %+v", tt)
 			continue
@@ -252,7 +253,7 @@ func TestGetTransportTraceEnabled(t *testing.T) {
 		ctx, cancel := tchannel.NewContext(time.Second)
 		defer cancel()
 
-		tchan, err := getTransport(opts, encoding.Raw, nil)
+		tchan, err := getTransport(opts, encoding.Raw, opentracing.NoopTracer{})
 		require.NoError(t, err, "getTransport failed")
 		res, err := tchan.Call(ctx, &transport.Request{Method: "test"})
 		require.NoError(t, err, "transport.Call failed")

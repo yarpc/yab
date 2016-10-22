@@ -42,6 +42,7 @@ import (
 var (
 	errServiceRequired = errors.New("specify a target service using --service")
 	errCallerRequired  = errors.New("caller name is required")
+	errTracerRequired  = errors.New("tracer is required, or explicit NoopTracer")
 	errPeerRequired    = errors.New("specify at least one peer using --peer or using --peer-list")
 	errPeerOptions     = errors.New("do not specify peers using --peer and --peer-list")
 	errPeerListFile    = errors.New("peer list should be a JSON file with a list of strings")
@@ -119,6 +120,10 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding, tracer open
 
 	if opts.CallerName == "" {
 		return nil, errCallerRequired
+	}
+
+	if tracer == nil {
+		return nil, errTracerRequired
 	}
 
 	opts, err := loadTransportHostPorts(opts)

@@ -265,6 +265,7 @@ func runWithOptions(opts Options, out output) {
 	}
 
 	var tracer opentracing.Tracer
+	tracer = opentracing.NoopTracer{}
 	if opts.TOpts.Jaeger {
 		var jaegerConfig jaeger_config.Configuration
 		var closer io.Closer
