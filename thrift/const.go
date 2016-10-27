@@ -40,12 +40,10 @@ func constToRequest(v compile.ConstantValue) interface{} {
 		return constToRequest(v.Target.Value)
 	case compile.EnumItemReference:
 		return v.Item.Value
+	case compile.ConstantSet:
+		return constValueListToRequest([]compile.ConstantValue(v))
 	case compile.ConstantList:
-		result := make([]interface{}, len(v))
-		for i, value := range v {
-			result[i] = constToRequest(value)
-		}
-		return result
+		return constValueListToRequest([]compile.ConstantValue(v))
 	case compile.ConstantMap:
 		result := make(map[interface{}]interface{})
 		for _, value := range v {
@@ -63,4 +61,12 @@ func constToRequest(v compile.ConstantValue) interface{} {
 	default:
 		panic(fmt.Sprintf("unknown constant type: %T", v))
 	}
+}
+
+func constValueListToRequest(v []compile.ConstantValue) interface{} {
+	result := make([]interface{}, len(v))
+	for i, value := range v {
+		result[i] = constToRequest(value)
+	}
+	return result
 }

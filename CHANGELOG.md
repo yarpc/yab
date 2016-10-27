@@ -1,7 +1,10 @@
 Changelog
 =========
 
+# 0.7.0
+
 * Upgrade to TChannel 1.2.0 and add Open Tracing support.
+* Support set constants.
 
 # 0.6.2
 
