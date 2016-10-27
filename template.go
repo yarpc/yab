@@ -2,7 +2,6 @@ package main
 
 import (
 	"io/ioutil"
-	"log"
 	"time"
 
 	"gopkg.in/yaml.v2"
@@ -17,30 +16,29 @@ type template struct {
 	Timeout time.Duration     `yaml:"timeout"`
 }
 
-func readYamlRequest(opts *Options) {
+func readYamlRequest(opts *Options) error {
 	t := template{}
 
 	bytes, err := ioutil.ReadFile(opts.ROpts.YamlTemplate)
 	if err != nil {
-		log.Fatalf("Unable to read file: %v\n", err)
+		return err;
 	}
 
 	err = yaml.Unmarshal(bytes, &t)
 	if err != nil {
-		log.Fatalf("Unable to parse file: %v\n", err)
+		return err;
 	}
 
 	body, err := yaml.Marshal(t.Request)
 	if err != nil {
-		log.Fatalf("Unable to marshal yaml: %v\n", err)
+		return err;
 	}
 
 	headers, err := yaml.Marshal(t.Headers)
 	if err != nil {
-		log.Fatalf("Unable to marshal yaml: %v\n", err)
+		return err;
 	}
 
-	// Should we overwrite if these clash with options specified on the command line?
 	opts.ROpts.ThriftFile = t.Thrift
 	opts.ROpts.MethodName = t.Method
 	opts.TOpts.ServiceName = t.Service
