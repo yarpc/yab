@@ -105,11 +105,9 @@ func TestNewThriftSerializer(t *testing.T) {
 }
 
 func TestRequest(t *testing.T) {
-	serializer, err := NewThrift(validThrift, "Simple::foo", false /* multiplexed */)
-	require.NoError(t, err, "Failed to create serializer")
-
 	tests := []struct {
 		desc   string
+		method string
 		bs     []byte
 		errMsg string
 	}{
@@ -127,9 +125,22 @@ func TestRequest(t *testing.T) {
 			desc: "Valid request",
 			bs:   nil,
 		},
+		{
+			desc:   "Valid request with default",
+			method: "withDefault",
+			bs:     nil,
+		},
 	}
 
 	for _, tt := range tests {
+		method := tt.method
+		if method == "" {
+			method = "foo"
+		}
+
+		serializer, err := NewThrift(validThrift, "Simple::"+method, false /* multiplexed */)
+		require.NoError(t, err, "Failed to create serializer")
+
 		got, err := serializer.Request(tt.bs)
 		if tt.errMsg == "" {
 			assert.NoError(t, err, "%v", tt.desc)

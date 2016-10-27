@@ -80,6 +80,13 @@ func TestConstToRequest(t *testing.T) {
 			want: []interface{}{int64(1), true, "foo"},
 		},
 		{
+			v: compile.ConstantSet{
+				compile.ConstantString("foo"),
+				compile.ConstantSet{compile.ConstantString("bar")},
+			},
+			want: []interface{}{"foo", []interface{}{"bar"}},
+		},
+		{
 			v: compile.ConstantMap{
 				{compile.ConstantInt(1), compile.ConstantString("v1")},
 				{compile.ConstantBool(true), compile.ConstantString("v2")},
