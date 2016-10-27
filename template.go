@@ -3,9 +3,9 @@ package main
 import (
 	"io/ioutil"
 	"log"
+	"time"
 
 	"gopkg.in/yaml.v2"
-	"time"
 )
 
 type template struct {
