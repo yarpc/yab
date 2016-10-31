@@ -1,0 +1,12 @@
+service: foo
+method: Simple::foo
+thrift: testdata/templates/foo.thrift
+timeout: 4.5s
+headers:
+    header1: value1
+    header2: value2
+request:
+    location:
+        latitude: 37.7
+        longitude: -122.4
+        cityId: 1

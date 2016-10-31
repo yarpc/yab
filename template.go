@@ -45,4 +45,6 @@ func readYamlRequest(opts *Options) error {
 	opts.ROpts.HeadersJSON = string(headers)
 	opts.ROpts.RequestJSON = string(body)
 	opts.ROpts.Timeout = timeMillisFlag(t.Timeout)
+
+	return nil
 }

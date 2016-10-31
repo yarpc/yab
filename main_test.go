@@ -840,3 +840,17 @@ func TestNoWarmupBenchmark(t *testing.T) {
 	assert.Contains(t, buf.String(), "Total errors: 100")
 	assert.Contains(t, buf.String(), "Error rate: 100")
 }
+
+func TestTemplates(t *testing.T) {
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+
+	echoAddr := echoServer(t, "", []byte{0})
+	os.Args = []string{
+		"yab",
+		"-y", exampleTemplate,
+		"-p", echoAddr,
+	}
+
+	main()
+}

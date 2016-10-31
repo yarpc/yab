@@ -36,8 +36,9 @@ import (
 
 // Constants useful for tests
 const (
-	validThrift = "testdata/simple.thrift"
-	fooMethod   = "Simple::foo"
+	validThrift     = "testdata/simple.thrift"
+	fooMethod       = "Simple::foo"
+	exampleTemplate = "testdata/templates/foo.yaml"
 )
 
 type testOutput struct {
