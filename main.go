@@ -308,12 +308,12 @@ func getTracer(opts Options, out output) opentracing.Tracer {
 	if opts.TOpts.Jaeger {
 		var jaegerConfig jaeger_config.Configuration
 		var closer io.Closer
-		tracer, closer, err := jaegerConfig.New(opts.TOpts.CallerName, jaeger.NullStatsReporter)
+		var err error
+		tracer, closer, err = jaegerConfig.New(opts.TOpts.CallerName, jaeger.NullStatsReporter)
 		if err != nil {
 			out.Fatalf("Failed to create Jaeger tracer: %v\n", err)
 		}
 		defer closer.Close()
-		opentracing.InitGlobalTracer(tracer)
 	} else if len(opts.ROpts.Baggage) > 0 {
 		out.Fatalf("To propagate baggage, you must opt-into a tracing client, i.e., --jaeger")
 	}

@@ -99,6 +99,8 @@ func (h *httpTransport) newReq(ctx context.Context, r *Request) (*http.Request, 
 	req.Header.Add("Context-TTL-MS", strconv.Itoa(int(timeout/time.Millisecond)))
 
 	for hdr, val := range r.Headers {
+		// TODO add Rpc-Header- prefix to headers and add transport headers
+		// without modification.
 		req.Header.Add(hdr, val)
 	}
 
