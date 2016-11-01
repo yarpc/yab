@@ -39,7 +39,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/uber/jaeger-client-go"
-	jaeger_config "github.com/uber/jaeger-client-go/config"
 	"github.com/uber/tchannel-go"
 	"github.com/uber/tchannel-go/testutils"
 	"github.com/uber/tchannel-go/thrift"
@@ -88,6 +87,15 @@ func verifyBaggage(ctx context.Context) error {
 	if span == nil {
 		return errors.New("missing span")
 	}
+
+	spanCtx, ok := span.Context().(jaeger.SpanContext)
+	if !ok {
+		return errors.New("trace context is not from jaeger")
+	}
+	if !spanCtx.IsDebug() {
+		return errors.New("span context is not configured to submit traces")
+	}
+
 	val := span.BaggageItem("baggagekey")
 	if val == "" {
 		return errors.New("missing baggage")
@@ -164,8 +172,7 @@ func (yarpcHandler) Bar(ctx context.Context, reqMeta yarpc.ReqMeta, arg *int32) 
 }
 
 func TestIntegrationProtocols(t *testing.T) {
-	var jaegerConfig jaeger_config.Configuration
-	tracer, closer, err := jaegerConfig.New("foo", jaeger.NullStatsReporter)
+	tracer, closer, err := getTestTracer("foo")
 	assert.NoError(t, err, "failed to instanitate jaeger")
 	defer closer.Close()
 

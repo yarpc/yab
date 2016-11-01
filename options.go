@@ -75,9 +75,6 @@ type TransportOptions struct {
 	CallerName       string            `long:"caller" description:"Caller will override the default caller name (which is yab-$USER)."`
 	Jaeger           bool              `long:"jaeger" description:"Use the Jaeger tracing client to send Uber style traces and baggage headers"`
 	TransportOptions map[string]string `long:"topt" description:"Custom options for the specific transport being used"`
-
-	// benchmarking is a private flag set when a transport is required for benchmarking.
-	benchmarking bool
 }
 
 // BenchmarkOptions are benchmark-specific options

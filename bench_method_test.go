@@ -55,7 +55,7 @@ func benchmarkMethodForTest(t *testing.T, methodString string, p transport.Proto
 }
 
 func TestBenchmarkMethodWarmTransport(t *testing.T) {
-	s := newServer(t)
+	s := newServer(t, nil)
 	defer s.shutdown()
 	s.register(fooMethod, methods.echo())
 
@@ -106,7 +106,7 @@ func TestBenchmarkMethodWarmTransport(t *testing.T) {
 }
 
 func TestBenchmarkMethodCall(t *testing.T) {
-	s := newServer(t)
+	s := newServer(t, nil)
 	defer s.shutdown()
 
 	thriftExBytes := []byte{
@@ -211,7 +211,7 @@ func TestBenchmarkMethodWarmTransportsSuccess(t *testing.T) {
 	servers := make([]*server, numServers)
 	serverHPs := make([]string, numServers)
 	for i := range servers {
-		servers[i] = newServer(t)
+		servers[i] = newServer(t, nil)
 		defer servers[i].shutdown()
 		serverHPs[i] = servers[i].hostPort()
 
@@ -269,7 +269,7 @@ func TestBenchmarkMethodWarmTransportsError(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		s := newServer(t)
+		s := newServer(t, nil)
 		defer s.shutdown()
 		msg := fmt.Sprintf("success: %v warmup: %v", tt.success, tt.warmup)
 

@@ -21,11 +21,13 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
+	opentracing_ext "github.com/opentracing/opentracing-go/ext"
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
 
@@ -194,7 +196,7 @@ func TestGetTransportCallerName(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		server := newServer(t)
+		server := newServer(t, nil)
 		defer server.shutdown()
 
 		server.register("test", func(ctx context.Context, args *raw.Args) (*raw.Res, error) {
@@ -203,14 +205,13 @@ func TestGetTransportCallerName(t *testing.T) {
 		})
 
 		opts := TransportOptions{
-			ServiceName:  server.ch.ServiceName(),
-			HostPorts:    []string{server.hostPort()},
-			CallerName:   tt.caller,
-			benchmarking: tt.benchmark,
+			ServiceName: server.ch.ServiceName(),
+			HostPorts:   []string{server.hostPort()},
+			CallerName:  tt.caller,
 		}
 		tchan, err := getTransport(opts, encoding.Raw, opentracing.NoopTracer{})
 		if tt.wantErr {
-			assert.Error(t, err, "Expect fail: %+v", tt)
+			assert.Error(t, err, fmt.Sprintf("Expect fail: %+v", tt))
 			continue
 		}
 		if err != nil {
@@ -228,32 +229,40 @@ func TestGetTransportCallerName(t *testing.T) {
 }
 
 func TestGetTransportTraceEnabled(t *testing.T) {
-	t.Skip("trace enabled test with tchannel 1.2 will be possible when we reintegrate jaeger")
+	tracer, closer, err := getTestTracer("foo")
+	defer closer.Close()
+	assert.NoError(t, err, "failed to instantiate jaeger")
 
-	s := newServer(t)
+	s := newServer(t, tracer)
 	defer s.shutdown()
 	s.register("test", methods.traceEnabled())
 
 	tests := []struct {
-		benchmarking bool
+		trace        bool
 		traceEnabled byte
 	}{
-		{true, 0},
-		{false, 1},
+		{false, 0},
+		{true, 1},
 	}
 
 	opts := TransportOptions{
 		ServiceName: s.ch.ServiceName(),
+		CallerName:  "qux",
 		HostPorts:   []string{s.hostPort()},
 	}
 
 	for _, tt := range tests {
-		opts.benchmarking = tt.benchmarking
 
 		ctx, cancel := tchannel.NewContext(time.Second)
 		defer cancel()
 
-		tchan, err := getTransport(opts, encoding.Raw, opentracing.NoopTracer{})
+		if tt.trace {
+			span := tracer.StartSpan("test")
+			opentracing_ext.SamplingPriority.Set(span, 1)
+			ctx = opentracing.ContextWithSpan(ctx, span)
+		}
+
+		tchan, err := getTransport(opts, encoding.Raw, tracer)
 		require.NoError(t, err, "getTransport failed")
 		res, err := tchan.Call(ctx, &transport.Request{Method: "test"})
 		require.NoError(t, err, "transport.Call failed")

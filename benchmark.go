@@ -69,8 +69,10 @@ func (o BenchmarkOptions) validate() error {
 
 func (o BenchmarkOptions) enabled() bool {
 	// By default, benchmarks are disabled. At least MaxDuration or MaxRequests
-	// should be > 0 for the benchmark to start.
-	return o.MaxDuration > 0 || o.MaxRequests > 0
+	// should not be 0 for the benchmark to start.
+	// We guard for negative values in the options validate() method, called
+	// after entering the benchmark case.
+	return o.MaxDuration != 0 || o.MaxRequests != 0
 }
 
 func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run *limiter.Run) {

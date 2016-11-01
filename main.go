@@ -37,7 +37,8 @@ import (
 	"github.com/casimir/xdg-go"
 	"github.com/jessevdk/go-flags"
 	"github.com/opentracing/opentracing-go"
-	jaeger "github.com/uber/jaeger-client-go"
+	opentracing_ext "github.com/opentracing/opentracing-go/ext"
+	"github.com/uber/jaeger-client-go"
 	jaeger_config "github.com/uber/jaeger-client-go/config"
 	"github.com/uber/tchannel-go"
 )
@@ -257,14 +258,17 @@ func runWithOptions(opts Options, out output) {
 	}
 
 	if opts.TOpts.CallerName != "" {
-		if opts.TOpts.benchmarking {
+		if opts.BOpts.enabled() {
 			out.Fatalf("Cannot override caller name when running benchmarks\n")
 		}
 	} else {
 		opts.TOpts.CallerName = "yab-" + os.Getenv("USER")
 	}
 
-	tracer := getTracer(opts, out)
+	tracer, closer := getTracer(opts, out)
+	if closer != nil {
+		defer closer.Close()
+	}
 
 	// transport abstracts the underlying wire protocol used to make the call.
 	transport, err := getTransport(opts.TOpts, serializer.Encoding(), tracer)
@@ -302,22 +306,21 @@ type noEnveloper interface {
 	WithoutEnvelopes() encoding.Serializer
 }
 
-func getTracer(opts Options, out output) opentracing.Tracer {
+func getTracer(opts Options, out output) (opentracing.Tracer, io.Closer) {
 	var tracer opentracing.Tracer
+	var closer io.Closer
 	tracer = opentracing.NoopTracer{}
 	if opts.TOpts.Jaeger {
 		var jaegerConfig jaeger_config.Configuration
-		var closer io.Closer
 		var err error
 		tracer, closer, err = jaegerConfig.New(opts.TOpts.CallerName, jaeger.NullStatsReporter)
 		if err != nil {
 			out.Fatalf("Failed to create Jaeger tracer: %v\n", err)
 		}
-		defer closer.Close()
 	} else if len(opts.ROpts.Baggage) > 0 {
 		out.Fatalf("To propagate baggage, you must opt-into a tracing client, i.e., --jaeger")
 	}
-	return tracer
+	return tracer, closer
 }
 
 // withTransportSerializer may modify the serializer for the transport used.
@@ -333,11 +336,16 @@ func withTransportSerializer(p transport.Protocol, s encoding.Serializer, rOpts 
 
 // makeRequest makes a request using the given transport.
 func makeRequest(t transport.Transport, request *transport.Request) (*transport.Response, error) {
+	return makeRequestWithTracePriority(t, request, 0)
+}
+
+func makeRequestWithTracePriority(t transport.Transport, request *transport.Request, trace uint16) (*transport.Response, error) {
 	ctx, cancel := tchannel.NewContext(request.Timeout)
 	defer cancel()
 
 	if tracer := t.Tracer(); tracer != nil {
 		span := tracer.StartSpan(request.Method)
+		opentracing_ext.SamplingPriority.Set(span, trace)
 		for k, v := range request.Baggage {
 			span = span.SetBaggageItem(k, v)
 		}
@@ -348,7 +356,7 @@ func makeRequest(t transport.Transport, request *transport.Request) (*transport.
 }
 
 func makeInitialRequest(out output, transport transport.Transport, serializer encoding.Serializer, req *transport.Request) {
-	response, err := makeRequest(transport, req)
+	response, err := makeRequestWithTracePriority(transport, req, 1)
 	if err != nil {
 		out.Fatalf("Failed while making call: %v\n", err)
 	}

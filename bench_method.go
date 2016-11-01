@@ -38,7 +38,6 @@ type benchmarkMethod struct {
 // WarmTransport warms up a transport and returns it. The transport is warmed
 // up by making some number of requests through it.
 func (m benchmarkMethod) WarmTransport(opts TransportOptions, warmupRequests int) (transport.Transport, error) {
-	opts.benchmarking = true
 	transport, err := getTransport(opts, m.serializer.Encoding(), opentracing.NoopTracer{})
 	if err != nil {
 		return nil, err

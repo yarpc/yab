@@ -24,7 +24,9 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/uber-go/atomic"
+	"github.com/uber/jaeger-client-go"
 	"github.com/uber/tchannel-go"
 	"github.com/uber/tchannel-go/raw"
 	"github.com/uber/tchannel-go/testutils"
@@ -37,8 +39,10 @@ type server struct {
 
 type handler func(ctx context.Context, args *raw.Args) (*raw.Res, error)
 
-func newServer(t *testing.T) *server {
-	ch := testutils.NewServer(t, testutils.NewOpts().SetServiceName("foo").DisableLogVerification())
+func newServer(t *testing.T, tracer opentracing.Tracer) *server {
+	opts := testutils.NewOpts().SetServiceName("foo").DisableLogVerification()
+	opts.Tracer = tracer
+	ch := testutils.NewServer(t, opts)
 	return &server{
 		ch: ch,
 	}
@@ -79,11 +83,21 @@ func (methodsT) echo() handler {
 
 func (methodsT) traceEnabled() handler {
 	return func(ctx context.Context, args *raw.Args) (*raw.Res, error) {
-		// span := tchannel.CurrentSpan(ctx)
-		ret := byte(0)
-		// if span.TracingEnabled() {
-		// 	ret = 1
-		// }
+		ret := byte(0x00)
+
+		span := opentracing.SpanFromContext(ctx)
+		if span != nil {
+			if spanCtx, ok := span.Context().(jaeger.SpanContext); ok {
+				if spanCtx.IsDebug() {
+					ret = 0x01
+				}
+			} else {
+				ret = 0xfe
+			}
+		} else {
+			ret = 0xff
+		}
+
 		return &raw.Res{
 			Arg3: []byte{ret},
 		}, nil
@@ -121,7 +135,7 @@ func (methodsT) counter() (*atomic.Int32, handler) {
 }
 
 func echoServer(t *testing.T, method string, overrideResp []byte) string {
-	s := newServer(t)
+	s := newServer(t, nil)
 	if overrideResp != nil {
 		s.register(fooMethod, methods.customArg3(overrideResp))
 	} else {
