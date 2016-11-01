@@ -23,7 +23,7 @@ package thrift
 import (
 	"fmt"
 
-	"github.com/thriftrw/thriftrw-go/compile"
+	"go.uber.org/thriftrw/compile"
 )
 
 func constToRequest(v compile.ConstantValue) interface{} {

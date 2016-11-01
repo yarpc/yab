@@ -24,8 +24,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/thriftrw/thriftrw-go/compile"
-	"github.com/thriftrw/thriftrw-go/wire"
+	"go.uber.org/thriftrw/compile"
+	"go.uber.org/thriftrw/wire"
 )
 
 // getFieldMap gets a map from the fieldID to the fieldSpec for a given FieldGroup.
@@ -161,7 +161,7 @@ func valueFromWire(spec compile.TypeSpec, w wire.Value) (interface{}, error) {
 		result = w.GetDouble()
 	case wire.TBinary:
 		// Binary could be a string, or actual []byte
-		if spec == compile.StringSpec {
+		if _, ok := spec.(*compile.StringSpec); ok {
 			result = w.GetString()
 		} else {
 			result = w.GetBinary()
