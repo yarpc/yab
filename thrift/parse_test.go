@@ -29,8 +29,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thriftrw/thriftrw-go/compile"
-	"github.com/thriftrw/thriftrw-go/wire"
+	"go.uber.org/thriftrw/compile"
+	"go.uber.org/thriftrw/wire"
 )
 
 // getFuncSpecs returns the spec for a service named "Test".

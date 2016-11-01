@@ -36,10 +36,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thriftrw/thriftrw-go/protocol"
-	"github.com/thriftrw/thriftrw-go/wire"
 	"github.com/uber/tchannel-go/testutils"
 	"github.com/uber/tchannel-go/thrift"
+	"go.uber.org/thriftrw/protocol"
+	"go.uber.org/thriftrw/wire"
 )
 
 const (

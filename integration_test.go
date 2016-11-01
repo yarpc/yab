@@ -40,15 +40,15 @@ import (
 	"github.com/uber/tchannel-go"
 	"github.com/uber/tchannel-go/testutils"
 	"github.com/uber/tchannel-go/thrift"
-	"github.com/yarpc/yarpc-go"
-	ythrift "github.com/yarpc/yarpc-go/encoding/thrift"
-	ytransport "github.com/yarpc/yarpc-go/transport"
-	yhttp "github.com/yarpc/yarpc-go/transport/http"
-	ytchan "github.com/yarpc/yarpc-go/transport/tchannel"
+	"go.uber.org/yarpc"
+	ythrift "go.uber.org/yarpc/encoding/thrift"
+	ytransport "go.uber.org/yarpc/transport"
+	yhttp "go.uber.org/yarpc/transport/http"
+	ytchan "go.uber.org/yarpc/transport/tchannel"
 	"golang.org/x/net/context"
 )
 
-//go:generate thriftrw-go --yarpc -out ./testdata/yarpc ./testdata/integration.thrift
+//go:generate thriftrw --plugin=yarpc --out ./testdata/yarpc ./testdata/integration.thrift
 
 var integrationTests = []struct {
 	call    int32
