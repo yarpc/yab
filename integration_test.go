@@ -166,7 +166,7 @@ func (yarpcHandler) Bar(ctx context.Context, reqMeta yarpc.ReqMeta, arg *int32) 
 func TestIntegrationProtocols(t *testing.T) {
 	var jaegerConfig jaeger_config.Configuration
 	tracer, closer, err := jaegerConfig.New("foo", jaeger.NullStatsReporter)
-	assert.NoError(t, err, "failed to instantiated jaeger")
+	assert.NoError(t, err, "failed to instanitate jaeger")
 	defer closer.Close()
 
 	cases := []struct {
