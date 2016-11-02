@@ -125,6 +125,12 @@ func (t *tchan) Protocol() Protocol {
 }
 
 func (t *tchan) Call(ctx context.Context, r *Request) (*Response, error) {
+	// We must create a shallow copy of the request headers because, at time of
+	// writing, we cannot prepare the trace headers before obtaining a TChannel
+	// call object. Consequently, we have to inject the headers and alter the
+	// request object for every call in a benchmark. Creating a shallow copy of
+	// the request object allows us to overwrite the headers reference without
+	// introducing a data race.
 	req := *r
 
 	call, err := t.sc.BeginCall(ctx, req.Method, t.callOptions)
