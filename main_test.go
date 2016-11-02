@@ -384,8 +384,7 @@ func TestAlises(t *testing.T) {
 		{
 			args: []cmdArgs{
 				{"-P", "file"},
-				{"-H", "file"},
-				{"--hostlist", "file"},
+				{"--peer-list", "file"},
 			},
 			validate: func(args cmdArgs, opts *Options) {
 				assert.Equal(t, "file", opts.TOpts.HostPortFile, "Args: %v", args)
@@ -825,10 +824,12 @@ func TestNoWarmupBenchmark(t *testing.T) {
 		ThriftFile: validThrift,
 		MethodName: fooMethod,
 	}
+	transportOpts := s.transportOpts()
+	transportOpts.CallerName = ""
 	buf, out := getOutput(t)
 	runWithOptions(Options{
 		ROpts: validRequestOpts,
-		TOpts: s.transportOpts(),
+		TOpts: transportOpts,
 		BOpts: BenchmarkOptions{
 			MaxRequests:    100,
 			WarmupRequests: 0,

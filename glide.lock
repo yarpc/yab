@@ -33,6 +33,17 @@ imports:
   - require
 - name: github.com/uber-go/atomic
   version: 0c9e689d64f004564b79d9a663634756df322902
+- name: github.com/uber/jaeger-client-go
+  version: 453a518fb60cc8ccf36bdeb47ccd44ee74147f2b
+  subpackages:
+  - config
+  - internal/spanlog
+  - thrift-gen/agent
+  - thrift-gen/sampling
+  - thrift-gen/zipkincore
+  - transport
+  - transport/udp
+  - utils
 - name: github.com/uber/tchannel-go
   version: 4a23f3aae76694b21107f118ece763a61b98ea07
   subpackages:

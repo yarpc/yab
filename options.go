@@ -44,8 +44,10 @@ type RequestOptions struct {
 	MethodName  string            `short:"m" long:"method" description:"The full Thrift method name (Svc::Method) to invoke"`
 	RequestJSON string            `short:"r" long:"request" unquote:"false" description:"The request body, in JSON or YAML format"`
 	RequestFile string            `short:"f" long:"file" description:"Path of a file containing the request body in JSON or YAML"`
+	Headers     map[string]string `short:"H" long:"header" description:"Individual application header as a key:value pair per flag"`
 	HeadersJSON string            `long:"headers" unquote:"false" description:"The headers in JSON or YAML format"`
 	HeadersFile string            `long:"headers-file" description:"Path of a file containing the headers in JSON or YAML"`
+	Baggage     map[string]string `short:"B" long:"baggage" description:"Individual context baggage header as a key:value pair per flag"`
 	Health      bool              `long:"health" description:"Hit the health endpoint, Meta::health"`
 	Timeout     timeMillisFlag    `long:"timeout" default:"1s" description:"The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds are assumed."`
 
@@ -70,14 +72,9 @@ type TransportOptions struct {
 	ServiceName      string            `short:"s" long:"service" description:"The TChannel/Hyperbahn service name"`
 	HostPorts        []string          `short:"p" long:"peer" description:"The host:port of the service to call"`
 	HostPortFile     string            `short:"P" long:"peer-list" description:"Path of a JSON or YAML file containing a list of host:ports"`
-	CallerOverride   string            `long:"caller" description:"Caller will override the default caller name (which is yab-$USER)."`
+	CallerName       string            `long:"caller" description:"Caller will override the default caller name (which is yab-$USER)."`
+	Jaeger           bool              `long:"jaeger" description:"Use the Jaeger tracing client to send Uber style traces and baggage headers"`
 	TransportOptions map[string]string `long:"topt" description:"Custom options for the specific transport being used"`
-
-	// benchmarking is a private flag set when a transport is required for benchmarking.
-	benchmarking bool
-
-	// Alias for tcurl compatibility.
-	Hostlist stringAlias `short:"H" long:"hostlist" hidden:"true"`
 }
 
 // BenchmarkOptions are benchmark-specific options
@@ -105,8 +102,6 @@ func newOptions() *Options {
 	aliases.Arg2.dest = &opts.ROpts.HeadersJSON
 	aliases.Arg3.dest = &opts.ROpts.RequestJSON
 	aliases.Body.dest = &opts.ROpts.RequestJSON
-
-	opts.TOpts.Hostlist.dest = &opts.TOpts.HostPortFile
 	return &opts
 }
 

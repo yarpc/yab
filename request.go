@@ -59,19 +59,23 @@ func getRequestInput(inline, file string) ([]byte, error) {
 	return nil, nil
 }
 
-func getHeaders(inline, file string) (map[string]string, error) {
+func getHeaders(inline, file string, override map[string]string) (map[string]string, error) {
 	contents, err := getRequestInput(inline, file)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(contents) == 0 {
-		return nil, nil
+		return override, nil
 	}
 
 	var headers map[string]string
 	if err := yaml.Unmarshal(contents, &headers); err != nil {
 		return nil, fmt.Errorf("unmarshal headers failed: %v", err)
+	}
+
+	for k, v := range override {
+		headers[k] = v
 	}
 
 	return headers, nil

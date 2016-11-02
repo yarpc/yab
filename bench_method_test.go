@@ -29,6 +29,7 @@ import (
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/uber-go/atomic"
@@ -59,18 +60,12 @@ func TestBenchmarkMethodWarmTransport(t *testing.T) {
 	s.register(fooMethod, methods.echo())
 
 	tests := []struct {
-		hostPort       string
-		callerOverride string
-		method         string
-		wantErr        string
+		hostPort string
+		method   string
+		wantErr  string
 	}{
 		{
 			hostPort: s.hostPort(),
-		},
-		{
-			hostPort:       s.hostPort(),
-			callerOverride: "caller",
-			wantErr:        errCallerForBenchmark.Error(),
 		},
 		// getTransport error
 		{
@@ -92,9 +87,9 @@ func TestBenchmarkMethodWarmTransport(t *testing.T) {
 		}
 
 		tOpts := TransportOptions{
-			ServiceName:    "foo",
-			HostPorts:      []string{tt.hostPort},
-			CallerOverride: tt.callerOverride,
+			CallerName:  "bar",
+			ServiceName: "foo",
+			HostPorts:   []string{tt.hostPort},
 		}
 
 		transport, err := m.WarmTransport(tOpts, 1 /* warmupRequests */)
@@ -144,10 +139,11 @@ func TestBenchmarkMethodCall(t *testing.T) {
 	}
 
 	tOpts := TransportOptions{
+		CallerName:  "bar",
 		ServiceName: "foo",
 		HostPorts:   []string{s.hostPort()},
 	}
-	tp, err := getTransport(tOpts, encoding.Thrift)
+	tp, err := getTransport(tOpts, encoding.Thrift, opentracing.NoopTracer{})
 	require.NoError(t, err, "Failed to get transport")
 
 	for _, tt := range tests {
@@ -225,6 +221,7 @@ func TestBenchmarkMethodWarmTransportsSuccess(t *testing.T) {
 	}
 
 	tOpts := TransportOptions{
+		CallerName:  "bar",
 		ServiceName: "foo",
 		HostPorts:   serverHPs,
 	}
@@ -283,6 +280,7 @@ func TestBenchmarkMethodWarmTransportsError(t *testing.T) {
 		}))
 
 		tOpts := TransportOptions{
+			CallerName:  "bar",
 			ServiceName: "foo",
 			HostPorts:   []string{s.hostPort()},
 		}

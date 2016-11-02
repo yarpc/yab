@@ -21,6 +21,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -28,6 +29,8 @@ import (
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
 
+	"github.com/opentracing/opentracing-go"
+	opentracing_ext "github.com/opentracing/opentracing-go/ext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/uber/tchannel-go"
@@ -155,7 +158,8 @@ func TestGetTransport(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		transport, err := getTransport(tt.opts, encoding.Thrift)
+		tt.opts.CallerName = "svc"
+		transport, err := getTransport(tt.opts, encoding.Thrift, opentracing.NoopTracer{})
 		if tt.errMsg != "" {
 			if assert.Error(t, err, "getTransport(%v) should fail", tt.opts) {
 				assert.Contains(t, err.Error(), tt.errMsg, "Unexpected error for getTransport(%v)", tt.opts)
@@ -171,28 +175,23 @@ func TestGetTransport(t *testing.T) {
 
 func TestGetTransportCallerName(t *testing.T) {
 	tests := []struct {
-		callerOverride string
-		want           string
-		benchmark      bool
-		wantErr        bool
+		caller    string
+		want      string
+		benchmark bool
+		wantErr   bool
 	}{
 		{
-			callerOverride: "",
-			want:           "yab-" + os.Getenv("USER"),
+			caller: "",
+			want:   "yab-" + os.Getenv("USER"),
 		},
 		{
-			callerOverride: "override",
-			want:           "override",
+			caller: "override",
+			want:   "override",
 		},
 		{
-			benchmark:      true,
-			callerOverride: "",
-			want:           "yab-" + os.Getenv("USER"),
-		},
-		{
-			benchmark:      true,
-			callerOverride: "override",
-			wantErr:        true,
+			benchmark: true,
+			caller:    "",
+			want:      "yab-" + os.Getenv("USER"),
 		},
 	}
 
@@ -206,14 +205,13 @@ func TestGetTransportCallerName(t *testing.T) {
 		})
 
 		opts := TransportOptions{
-			ServiceName:    server.ch.ServiceName(),
-			HostPorts:      []string{server.hostPort()},
-			CallerOverride: tt.callerOverride,
-			benchmarking:   tt.benchmark,
+			ServiceName: server.ch.ServiceName(),
+			HostPorts:   []string{server.hostPort()},
+			CallerName:  tt.caller,
 		}
-		tchan, err := getTransport(opts, encoding.Raw)
+		tchan, err := getTransport(opts, encoding.Raw, opentracing.NoopTracer{})
 		if tt.wantErr {
-			assert.Error(t, err, "Expect fail: %+v", tt)
+			assert.Error(t, err, fmt.Sprintf("Expect fail: %+v", tt))
 			continue
 		}
 		if err != nil {
@@ -231,32 +229,40 @@ func TestGetTransportCallerName(t *testing.T) {
 }
 
 func TestGetTransportTraceEnabled(t *testing.T) {
-	t.Skip("trace enabled test with tchannel 1.2 will be possible when we reintegrate jaeger")
+	tracer, closer, err := getTestTracer("foo")
+	defer closer.Close()
+	assert.NoError(t, err, "failed to instantiate jaeger")
 
-	s := newServer(t)
+	s := newServer(t, withTracer(tracer))
 	defer s.shutdown()
 	s.register("test", methods.traceEnabled())
 
 	tests := []struct {
-		benchmarking bool
+		trace        bool
 		traceEnabled byte
 	}{
-		{true, 0},
-		{false, 1},
+		{false, 0},
+		{true, 1},
 	}
 
 	opts := TransportOptions{
 		ServiceName: s.ch.ServiceName(),
+		CallerName:  "qux",
 		HostPorts:   []string{s.hostPort()},
 	}
 
 	for _, tt := range tests {
-		opts.benchmarking = tt.benchmarking
 
 		ctx, cancel := tchannel.NewContext(time.Second)
 		defer cancel()
 
-		tchan, err := getTransport(opts, encoding.Raw)
+		if tt.trace {
+			span := tracer.StartSpan("test")
+			opentracing_ext.SamplingPriority.Set(span, 1)
+			ctx = opentracing.ContextWithSpan(ctx, span)
+		}
+
+		tchan, err := getTransport(opts, encoding.Raw, tracer)
 		require.NoError(t, err, "getTransport failed")
 		res, err := tchan.Call(ctx, &transport.Request{Method: "test"})
 		require.NoError(t, err, "transport.Call failed")

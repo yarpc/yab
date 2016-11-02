@@ -30,12 +30,14 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/opentracing/opentracing-go"
 	"golang.org/x/net/context"
 )
 
 type httpTransport struct {
 	opts   HTTPOptions
 	client *http.Client
+	tracer opentracing.Tracer
 }
 
 // HTTPOptions are used to create a HTTP transport.
@@ -44,6 +46,7 @@ type HTTPOptions struct {
 	SourceService string
 	TargetService string
 	Encoding      string
+	Tracer        opentracing.Tracer
 }
 
 var (
@@ -66,7 +69,12 @@ func NewHTTP(opts HTTPOptions) (Transport, error) {
 		client: &http.Client{
 			Transport: &http.Transport{},
 		},
+		tracer: opts.Tracer,
 	}, nil
+}
+
+func (h *httpTransport) Tracer() opentracing.Tracer {
+	return h.tracer
 }
 
 func (h *httpTransport) newReq(ctx context.Context, r *Request) (*http.Request, error) {
@@ -91,7 +99,18 @@ func (h *httpTransport) newReq(ctx context.Context, r *Request) (*http.Request, 
 	req.Header.Add("Context-TTL-MS", strconv.Itoa(int(timeout/time.Millisecond)))
 
 	for hdr, val := range r.Headers {
+		// TODO add Rpc-Header- prefix to headers and add transport headers
+		// without modification.
 		req.Header.Add(hdr, val)
+	}
+
+	span := opentracing.SpanFromContext(ctx)
+	if span != nil && h.tracer != nil {
+		h.tracer.Inject(
+			span.Context(),
+			opentracing.HTTPHeaders,
+			opentracing.HTTPHeadersCarrier(req.Header),
+		)
 	}
 
 	return req, nil
