@@ -8,6 +8,8 @@ Changelog
 * Add support for headers with flags like -H key:value.
 * Add support for baggage headers with flags like -B key:value when baggage
   propagation is enabled with --jaeger.
+* Add support for routing key, routing delegate, and shard key, for both
+  HTTP and TChannel, using --rk, --rd, and --sk flags.
 
 # 0.6.2
 

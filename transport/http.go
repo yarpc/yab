@@ -42,11 +42,14 @@ type httpTransport struct {
 
 // HTTPOptions are used to create a HTTP transport.
 type HTTPOptions struct {
-	URLs          []string
-	SourceService string
-	TargetService string
-	Encoding      string
-	Tracer        opentracing.Tracer
+	URLs            []string
+	SourceService   string
+	TargetService   string
+	RoutingDelegate string
+	RoutingKey      string
+	ShardKey        string
+	Encoding        string
+	Tracer          opentracing.Tracer
 }
 
 var (
@@ -92,15 +95,7 @@ func (h *httpTransport) newReq(ctx context.Context, r *Request) (*http.Request, 
 	}
 
 	// TODO: We shouldn't always set YARPC headers, bit maybe have a flag to enable these.
-	req.Header.Add("RPC-Service", h.opts.TargetService)
-	req.Header.Add("RPC-Procedure", r.Method)
-	req.Header.Add("RPC-Caller", h.opts.SourceService)
-	req.Header.Add("RPC-Encoding", h.opts.Encoding)
-	req.Header.Add("Context-TTL-MS", strconv.Itoa(int(timeout/time.Millisecond)))
-
-	for key, val := range r.Headers {
-		req.Header.Add("Rpc-Header-"+key, val)
-	}
+	h.applyRPCHeaders(req.Header, r, req, timeout)
 
 	for key, val := range r.TransportHeaders {
 		req.Header.Add(key, val)
@@ -116,6 +111,27 @@ func (h *httpTransport) newReq(ctx context.Context, r *Request) (*http.Request, 
 	}
 
 	return req, nil
+}
+
+func (h *httpTransport) applyRPCHeaders(headers http.Header, r *Request, req *http.Request, timeout time.Duration) {
+	req.Header.Add("RPC-Service", h.opts.TargetService)
+	req.Header.Add("RPC-Procedure", r.Method)
+	req.Header.Add("RPC-Caller", h.opts.SourceService)
+	req.Header.Add("RPC-Encoding", h.opts.Encoding)
+	if h.opts.RoutingKey != "" {
+		req.Header.Add("RPC-Routing-Key", h.opts.RoutingKey)
+	}
+	if h.opts.RoutingDelegate != "" {
+		req.Header.Add("RPC-Routing-Delegate", h.opts.RoutingDelegate)
+	}
+	if h.opts.ShardKey != "" {
+		req.Header.Add("RPC-Shard-Key", h.opts.ShardKey)
+	}
+	req.Header.Add("Context-TTL-MS", strconv.Itoa(int(timeout/time.Millisecond)))
+
+	for key, val := range r.Headers {
+		req.Header.Add("Rpc-Header-"+key, val)
+	}
 }
 
 func (h *httpTransport) Protocol() Protocol {

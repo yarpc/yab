@@ -140,22 +140,28 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding, tracer open
 		remapLocalHost(opts.HostPorts)
 
 		topts := transport.TChannelOptions{
-			SourceService: opts.CallerName,
-			TargetService: opts.ServiceName,
-			HostPorts:     opts.HostPorts,
-			Encoding:      encoding.String(),
-			TransportOpts: opts.TransportHeaders,
-			Tracer:        tracer,
+			SourceService:   opts.CallerName,
+			TargetService:   opts.ServiceName,
+			RoutingDelegate: opts.RoutingDelegate,
+			RoutingKey:      opts.RoutingKey,
+			ShardKey:        opts.ShardKey,
+			HostPorts:       opts.HostPorts,
+			Encoding:        encoding.String(),
+			TransportOpts:   opts.TransportHeaders,
+			Tracer:          tracer,
 		}
 		return transport.NewTChannel(topts)
 	}
 
 	hopts := transport.HTTPOptions{
-		SourceService: opts.CallerName,
-		TargetService: opts.ServiceName,
-		Encoding:      encoding.String(),
-		URLs:          opts.HostPorts,
-		Tracer:        tracer,
+		SourceService:   opts.CallerName,
+		TargetService:   opts.ServiceName,
+		RoutingDelegate: opts.RoutingDelegate,
+		RoutingKey:      opts.RoutingKey,
+		ShardKey:        opts.ShardKey,
+		Encoding:        encoding.String(),
+		URLs:            opts.HostPorts,
+		Tracer:          tracer,
 	}
 	return transport.NewHTTP(hopts)
 }

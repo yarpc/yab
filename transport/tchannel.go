@@ -52,6 +52,19 @@ type TChannelOptions struct {
 	// TargetService is the service name being targeted.
 	TargetService string
 
+	// RoutingDelegate is a traffic group that overrides the routing key,
+	// to redirect to an application layer traffic proxy.
+	RoutingDelegate string
+
+	// RoutingKey is a traffic group that overrides the service name, for a
+	// proxy to redirect to a more specific traffic group than the service
+	// proper.
+	RoutingKey string
+
+	// ShardKey is an opaque blob that clues where to direct a request to an
+	// instance within a traffic group.
+	ShardKey string
+
 	// LogLevel overrides the default LogLevel (Warn).
 	LogLevel *tchannel.LogLevel
 
@@ -107,6 +120,7 @@ func NewTChannel(opts TChannelOptions) (Transport, error) {
 	callOpts := &tchannel.CallOptions{
 		Format: tchannel.Format(opts.Encoding),
 	}
+	applyRPCOptions(callOpts, opts)
 	applyTChanOptions(callOpts, opts.TransportOpts)
 
 	return &tchan{
@@ -235,6 +249,12 @@ func (t *tchan) writeArgs(call *tchannel.OutboundCall, r *Request) error {
 	}
 
 	return nil
+}
+
+func applyRPCOptions(callOpts *tchannel.CallOptions, opts TChannelOptions) {
+	callOpts.RoutingDelegate = opts.RoutingDelegate
+	callOpts.RoutingKey = opts.RoutingKey
+	callOpts.ShardKey = opts.ShardKey
 }
 
 func applyTChanOptions(callOpts *tchannel.CallOptions, opts map[string]string) {
