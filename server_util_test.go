@@ -99,11 +99,7 @@ func (methodsT) traceEnabled() handler {
 				if spanCtx.IsDebug() {
 					ret = 0x01
 				}
-			} else {
-				ret = 0xfe
 			}
-		} else {
-			ret = 0xff
 		}
 
 		return &raw.Res{

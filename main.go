@@ -307,9 +307,10 @@ type noEnveloper interface {
 }
 
 func getTracer(opts Options, out output) (opentracing.Tracer, io.Closer) {
-	var tracer opentracing.Tracer
-	var closer io.Closer
-	tracer = opentracing.NoopTracer{}
+	var (
+		tracer opentracing.Tracer = opentracing.NoopTracer{}
+		closer io.Closer
+	)
 	if opts.TOpts.Jaeger {
 		var jaegerConfig jaeger_config.Configuration
 		var err error
