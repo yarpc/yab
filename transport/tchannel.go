@@ -81,7 +81,7 @@ func NewTChannel(opts TChannelOptions) (Transport, error) {
 	}
 
 	callerName := opts.SourceService
-	if cn, ok := opts.TransportOpts["cn"]; ok && cn != "" {
+	if cn, ok := opts.TransportOpts["cn"]; ok {
 		callerName = cn
 	}
 

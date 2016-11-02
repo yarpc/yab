@@ -99,7 +99,8 @@ func verifyBaggage(ctx context.Context) error {
 	val := span.BaggageItem("baggagekey")
 	if val == "" {
 		return errors.New("missing baggage")
-	} else if val != "baggagevalue" {
+	}
+	if val != "baggagevalue" {
 		return errors.New("unexpected baggage")
 	}
 	return nil
@@ -107,25 +108,22 @@ func verifyBaggage(ctx context.Context) error {
 
 func verifyThriftHeaders(ctx thrift.Context) error {
 	headers := ctx.Headers()
-	if val, ok := headers["headerkey"]; ok {
-		if val != "headervalue" {
-			return errors.New("unexpected header")
-		}
-	} else {
-		return errors.New("missing header")
-	}
-
-	return nil
+	val, ok := headers["headerkey"]
+	return verifyHeader(val, ok)
 }
 
 func verifyYARPCHeaders(reqMeta yarpc.ReqMeta) error {
 	headers := reqMeta.Headers()
-	if val, ok := headers.Get("headerkey"); ok {
-		if val != "headervalue" {
-			return errors.New("unexpected header")
-		}
-	} else {
+	val, ok := headers.Get("headerkey")
+	return verifyHeader(val, ok)
+}
+
+func verifyHeader(val string, ok bool) error {
+	if !ok {
 		return errors.New("missing header")
+	}
+	if val != "headervalue" {
+		return errors.New("unexpected header")
 	}
 	return nil
 }

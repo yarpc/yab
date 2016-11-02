@@ -27,6 +27,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/uber/tchannel-go"
@@ -174,6 +175,10 @@ func TestTChannelCallSuccessRaw(t *testing.T) {
 	for _, tt := range tests {
 		var lastSpan uint64
 		testutils.RegisterFunc(svr, "echo", func(ctx context.Context, args *raw.Args) (*raw.Res, error) {
+
+			span := opentracing.SpanFromContext(ctx)
+			assert.Nil(t, span, "the context should not have a span")
+
 			lastSpan = tchannel.CurrentSpan(ctx).TraceID()
 
 			assert.Equal(t, tt.arg2, args.Arg2, "Arg2 mismatch")
