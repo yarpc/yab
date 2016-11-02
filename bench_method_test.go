@@ -55,7 +55,7 @@ func benchmarkMethodForTest(t *testing.T, methodString string, p transport.Proto
 }
 
 func TestBenchmarkMethodWarmTransport(t *testing.T) {
-	s := newServer(t, nil)
+	s := newServer(t)
 	defer s.shutdown()
 	s.register(fooMethod, methods.echo())
 
@@ -106,7 +106,7 @@ func TestBenchmarkMethodWarmTransport(t *testing.T) {
 }
 
 func TestBenchmarkMethodCall(t *testing.T) {
-	s := newServer(t, nil)
+	s := newServer(t)
 	defer s.shutdown()
 
 	thriftExBytes := []byte{
