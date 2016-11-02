@@ -240,6 +240,15 @@ Path of a JSON or YAML file containing a list of host:ports
 \fB\fB\-\-caller\fR\fP
 Caller will override the default caller name (which is yab-$USER).
 .TP
+\fB\fB\-\-rk\fR\fP
+The routing key overrides the service name traffic group for proxies.
+.TP
+\fB\fB\-\-rd\fR\fP
+The routing delegate overrides the routing key traffic group for proxies.
+.TP
+\fB\fB\-\-sk\fR\fP
+The shard key is a transport header that clues where to send a request within a clustered traffic group.
+.TP
 \fB\fB\-\-jaeger\fR\fP
 Use the Jaeger tracing client to send Uber style traces and baggage headers
 .TP

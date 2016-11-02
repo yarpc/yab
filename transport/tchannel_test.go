@@ -101,9 +101,12 @@ func setEncoding(encoding string) func(*TChannelOptions) {
 	}
 }
 
-func setOptions(options map[string]string) func(*TChannelOptions) {
+func setOptions(options TChannelCallOptionsTest) func(*TChannelOptions) {
 	return func(opts *TChannelOptions) {
-		opts.TransportOpts = options
+		opts.ShardKey = options.sk
+		opts.RoutingKey = options.rk
+		opts.RoutingDelegate = options.rd
+		opts.TransportOpts = options.opts
 	}
 }
 
@@ -235,15 +238,20 @@ func TestTChannelCallError(t *testing.T) {
 	}
 }
 
+type TChannelCallOptionsTest struct {
+	opts       map[string]string
+	wantCaller string
+	sk         string
+	rk         string
+	rd         string
+	wantSK     string
+	wantRK     string
+	wantRD     string
+	wantFormat tchannel.Format
+}
+
 func TestTChannelCallOptions(t *testing.T) {
-	tests := []struct {
-		opts       map[string]string
-		wantCaller string
-		wantSK     string
-		wantRK     string
-		wantRD     string
-		wantFormat tchannel.Format
-	}{
+	tests := []TChannelCallOptionsTest{
 		{
 			opts: nil,
 			// Nil map uses the defaults
@@ -276,10 +284,18 @@ func TestTChannelCallOptions(t *testing.T) {
 			wantRK:     "rk",
 			wantRD:     "rd",
 		},
+		{
+			sk:     "sk",
+			rd:     "rd",
+			rk:     "rk",
+			wantSK: "sk",
+			wantRK: "rk",
+			wantRD: "rd",
+		},
 	}
 
 	for _, tt := range tests {
-		svr, transport := setupServerAndTransport(t, setOptions(tt.opts))
+		svr, transport := setupServerAndTransport(t, setOptions(tt))
 		defer svr.Close()
 
 		wantCaller := "yab"

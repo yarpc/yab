@@ -67,6 +67,13 @@ Transport Options:
                                  of host:ports
       --caller=                  Caller will override the default caller name
                                  (which is yab-$USER).
+      --rk=                      The routing key overrides the service name
+                                 traffic group for proxies.
+      --rd=                      The routing delegate overrides the routing key
+                                 traffic group for proxies.
+      --sk=                      The shard key is a transport header that clues
+                                 where to send a request within a clustered
+                                 traffic group.
       --jaeger                   Use the Jaeger tracing client to send Uber
                                  style traces and baggage headers
   -T, --topt=                    Transport options for TChannel, protocol
