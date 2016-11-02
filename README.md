@@ -43,9 +43,13 @@ Request Options:
   -r, --request=                 The request body, in JSON or YAML format
   -f, --file=                    Path of a file containing the request body in
                                  JSON or YAML
+  -H, --header=                  Individual application header as a key:value
+                                 pair per flag
       --headers=                 The headers in JSON or YAML format
       --headers-file=            Path of a file containing the headers in JSON
                                  or YAML
+  -B, --baggage=                 Individual context baggage header as a
+                                 key:value pair per flag
       --health                   Hit the health endpoint, Meta::health
       --timeout=                 The timeout for each request. E.g., 100ms,
                                  0.5s, 1s. If no unit is specified,
@@ -63,14 +67,17 @@ Transport Options:
                                  of host:ports
       --caller=                  Caller will override the default caller name
                                  (which is yab-$USER).
-      --topt=                    Custom options for the specific transport
-                                 being used
+      --jaeger                   Use the Jaeger tracing client to send Uber
+                                 style traces and baggage headers
+  -T, --topt=                    Transport options for TChannel, protocol
+                                 headers for HTTP
 
 Benchmark Options:
-  -n, --max-requests=            The maximum number of requests to make
-                                 (default: 1000000)
+  -n, --max-requests=            The maximum number of requests to make. 0
+                                 implies no limit. (default: 0)
   -d, --max-duration=            The maximum amount of time to run the
-                                 benchmark for (default: 0s)
+                                 benchmark for. 0 implies no duration limit.
+                                 (default: 0s)
       --cpus=                    The number of OS threads
       --connections=             The number of TCP connections to use
       --warmup=                  The number of requests to make to warmup each
