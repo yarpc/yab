@@ -219,7 +219,7 @@ func TestHealthIntegration(t *testing.T) {
 	defer func() { os.Args = origArgs }()
 
 	// Create a server with the Meta::health endpoint.
-	server := newServer(t, nil)
+	server := newServer(t)
 	thrift.NewServer(server.ch)
 	defer server.shutdown()
 
@@ -240,7 +240,7 @@ func TestBenchmarkIntegration(t *testing.T) {
 	const numServers = 5
 	serverHPs := make([]string, numServers)
 	for i := range serverHPs {
-		server := newServer(t, nil)
+		server := newServer(t)
 		defer server.shutdown()
 		thrift.NewServer(server.ch)
 		serverHPs[i] = server.hostPort()
@@ -266,7 +266,7 @@ func TestBenchmarkLowRPSDuration(t *testing.T) {
 	defer func() { os.Args = origArgs }()
 
 	// Create a server with the Meta::health endpoint.
-	server := newServer(t, nil)
+	server := newServer(t)
 	thrift.NewServer(server.ch)
 	defer server.shutdown()
 
@@ -816,7 +816,7 @@ func encodeEnveloped(e wire.Envelope) []byte {
 }
 
 func TestNoWarmupBenchmark(t *testing.T) {
-	s := newServer(t, nil)
+	s := newServer(t)
 	defer s.shutdown()
 	s.register(fooMethod, methods.errorIf(func() bool { return true }))
 

@@ -196,7 +196,7 @@ func TestGetTransportCallerName(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		server := newServer(t, nil)
+		server := newServer(t)
 		defer server.shutdown()
 
 		server.register("test", func(ctx context.Context, args *raw.Args) (*raw.Res, error) {
@@ -233,7 +233,7 @@ func TestGetTransportTraceEnabled(t *testing.T) {
 	defer closer.Close()
 	assert.NoError(t, err, "failed to instantiate jaeger")
 
-	s := newServer(t, tracer)
+	s := newServer(t, withTracer(tracer))
 	defer s.shutdown()
 	s.register("test", methods.traceEnabled())
 

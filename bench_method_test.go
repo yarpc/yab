@@ -211,7 +211,7 @@ func TestBenchmarkMethodWarmTransportsSuccess(t *testing.T) {
 	servers := make([]*server, numServers)
 	serverHPs := make([]string, numServers)
 	for i := range servers {
-		servers[i] = newServer(t, nil)
+		servers[i] = newServer(t)
 		defer servers[i].shutdown()
 		serverHPs[i] = servers[i].hostPort()
 
@@ -269,7 +269,7 @@ func TestBenchmarkMethodWarmTransportsError(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		s := newServer(t, nil)
+		s := newServer(t)
 		defer s.shutdown()
 		msg := fmt.Sprintf("success: %v warmup: %v", tt.success, tt.warmup)
 

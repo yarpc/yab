@@ -39,9 +39,17 @@ type server struct {
 
 type handler func(ctx context.Context, args *raw.Args) (*raw.Res, error)
 
-func newServer(t *testing.T, tracer opentracing.Tracer) *server {
+func withTracer(tracer opentracing.Tracer) func(*testutils.ChannelOpts) {
+	return func(opts *testutils.ChannelOpts) {
+		opts.Tracer = tracer
+	}
+}
+
+func newServer(t *testing.T, options ...func(*testutils.ChannelOpts)) *server {
 	opts := testutils.NewOpts().SetServiceName("foo").DisableLogVerification()
-	opts.Tracer = tracer
+	for _, option := range options {
+		option(opts)
+	}
 	ch := testutils.NewServer(t, opts)
 	return &server{
 		ch: ch,
@@ -135,7 +143,7 @@ func (methodsT) counter() (*atomic.Int32, handler) {
 }
 
 func echoServer(t *testing.T, method string, overrideResp []byte) string {
-	s := newServer(t, nil)
+	s := newServer(t)
 	if overrideResp != nil {
 		s.register(fooMethod, methods.customArg3(overrideResp))
 	} else {
