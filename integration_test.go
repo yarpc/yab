@@ -150,10 +150,9 @@ func (httpHandler) Bar(arg int32) (int32, error) {
 type yarpcHandler struct{}
 
 func (yarpcHandler) Bar(ctx context.Context, reqMeta yarpc.ReqMeta, arg *int32) (int32, yarpc.ResMeta, error) {
-	// TODO validate RPC headers over HTTP
-	// if err := verifyYARPCHeaders(reqMeta); err != nil {
-	// 	return 0, nil, err
-	// }
+	if err := verifyYARPCHeaders(reqMeta); err != nil {
+		return 0, nil, err
+	}
 	if err := verifyBaggage(ctx); err != nil {
 		return 0, nil, err
 	}

@@ -285,6 +285,7 @@ func runWithOptions(opts Options, out output) {
 	}
 
 	req.Headers = headers
+	req.TransportHeaders = opts.TOpts.Headers
 	req.Timeout = opts.ROpts.Timeout.Duration()
 	if req.Timeout == 0 {
 		req.Timeout = time.Second

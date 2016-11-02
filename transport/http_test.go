@@ -190,7 +190,7 @@ func TestHTTPCall(t *testing.T) {
 	require.NoError(t, err, "Failed to create HTTP transport")
 
 	for _, tt := range tests {
-		tt.r.Headers = map[string]string{"hook": tt.hook}
+		tt.r.TransportHeaders = map[string]string{"hook": tt.hook}
 		got, err := transport.Call(tt.ctx, tt.r)
 		if tt.errMsg != "" {
 			if assert.Error(t, err, "Call(%v, %v) should fail", tt.ctx, tt.r) {

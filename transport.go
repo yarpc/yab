@@ -144,7 +144,7 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding, tracer open
 			TargetService: opts.ServiceName,
 			HostPorts:     opts.HostPorts,
 			Encoding:      encoding.String(),
-			TransportOpts: opts.TransportOptions,
+			TransportOpts: opts.Headers,
 			Tracer:        tracer,
 		}
 		return transport.NewTChannel(topts)
