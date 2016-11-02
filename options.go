@@ -69,12 +69,12 @@ type RequestOptions struct {
 
 // TransportOptions are transport related options.
 type TransportOptions struct {
-	ServiceName  string            `short:"s" long:"service" description:"The TChannel/Hyperbahn service name"`
-	HostPorts    []string          `short:"p" long:"peer" description:"The host:port of the service to call"`
-	HostPortFile string            `short:"P" long:"peer-list" description:"Path of a JSON or YAML file containing a list of host:ports"`
-	CallerName   string            `long:"caller" description:"Caller will override the default caller name (which is yab-$USER)."`
-	Jaeger       bool              `long:"jaeger" description:"Use the Jaeger tracing client to send Uber style traces and baggage headers"`
-	Headers      map[string]string `short:"T" long:"topt" description:"Transport options for TChannel, protocol headers for HTTP"`
+	ServiceName      string            `short:"s" long:"service" description:"The TChannel/Hyperbahn service name"`
+	HostPorts        []string          `short:"p" long:"peer" description:"The host:port of the service to call"`
+	HostPortFile     string            `short:"P" long:"peer-list" description:"Path of a JSON or YAML file containing a list of host:ports"`
+	CallerName       string            `long:"caller" description:"Caller will override the default caller name (which is yab-$USER)."`
+	Jaeger           bool              `long:"jaeger" description:"Use the Jaeger tracing client to send Uber style traces and baggage headers"`
+	TransportHeaders map[string]string `short:"T" long:"topt" description:"Transport options for TChannel, protocol headers for HTTP"`
 }
 
 // BenchmarkOptions are benchmark-specific options
