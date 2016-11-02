@@ -191,6 +191,7 @@ func TestHTTPCall(t *testing.T) {
 
 	for _, tt := range tests {
 		tt.r.TransportHeaders = map[string]string{"hook": tt.hook}
+		tt.r.Headers = map[string]string{"headerkey": "headervalue"}
 		got, err := transport.Call(tt.ctx, tt.r)
 		if tt.errMsg != "" {
 			if assert.Error(t, err, "Call(%v, %v) should fail", tt.ctx, tt.r) {
@@ -216,6 +217,7 @@ func TestHTTPCall(t *testing.T) {
 		assert.Equal(t, lastReq.headers.Get("RPC-Caller"), "source", "Caller header mismatch")
 		assert.Equal(t, lastReq.headers.Get("RPC-Procedure"), tt.r.Method, "Method header mismatch")
 		assert.Equal(t, lastReq.headers.Get("RPC-Encoding"), "raw", "Encoding header mismatch")
+		assert.Equal(t, lastReq.headers.Get("RPC-Header-Headerkey"), "headervalue", "Application header is sent with prefix")
 
 		ttlMS, err := strconv.Atoi(lastReq.headers.Get("Context-TTL-MS"))
 		if assert.NoError(t, err, "Failed to parse TTLms header: %v", lastReq.headers.Get("YARPC-TTLms")) {
