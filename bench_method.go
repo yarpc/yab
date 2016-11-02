@@ -25,9 +25,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
+
+	"github.com/opentracing/opentracing-go"
 )
 
 type benchmarkMethod struct {

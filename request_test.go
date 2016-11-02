@@ -25,9 +25,10 @@ import (
 	"os"
 	"testing"
 
+	"github.com/yarpc/yab/encoding"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/yarpc/yab/encoding"
 )
 
 func mustRead(fname string) []byte {

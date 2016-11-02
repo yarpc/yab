@@ -26,11 +26,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
-	opentracing_ext "github.com/opentracing/opentracing-go/ext"
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
 
+	"github.com/opentracing/opentracing-go"
+	opentracing_ext "github.com/opentracing/opentracing-go/ext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/uber/tchannel-go"

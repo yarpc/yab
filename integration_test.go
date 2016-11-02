@@ -30,12 +30,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/yarpc/yab/testdata/gen-go/integration"
 	yintegration "github.com/yarpc/yab/testdata/yarpc/integration"
 	"github.com/yarpc/yab/testdata/yarpc/integration/yarpc/fooserver"
 
 	athrift "github.com/apache/thrift/lib/go/thrift"
+	"github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/uber/jaeger-client-go"

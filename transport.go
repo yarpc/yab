@@ -31,12 +31,12 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/yarpc/yab/encoding"
+	"github.com/yarpc/yab/transport"
+
 	"github.com/opentracing/opentracing-go"
 	"github.com/uber/tchannel-go"
 	"gopkg.in/yaml.v2"
-
-	"github.com/yarpc/yab/encoding"
-	"github.com/yarpc/yab/transport"
 )
 
 var (

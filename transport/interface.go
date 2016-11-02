@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-
 	"golang.org/x/net/context"
 )
 
