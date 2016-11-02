@@ -244,6 +244,9 @@ func applyTChanOptions(callOpts *tchannel.CallOptions, opts map[string]string) {
 	if rd, ok := opts["rd"]; ok {
 		callOpts.RoutingDelegate = rd
 	}
+	if rk, ok := opts["rk"]; ok {
+		callOpts.RoutingKey = rk
+	}
 	if sk, ok := opts["sk"]; ok {
 		callOpts.ShardKey = sk
 	}

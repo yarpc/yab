@@ -240,6 +240,7 @@ func TestTChannelCallOptions(t *testing.T) {
 		opts       map[string]string
 		wantCaller string
 		wantSK     string
+		wantRK     string
 		wantRD     string
 		wantFormat tchannel.Format
 	}{
@@ -268,10 +269,11 @@ func TestTChannelCallOptions(t *testing.T) {
 			wantRD: "routing-delegate",
 		},
 		{
-			opts:       map[string]string{"cn": "pv", "as": "proto3", "sk": "sk", "rd": "rd"},
+			opts:       map[string]string{"cn": "pv", "as": "proto3", "sk": "sk", "rd": "rd", "rk": "rk"},
 			wantCaller: "pv",
 			wantFormat: tchannel.Format("proto3"),
 			wantSK:     "sk",
+			wantRK:     "rk",
 			wantRD:     "rd",
 		},
 	}
@@ -294,6 +296,7 @@ func TestTChannelCallOptions(t *testing.T) {
 			assert.Equal(t, wantCaller, call.CallerName(), "Caller name mismatch")
 			assert.Equal(t, wantFormat, call.(*tchannel.InboundCall).Format(), "Format mismatch")
 			assert.Equal(t, tt.wantSK, call.ShardKey(), "Shard key mismatch")
+			assert.Equal(t, tt.wantRK, call.RoutingKey(), "Routing key mismatch")
 			assert.Equal(t, tt.wantRD, call.RoutingDelegate(), "Routing delegate mismatch")
 
 			return &raw.Res{
