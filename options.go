@@ -74,7 +74,7 @@ type TransportOptions struct {
 	HostPortFile     string            `short:"P" long:"peer-list" description:"Path of a JSON or YAML file containing a list of host:ports"`
 	CallerName       string            `long:"caller" description:"Caller will override the default caller name (which is yab-$USER)."`
 	Jaeger           bool              `long:"jaeger" description:"Use the Jaeger tracing client to send Uber style traces and baggage headers"`
-	TransportOptions map[string]string `long:"topt" description:"Custom options for the specific transport being used"`
+	TransportHeaders map[string]string `short:"T" long:"topt" description:"Transport options for TChannel, protocol headers for HTTP"`
 }
 
 // BenchmarkOptions are benchmark-specific options

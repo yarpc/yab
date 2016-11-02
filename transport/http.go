@@ -98,10 +98,12 @@ func (h *httpTransport) newReq(ctx context.Context, r *Request) (*http.Request, 
 	req.Header.Add("RPC-Encoding", h.opts.Encoding)
 	req.Header.Add("Context-TTL-MS", strconv.Itoa(int(timeout/time.Millisecond)))
 
-	for hdr, val := range r.Headers {
-		// TODO add Rpc-Header- prefix to headers and add transport headers
-		// without modification.
-		req.Header.Add(hdr, val)
+	for key, val := range r.Headers {
+		req.Header.Add("Rpc-Header-"+key, val)
+	}
+
+	for key, val := range r.TransportHeaders {
+		req.Header.Add(key, val)
 	}
 
 	span := opentracing.SpanFromContext(ctx)
