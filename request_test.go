@@ -25,9 +25,10 @@ import (
 	"os"
 	"testing"
 
+	"github.com/yarpc/yab/encoding"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/yarpc/yab/encoding"
 )
 
 func mustRead(fname string) []byte {
@@ -113,10 +114,11 @@ func TestGetRequestInput(t *testing.T) {
 
 func TestGetHeaders(t *testing.T) {
 	tests := []struct {
-		inline string
-		file   string
-		want   map[string]string
-		errMsg string
+		inline   string
+		file     string
+		want     map[string]string
+		override map[string]string
+		errMsg   string
 	}{
 		{
 			file:   "/fake/file",
@@ -138,10 +140,29 @@ func TestGetHeaders(t *testing.T) {
 			inline: `k: v`,
 			want:   map[string]string{"k": "v"},
 		},
+		{
+			override: map[string]string{"k": "1"},
+			want:     map[string]string{"k": "1"},
+		},
+		{
+			inline:   `k: 1`,
+			override: map[string]string{"k": "2"},
+			want:     map[string]string{"k": "2"},
+		},
+		{
+			inline:   `a: b`,
+			override: map[string]string{"k": "2"},
+			want:     map[string]string{"a": "b", "k": "2"},
+		},
+		{
+			inline:   `{"a": "b"}`,
+			override: map[string]string{"k": "2"},
+			want:     map[string]string{"a": "b", "k": "2"},
+		},
 	}
 
 	for _, tt := range tests {
-		got, err := getHeaders(tt.inline, tt.file)
+		got, err := getHeaders(tt.inline, tt.file, tt.override)
 		if tt.errMsg != "" {
 			if assert.Error(t, err, "getHeaders(%v, %v) should fail", tt.inline, tt.file) {
 				assert.Contains(t, err.Error(), tt.errMsg, "getHeaders(%v, %v) got unexpected error", tt.inline, tt.file)

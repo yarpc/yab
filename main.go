@@ -24,17 +24,22 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"regexp"
 	"strings"
 	"time"
 
-	"github.com/casimir/xdg-go"
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
 
+	"github.com/casimir/xdg-go"
 	"github.com/jessevdk/go-flags"
+	"github.com/opentracing/opentracing-go"
+	opentracing_ext "github.com/opentracing/opentracing-go/ext"
+	"github.com/uber/jaeger-client-go"
+	jaeger_config "github.com/uber/jaeger-client-go/config"
 	"github.com/uber/tchannel-go"
 )
 
@@ -242,7 +247,7 @@ func runWithOptions(opts Options, out output) {
 		out.Fatalf("Failed while loading body input: %v\n", err)
 	}
 
-	headers, err := getHeaders(opts.ROpts.HeadersJSON, opts.ROpts.HeadersFile)
+	headers, err := getHeaders(opts.ROpts.HeadersJSON, opts.ROpts.HeadersFile, opts.ROpts.Headers)
 	if err != nil {
 		out.Fatalf("Failed while loading headers input: %v\n", err)
 	}
@@ -252,8 +257,21 @@ func runWithOptions(opts Options, out output) {
 		out.Fatalf("Failed while parsing input: %v\n", err)
 	}
 
+	if opts.TOpts.CallerName != "" {
+		if opts.BOpts.enabled() {
+			out.Fatalf("Cannot override caller name when running benchmarks\n")
+		}
+	} else {
+		opts.TOpts.CallerName = "yab-" + os.Getenv("USER")
+	}
+
+	tracer, closer := getTracer(opts, out)
+	if closer != nil {
+		defer closer.Close()
+	}
+
 	// transport abstracts the underlying wire protocol used to make the call.
-	transport, err := getTransport(opts.TOpts, serializer.Encoding())
+	transport, err := getTransport(opts.TOpts, serializer.Encoding(), tracer)
 	if err != nil {
 		out.Fatalf("Failed while parsing options: %v\n", err)
 	}
@@ -267,12 +285,80 @@ func runWithOptions(opts Options, out output) {
 	}
 
 	req.Headers = headers
+	req.TransportHeaders = opts.TOpts.TransportHeaders
 	req.Timeout = opts.ROpts.Timeout.Duration()
 	if req.Timeout == 0 {
 		req.Timeout = time.Second
 	}
+	req.Baggage = opts.ROpts.Baggage
 
-	response, err := makeRequest(transport, req)
+	// Only make the request if the user hasn't specified 0 warmup.
+	if !(opts.BOpts.enabled() && opts.BOpts.WarmupRequests == 0) {
+		makeInitialRequest(out, transport, serializer, req)
+	}
+
+	runBenchmark(out, opts, benchmarkMethod{
+		serializer: serializer,
+		req:        req,
+	})
+}
+
+type noEnveloper interface {
+	WithoutEnvelopes() encoding.Serializer
+}
+
+func getTracer(opts Options, out output) (opentracing.Tracer, io.Closer) {
+	var (
+		tracer opentracing.Tracer = opentracing.NoopTracer{}
+		closer io.Closer
+	)
+	if opts.TOpts.Jaeger {
+		var jaegerConfig jaeger_config.Configuration
+		var err error
+		tracer, closer, err = jaegerConfig.New(opts.TOpts.CallerName, jaeger.NullStatsReporter)
+		if err != nil {
+			out.Fatalf("Failed to create Jaeger tracer: %v\n", err)
+		}
+	} else if len(opts.ROpts.Baggage) > 0 {
+		out.Fatalf("To propagate baggage, you must opt-into a tracing client, i.e., --jaeger")
+	}
+	return tracer, closer
+}
+
+// withTransportSerializer may modify the serializer for the transport used.
+// E.g. Thrift payloads are not enveloped when used with TChannel.
+func withTransportSerializer(p transport.Protocol, s encoding.Serializer, rOpts RequestOptions) encoding.Serializer {
+	switch {
+	case p == transport.TChannel && s.Encoding() == encoding.Thrift,
+		rOpts.ThriftDisableEnvelopes:
+		s = s.(noEnveloper).WithoutEnvelopes()
+	}
+	return s
+}
+
+// makeRequest makes a request using the given transport.
+func makeRequest(t transport.Transport, request *transport.Request) (*transport.Response, error) {
+	return makeRequestWithTracePriority(t, request, 0)
+}
+
+func makeRequestWithTracePriority(t transport.Transport, request *transport.Request, trace uint16) (*transport.Response, error) {
+	ctx, cancel := tchannel.NewContext(request.Timeout)
+	defer cancel()
+
+	if tracer := t.Tracer(); tracer != nil {
+		span := tracer.StartSpan(request.Method)
+		opentracing_ext.SamplingPriority.Set(span, trace)
+		for k, v := range request.Baggage {
+			span = span.SetBaggageItem(k, v)
+		}
+		ctx = opentracing.ContextWithSpan(ctx, span)
+	}
+
+	return t.Call(ctx, request)
+}
+
+func makeInitialRequest(out output, transport transport.Transport, serializer encoding.Serializer, req *transport.Request) {
+	response, err := makeRequestWithTracePriority(transport, req, 1)
 	if err != nil {
 		out.Fatalf("Failed while making call: %v\n", err)
 	}
@@ -298,32 +384,4 @@ func runWithOptions(opts Options, out output) {
 		out.Fatalf("Failed to convert map to JSON: %v\nMap: %+v\n", err, responseMap)
 	}
 	out.Printf("%s\n\n", bs)
-
-	runBenchmark(out, opts, benchmarkMethod{
-		serializer: serializer,
-		req:        req,
-	})
-}
-
-type noEnveloper interface {
-	WithoutEnvelopes() encoding.Serializer
-}
-
-// withTransportSerializer may modify the serializer for the transport used.
-// E.g. Thrift payloads are not enveloped when used with TChannel.
-func withTransportSerializer(p transport.Protocol, s encoding.Serializer, rOpts RequestOptions) encoding.Serializer {
-	switch {
-	case p == transport.TChannel && s.Encoding() == encoding.Thrift,
-		rOpts.ThriftDisableEnvelopes:
-		s = s.(noEnveloper).WithoutEnvelopes()
-	}
-	return s
-}
-
-// makeRequest makes a request using the given transport.
-func makeRequest(t transport.Transport, request *transport.Request) (*transport.Response, error) {
-	ctx, cancel := tchannel.NewContext(request.Timeout)
-	defer cancel()
-
-	return t.Call(ctx, request)
 }

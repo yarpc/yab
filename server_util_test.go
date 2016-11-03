@@ -24,7 +24,9 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/uber-go/atomic"
+	"github.com/uber/jaeger-client-go"
 	"github.com/uber/tchannel-go"
 	"github.com/uber/tchannel-go/raw"
 	"github.com/uber/tchannel-go/testutils"
@@ -37,8 +39,18 @@ type server struct {
 
 type handler func(ctx context.Context, args *raw.Args) (*raw.Res, error)
 
-func newServer(t *testing.T) *server {
-	ch := testutils.NewServer(t, testutils.NewOpts().SetServiceName("foo").DisableLogVerification())
+func withTracer(tracer opentracing.Tracer) func(*testutils.ChannelOpts) {
+	return func(opts *testutils.ChannelOpts) {
+		opts.Tracer = tracer
+	}
+}
+
+func newServer(t *testing.T, options ...func(*testutils.ChannelOpts)) *server {
+	opts := testutils.NewOpts().SetServiceName("foo").DisableLogVerification()
+	for _, option := range options {
+		option(opts)
+	}
+	ch := testutils.NewServer(t, opts)
 	return &server{
 		ch: ch,
 	}
@@ -50,6 +62,7 @@ func (s *server) register(name string, f handler) {
 
 func (s *server) transportOpts() TransportOptions {
 	return TransportOptions{
+		CallerName:  "bar",
 		ServiceName: "foo",
 		HostPorts:   []string{s.hostPort()},
 	}
@@ -78,11 +91,17 @@ func (methodsT) echo() handler {
 
 func (methodsT) traceEnabled() handler {
 	return func(ctx context.Context, args *raw.Args) (*raw.Res, error) {
-		span := tchannel.CurrentSpan(ctx)
-		ret := byte(0)
-		if span.TracingEnabled() {
-			ret = 1
+		ret := byte(0x00)
+
+		span := opentracing.SpanFromContext(ctx)
+		if span != nil {
+			if spanCtx, ok := span.Context().(jaeger.SpanContext); ok {
+				if spanCtx.IsDebug() {
+					ret = 0x01
+				}
+			}
 		}
+
 		return &raw.Res{
 			Arg3: []byte{ret},
 		}, nil

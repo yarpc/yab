@@ -26,8 +26,8 @@ import (
 
 	"github.com/yarpc/yab/sorted"
 
-	"github.com/thriftrw/thriftrw-go/compile"
-	"github.com/thriftrw/thriftrw-go/wire"
+	"go.uber.org/thriftrw/compile"
+	"go.uber.org/thriftrw/wire"
 )
 
 type fields struct {

@@ -24,7 +24,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/thriftrw/thriftrw-go/compile"
+	"go.uber.org/thriftrw/compile"
 )
 
 func TestConstToRequest(t *testing.T) {
@@ -56,7 +56,7 @@ func TestConstToRequest(t *testing.T) {
 			v: compile.ConstReference{
 				Target: &compile.Constant{
 					Name:  "a",
-					Type:  compile.StringSpec,
+					Type:  &compile.StringSpec{},
 					Value: compile.ConstantString("foo"),
 				},
 			},
@@ -80,9 +80,16 @@ func TestConstToRequest(t *testing.T) {
 			want: []interface{}{int64(1), true, "foo"},
 		},
 		{
+			v: compile.ConstantSet{
+				compile.ConstantString("foo"),
+				compile.ConstantSet{compile.ConstantString("bar")},
+			},
+			want: []interface{}{"foo", []interface{}{"bar"}},
+		},
+		{
 			v: compile.ConstantMap{
-				{compile.ConstantInt(1), compile.ConstantString("v1")},
-				{compile.ConstantBool(true), compile.ConstantString("v2")},
+				{Key: compile.ConstantInt(1), Value: compile.ConstantString("v1")},
+				{Key: compile.ConstantBool(true), Value: compile.ConstantString("v2")},
 			},
 			want: map[interface{}]interface{}{
 				int64(1): "v1",

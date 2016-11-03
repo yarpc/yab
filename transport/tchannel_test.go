@@ -27,6 +27,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/uber/tchannel-go"
@@ -100,9 +101,12 @@ func setEncoding(encoding string) func(*TChannelOptions) {
 	}
 }
 
-func setOptions(options map[string]string) func(*TChannelOptions) {
+func setOptions(options TChannelCallOptionsTest) func(*TChannelOptions) {
 	return func(opts *TChannelOptions) {
-		opts.TransportOpts = options
+		opts.ShardKey = options.sk
+		opts.RoutingKey = options.rk
+		opts.RoutingDelegate = options.rd
+		opts.TransportOpts = options.opts
 	}
 }
 
@@ -174,7 +178,10 @@ func TestTChannelCallSuccessRaw(t *testing.T) {
 	for _, tt := range tests {
 		var lastSpan uint64
 		testutils.RegisterFunc(svr, "echo", func(ctx context.Context, args *raw.Args) (*raw.Res, error) {
-			assert.False(t, tchannel.CurrentSpan(ctx).TracingEnabled(), "Tracing should be disabled")
+
+			span := opentracing.SpanFromContext(ctx)
+			assert.Nil(t, span, "the context should not have a span")
+
 			lastSpan = tchannel.CurrentSpan(ctx).TraceID()
 
 			assert.Equal(t, tt.arg2, args.Arg2, "Arg2 mismatch")
@@ -231,14 +238,20 @@ func TestTChannelCallError(t *testing.T) {
 	}
 }
 
+type TChannelCallOptionsTest struct {
+	opts       map[string]string
+	wantCaller string
+	sk         string
+	rk         string
+	rd         string
+	wantSK     string
+	wantRK     string
+	wantRD     string
+	wantFormat tchannel.Format
+}
+
 func TestTChannelCallOptions(t *testing.T) {
-	tests := []struct {
-		opts       map[string]string
-		wantCaller string
-		wantSK     string
-		wantRD     string
-		wantFormat tchannel.Format
-	}{
+	tests := []TChannelCallOptionsTest{
 		{
 			opts: nil,
 			// Nil map uses the defaults
@@ -264,16 +277,25 @@ func TestTChannelCallOptions(t *testing.T) {
 			wantRD: "routing-delegate",
 		},
 		{
-			opts:       map[string]string{"cn": "pv", "as": "proto3", "sk": "sk", "rd": "rd"},
+			opts:       map[string]string{"cn": "pv", "as": "proto3", "sk": "sk", "rd": "rd", "rk": "rk"},
 			wantCaller: "pv",
 			wantFormat: tchannel.Format("proto3"),
 			wantSK:     "sk",
+			wantRK:     "rk",
 			wantRD:     "rd",
+		},
+		{
+			sk:     "sk",
+			rd:     "rd",
+			rk:     "rk",
+			wantSK: "sk",
+			wantRK: "rk",
+			wantRD: "rd",
 		},
 	}
 
 	for _, tt := range tests {
-		svr, transport := setupServerAndTransport(t, setOptions(tt.opts))
+		svr, transport := setupServerAndTransport(t, setOptions(tt))
 		defer svr.Close()
 
 		wantCaller := "yab"
@@ -290,6 +312,7 @@ func TestTChannelCallOptions(t *testing.T) {
 			assert.Equal(t, wantCaller, call.CallerName(), "Caller name mismatch")
 			assert.Equal(t, wantFormat, call.(*tchannel.InboundCall).Format(), "Format mismatch")
 			assert.Equal(t, tt.wantSK, call.ShardKey(), "Shard key mismatch")
+			assert.Equal(t, tt.wantRK, call.RoutingKey(), "Routing key mismatch")
 			assert.Equal(t, tt.wantRD, call.RoutingDelegate(), "Routing delegate mismatch")
 
 			return &raw.Res{

@@ -26,9 +26,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/thriftrw/thriftrw-go/ast"
-	"github.com/thriftrw/thriftrw-go/compile"
-	"github.com/thriftrw/thriftrw-go/wire"
+	"go.uber.org/thriftrw/ast"
+	"go.uber.org/thriftrw/compile"
+	"go.uber.org/thriftrw/wire"
 	"gopkg.in/yaml.v2"
 )
 

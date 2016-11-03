@@ -30,20 +30,26 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/opentracing/opentracing-go"
 	"golang.org/x/net/context"
 )
 
 type httpTransport struct {
 	opts   HTTPOptions
 	client *http.Client
+	tracer opentracing.Tracer
 }
 
 // HTTPOptions are used to create a HTTP transport.
 type HTTPOptions struct {
-	URLs          []string
-	SourceService string
-	TargetService string
-	Encoding      string
+	URLs            []string
+	SourceService   string
+	TargetService   string
+	RoutingDelegate string
+	RoutingKey      string
+	ShardKey        string
+	Encoding        string
+	Tracer          opentracing.Tracer
 }
 
 var (
@@ -66,7 +72,12 @@ func NewHTTP(opts HTTPOptions) (Transport, error) {
 		client: &http.Client{
 			Transport: &http.Transport{},
 		},
+		tracer: opts.Tracer,
 	}, nil
+}
+
+func (h *httpTransport) Tracer() opentracing.Tracer {
+	return h.tracer
 }
 
 func (h *httpTransport) newReq(ctx context.Context, r *Request) (*http.Request, error) {
@@ -84,17 +95,43 @@ func (h *httpTransport) newReq(ctx context.Context, r *Request) (*http.Request, 
 	}
 
 	// TODO: We shouldn't always set YARPC headers, bit maybe have a flag to enable these.
+	h.applyRPCHeaders(req.Header, r, req, timeout)
+
+	for key, val := range r.TransportHeaders {
+		req.Header.Add(key, val)
+	}
+
+	span := opentracing.SpanFromContext(ctx)
+	if span != nil && h.tracer != nil {
+		h.tracer.Inject(
+			span.Context(),
+			opentracing.HTTPHeaders,
+			opentracing.HTTPHeadersCarrier(req.Header),
+		)
+	}
+
+	return req, nil
+}
+
+func (h *httpTransport) applyRPCHeaders(headers http.Header, r *Request, req *http.Request, timeout time.Duration) {
 	req.Header.Add("RPC-Service", h.opts.TargetService)
 	req.Header.Add("RPC-Procedure", r.Method)
 	req.Header.Add("RPC-Caller", h.opts.SourceService)
 	req.Header.Add("RPC-Encoding", h.opts.Encoding)
+	if h.opts.RoutingKey != "" {
+		req.Header.Add("RPC-Routing-Key", h.opts.RoutingKey)
+	}
+	if h.opts.RoutingDelegate != "" {
+		req.Header.Add("RPC-Routing-Delegate", h.opts.RoutingDelegate)
+	}
+	if h.opts.ShardKey != "" {
+		req.Header.Add("RPC-Shard-Key", h.opts.ShardKey)
+	}
 	req.Header.Add("Context-TTL-MS", strconv.Itoa(int(timeout/time.Millisecond)))
 
-	for hdr, val := range r.Headers {
-		req.Header.Add(hdr, val)
+	for key, val := range r.Headers {
+		req.Header.Add("Rpc-Header-"+key, val)
 	}
-
-	return req, nil
 }
 
 func (h *httpTransport) Protocol() Protocol {

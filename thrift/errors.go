@@ -24,7 +24,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/thriftrw/thriftrw-go/wire"
+	"go.uber.org/thriftrw/wire"
 )
 
 type fieldGroupError struct {

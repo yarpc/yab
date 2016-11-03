@@ -1,6 +1,16 @@
 Changelog
 =========
 
+# 0.7.0
+
+* Upgrade to TChannel 1.2.0 and add Open Tracing support.
+* Support set constants in Thrift files.
+* Add support for headers with flags like -H key:value.
+* Add support for baggage headers with flags like -B key:value when baggage
+  propagation is enabled with --jaeger.
+* Add support for routing key, routing delegate, and shard key, for both
+  HTTP and TChannel, using --rk, --rd, and --sk flags.
+
 # 0.6.2
 
 * Add error rate to benchmarking output.

@@ -64,6 +64,7 @@ func TestBenchmark(t *testing.T) {
 
 	var requests atomic.Int32
 	s := newServer(t)
+	defer s.shutdown()
 	s.register(fooMethod, methods.errorIf(func() bool {
 		requests.Inc()
 		return false

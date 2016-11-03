@@ -21,6 +21,7 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"os/signal"
 	"runtime"
@@ -30,6 +31,11 @@ import (
 	"github.com/yarpc/yab/limiter"
 	"github.com/yarpc/yab/statsd"
 	"github.com/yarpc/yab/transport"
+)
+
+var (
+	errNegativeDuration = errors.New("duration cannot be negative")
+	errNegativeMaxReqs  = errors.New("max requests cannot be negative")
 )
 
 // setGoMaxProcs sets runtime.GOMAXPROCS if the option is set
@@ -50,6 +56,25 @@ func (o BenchmarkOptions) getNumConnections(goMaxProcs int) int {
 	return goMaxProcs * 2
 }
 
+func (o BenchmarkOptions) validate() error {
+	if o.MaxDuration < 0 {
+		return errNegativeDuration
+	}
+	if o.MaxRequests < 0 {
+		return errNegativeMaxReqs
+	}
+
+	return nil
+}
+
+func (o BenchmarkOptions) enabled() bool {
+	// By default, benchmarks are disabled. At least MaxDuration or MaxRequests
+	// should not be 0 for the benchmark to start.
+	// We guard for negative values in the options validate() method, called
+	// after entering the benchmark case.
+	return o.MaxDuration != 0 || o.MaxRequests != 0
+}
+
 func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run *limiter.Run) {
 	for cur := run; cur.More(); {
 		latency, err := m.call(t)
@@ -65,17 +90,11 @@ func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run 
 func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 	opts := allOpts.BOpts
 
-	// By default, benchmarks are disabled. At least MaxDuration or MaxRequests
-	// should be > 0 for the benchmark to start.
-	if opts.MaxDuration == 0 && opts.MaxRequests == 0 {
+	if err := opts.validate(); err != nil {
+		out.Fatalf("Invalid benchmarking options: %v", err)
+	}
+	if !opts.enabled() {
 		return
-	}
-
-	if opts.MaxDuration < 0 {
-		out.Fatalf("Benchmark duration cannot be negative")
-	}
-	if opts.MaxRequests < 0 {
-		out.Fatalf("Benchmark max requests cannot be negative")
 	}
 
 	if opts.RPS > 0 && opts.MaxDuration > 0 {

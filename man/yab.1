@@ -1,4 +1,4 @@
-.TH yab 1 "25 August 2016"
+.TH yab 1 "2 November 2016"
 .SH NAME
 yab \- yet another benchmarker
 .SH SYNOPSIS
@@ -7,7 +7,7 @@ yab \- yet another benchmarker
 
 yab is a benchmarking tool for TChannel and HTTP applications. It's primarily intended for Thrift applications but supports other encodings like JSON and binary (raw). It can be used in a curl-like fashion when benchmarking features are disabled.
 .PP
-Default options can be specified in a ~/.config/yab/defaults.ini file (or ~/Library/Preferences/yab/defaults.ini on Mac OS) with contents similar to this:
+Default options can be specified in a ~/.config/yab/defaults.ini file (or ~/Library/Preferences/yab/defaults.ini on Mac) with contents similar to this:
 .PP
 .nf
 .RS
@@ -163,11 +163,17 @@ The request body, in JSON or YAML format
 \fB\fB\-f\fR, \fB\-\-file\fR\fP
 Path of a file containing the request body in JSON or YAML
 .TP
+\fB\fB\-H\fR, \fB\-\-header\fR\fP
+Individual application header as a key:value pair per flag
+.TP
 \fB\fB\-\-headers\fR\fP
 The headers in JSON or YAML format
 .TP
 \fB\fB\-\-headers-file\fR\fP
 Path of a file containing the headers in JSON or YAML
+.TP
+\fB\fB\-B\fR, \fB\-\-baggage\fR\fP
+Individual context baggage header as a key:value pair per flag
 .TP
 \fB\fB\-\-health\fR\fP
 Hit the health endpoint, Meta::health
@@ -234,8 +240,20 @@ Path of a JSON or YAML file containing a list of host:ports
 \fB\fB\-\-caller\fR\fP
 Caller will override the default caller name (which is yab-$USER).
 .TP
-\fB\fB\-\-topt\fR\fP
-Custom options for the specific transport being used
+\fB\fB\-\-rk\fR\fP
+The routing key overrides the service name traffic group for proxies.
+.TP
+\fB\fB\-\-rd\fR\fP
+The routing delegate overrides the routing key traffic group for proxies.
+.TP
+\fB\fB\-\-sk\fR\fP
+The shard key is a transport header that clues where to send a request within a clustered traffic group.
+.TP
+\fB\fB\-\-jaeger\fR\fP
+Use the Jaeger tracing client to send Uber style traces and baggage headers
+.TP
+\fB\fB\-T\fR, \fB\-\-topt\fR\fP
+Transport options for TChannel, protocol headers for HTTP
 .SS Benchmark Options
 Configures benchmarking, which is disabled by default.
 .PP
@@ -264,11 +282,11 @@ The number of connections and concurrent calls per connection can be controlled
 using --connections and --concurrency.
 
 .TP
-\fB\fB\-n\fR, \fB\-\-max-requests\fR <default: \fI"1000000"\fR>\fP
-The maximum number of requests to make
+\fB\fB\-n\fR, \fB\-\-max-requests\fR <default: \fI"0"\fR>\fP
+The maximum number of requests to make. 0 implies no limit.
 .TP
 \fB\fB\-d\fR, \fB\-\-max-duration\fR <default: \fI"0s"\fR>\fP
-The maximum amount of time to run the benchmark for
+The maximum amount of time to run the benchmark for. 0 implies no duration limit.
 .TP
 \fB\fB\-\-cpus\fR\fP
 The number of OS threads

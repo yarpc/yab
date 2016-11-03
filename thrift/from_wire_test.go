@@ -26,9 +26,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thriftrw/thriftrw-go/ast"
-	"github.com/thriftrw/thriftrw-go/compile"
-	"github.com/thriftrw/thriftrw-go/wire"
+	"go.uber.org/thriftrw/ast"
+	"go.uber.org/thriftrw/compile"
+	"go.uber.org/thriftrw/wire"
 )
 
 func makeWireList(t wire.Type, num int, f func(i int) wire.Value) wire.Value {
@@ -74,49 +74,49 @@ func TestValueFromWireSuccess(t *testing.T) {
 	}{
 		{
 			w:    wire.NewValueBool(true),
-			spec: compile.BoolSpec,
+			spec: &compile.BoolSpec{},
 			v:    true,
 		},
 		{
 			w:    wire.NewValueI8(8),
-			spec: compile.I8Spec,
+			spec: &compile.I8Spec{},
 			v:    int8(8),
 		},
 		{
 			w:    wire.NewValueI16(16),
-			spec: compile.I16Spec,
+			spec: &compile.I16Spec{},
 			v:    int16(16),
 		},
 		{
 			w:    wire.NewValueI32(32),
-			spec: compile.I32Spec,
+			spec: &compile.I32Spec{},
 			v:    int32(32),
 		},
 		{
 			w:    wire.NewValueI64(64),
-			spec: compile.I64Spec,
+			spec: &compile.I64Spec{},
 			v:    int64(64),
 		},
 		{
 			w:    wire.NewValueDouble(1.45),
-			spec: compile.DoubleSpec,
+			spec: &compile.DoubleSpec{},
 			v:    1.45,
 		},
 		{
 			w:    wire.NewValueString("str"),
-			spec: compile.StringSpec,
+			spec: &compile.StringSpec{},
 			v:    "str",
 		},
 		{
 			w:    wire.NewValueBinary([]byte("foo")),
-			spec: compile.BinarySpec,
+			spec: &compile.BinarySpec{},
 			v:    []byte("foo"),
 		},
 		{
 			w: wire.NewValueBinary([]byte("foo")),
 			spec: &compile.TypedefSpec{
 				Name:   "Blob",
-				Target: compile.BinarySpec,
+				Target: &compile.BinarySpec{},
 			},
 			v: []byte("foo"),
 		},
@@ -124,7 +124,7 @@ func TestValueFromWireSuccess(t *testing.T) {
 			w: wire.NewValueString("str"),
 			spec: &compile.TypedefSpec{
 				Name:   "UUID",
-				Target: compile.StringSpec,
+				Target: &compile.StringSpec{},
 			},
 			v: "str",
 		},
@@ -134,7 +134,7 @@ func TestValueFromWireSuccess(t *testing.T) {
 				Name: "UUID1",
 				Target: &compile.TypedefSpec{
 					Name:   "UUID2",
-					Target: compile.StringSpec,
+					Target: &compile.StringSpec{},
 				},
 			},
 			v: "str",
@@ -143,7 +143,7 @@ func TestValueFromWireSuccess(t *testing.T) {
 			w: makeWireList(wire.TI32, 4, func(i int) wire.Value {
 				return wire.NewValueI32(int32(i))
 			}),
-			spec: &compile.ListSpec{ValueSpec: compile.I32Spec},
+			spec: &compile.ListSpec{ValueSpec: &compile.I32Spec{}},
 			v:    i32s(0, 1, 2, 3),
 		},
 		{
@@ -155,7 +155,7 @@ func TestValueFromWireSuccess(t *testing.T) {
 				Target: &compile.ListSpec{
 					ValueSpec: &compile.TypedefSpec{
 						Name:   "Int",
-						Target: compile.I32Spec,
+						Target: &compile.I32Spec{},
 					},
 				},
 			},
@@ -165,14 +165,17 @@ func TestValueFromWireSuccess(t *testing.T) {
 			w: makeWireSet(wire.TI32, 4, func(i int) wire.Value {
 				return wire.NewValueI32(10 + int32(i))
 			}),
-			spec: &compile.SetSpec{ValueSpec: compile.I32Spec},
+			spec: &compile.SetSpec{ValueSpec: &compile.I32Spec{}},
 			v:    i32s(10, 11, 12, 13),
 		},
 		{
 			w: makeWireMap(wire.TBinary, wire.TBinary, 3, func(i int) (key, value wire.Value) {
 				return wire.NewValueString(fmt.Sprintf("%v-k", i)), wire.NewValueString(fmt.Sprintf("%v-v", i))
 			}),
-			spec: &compile.MapSpec{KeySpec: compile.StringSpec, ValueSpec: compile.StringSpec},
+			spec: &compile.MapSpec{
+				KeySpec:   &compile.StringSpec{},
+				ValueSpec: &compile.StringSpec{},
+			},
 			v: map[string]interface{}{
 				"0-k": "0-v",
 				"1-k": "1-v",
@@ -188,8 +191,8 @@ func TestValueFromWireSuccess(t *testing.T) {
 				return key, wire.NewValueString(fmt.Sprintf("%v-v", i))
 			}),
 			spec: &compile.MapSpec{
-				KeySpec:   &compile.ListSpec{ValueSpec: compile.StringSpec},
-				ValueSpec: compile.StringSpec,
+				KeySpec:   &compile.ListSpec{ValueSpec: &compile.StringSpec{}},
+				ValueSpec: &compile.StringSpec{},
 			},
 			// The key is JSON serialized if it's not a string.
 			v: map[string]interface{}{
@@ -205,7 +208,7 @@ func TestValueFromWireSuccess(t *testing.T) {
 					return wire.NewValueI32(int32(i))
 				})
 			}),
-			spec: &compile.ListSpec{ValueSpec: &compile.ListSpec{ValueSpec: compile.I32Spec}},
+			spec: &compile.ListSpec{ValueSpec: &compile.ListSpec{ValueSpec: &compile.I32Spec{}}},
 			v: []interface{}{
 				i32s(0),
 				i32s(0, 1),
@@ -226,7 +229,7 @@ func TestValueFromWireSuccess(t *testing.T) {
 				Fields: compile.FieldGroup{{
 					ID:   1,
 					Name: "s",
-					Type: compile.StringSpec,
+					Type: &compile.StringSpec{},
 				}},
 			},
 			v: map[string]interface{}{
@@ -251,7 +254,7 @@ func TestValueFromWireSuccess(t *testing.T) {
 						Name: "s",
 						Type: &compile.TypedefSpec{
 							Name:   "UUID",
-							Target: compile.StringSpec,
+							Target: &compile.StringSpec{},
 						},
 					}},
 				},
@@ -286,7 +289,7 @@ func TestValueFromWireSuccess(t *testing.T) {
 				Fields: compile.FieldGroup{{
 					ID:      1,
 					Name:    "s",
-					Type:    compile.StringSpec,
+					Type:    &compile.StringSpec{},
 					Default: compile.ConstantString("foo"),
 				}},
 			},
@@ -370,19 +373,19 @@ func TestValueFromWireError(t *testing.T) {
 		{
 			msg:  "i16 -> bool",
 			w:    wire.NewValueI16(1),
-			spec: compile.BoolSpec,
+			spec: &compile.BoolSpec{},
 			err:  specTypeMismatch{specified: wire.TBool, got: wire.TI16},
 		},
 		{
 			msg:  "i16 -> i8",
 			w:    wire.NewValueI16(1),
-			spec: compile.I8Spec,
+			spec: &compile.I8Spec{},
 			err:  specTypeMismatch{specified: wire.TI8, got: wire.TI16},
 		},
 		{
 			msg:  "i16 -> list<i16>",
 			w:    wire.NewValueI16(1),
-			spec: &compile.ListSpec{ValueSpec: compile.I16Spec},
+			spec: &compile.ListSpec{ValueSpec: &compile.I16Spec{}},
 			err:  specTypeMismatch{specified: wire.TList, got: wire.TI16},
 		},
 		{
@@ -390,7 +393,7 @@ func TestValueFromWireError(t *testing.T) {
 			w: makeWireList(wire.TI32, 3, func(i int) wire.Value {
 				return wire.NewValueI32(0)
 			}),
-			spec: &compile.ListSpec{ValueSpec: compile.I16Spec},
+			spec: &compile.ListSpec{ValueSpec: &compile.I16Spec{}},
 			err: specValueMismatch{"list<i16>",
 				specListItemMismatch{index: 0,
 					underlying: specTypeMismatch{specified: wire.TI16, got: wire.TI32},
@@ -402,7 +405,10 @@ func TestValueFromWireError(t *testing.T) {
 			w: makeWireMap(wire.TI32, wire.TI32, 3, func(i int) (key, value wire.Value) {
 				return wire.NewValueI32(0), wire.NewValueI32(0)
 			}),
-			spec: &compile.MapSpec{KeySpec: compile.I16Spec, ValueSpec: compile.I32Spec},
+			spec: &compile.MapSpec{
+				KeySpec:   &compile.I16Spec{},
+				ValueSpec: &compile.I32Spec{},
+			},
 			err: specValueMismatch{"map<i16, i32>",
 				specMapItemMismatch{"key", specTypeMismatch{specified: wire.TI16, got: wire.TI32}},
 			},
@@ -412,7 +418,10 @@ func TestValueFromWireError(t *testing.T) {
 			w: makeWireMap(wire.TI16, wire.TI16, 3, func(i int) (key, value wire.Value) {
 				return wire.NewValueI16(0), wire.NewValueI16(0)
 			}),
-			spec: &compile.MapSpec{KeySpec: compile.I16Spec, ValueSpec: compile.I32Spec},
+			spec: &compile.MapSpec{
+				KeySpec:   &compile.I16Spec{},
+				ValueSpec: &compile.I32Spec{},
+			},
 			err: specValueMismatch{"map<i16, i32>",
 				specMapItemMismatch{"value", specTypeMismatch{specified: wire.TI32, got: wire.TI16}},
 			},
@@ -431,7 +440,7 @@ func TestValueFromWireError(t *testing.T) {
 				Fields: compile.FieldGroup{{
 					ID:   1,
 					Name: "s",
-					Type: compile.StringSpec,
+					Type: &compile.StringSpec{},
 				}},
 			},
 			err: specValueMismatch{"S",

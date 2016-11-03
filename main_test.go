@@ -36,10 +36,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thriftrw/thriftrw-go/protocol"
-	"github.com/thriftrw/thriftrw-go/wire"
 	"github.com/uber/tchannel-go/testutils"
 	"github.com/uber/tchannel-go/thrift"
+	"go.uber.org/thriftrw/protocol"
+	"go.uber.org/thriftrw/wire"
 )
 
 const (
@@ -384,8 +384,7 @@ func TestAlises(t *testing.T) {
 		{
 			args: []cmdArgs{
 				{"-P", "file"},
-				{"-H", "file"},
-				{"--hostlist", "file"},
+				{"--peer-list", "file"},
 			},
 			validate: func(args cmdArgs, opts *Options) {
 				assert.Equal(t, "file", opts.TOpts.HostPortFile, "Args: %v", args)
@@ -814,4 +813,30 @@ func encodeEnveloped(e wire.Envelope) []byte {
 		panic(fmt.Errorf("Binary.EncodeEnveloped(%v) failed: %v", e, err))
 	}
 	return buf.Bytes()
+}
+
+func TestNoWarmupBenchmark(t *testing.T) {
+	s := newServer(t)
+	defer s.shutdown()
+	s.register(fooMethod, methods.errorIf(func() bool { return true }))
+
+	validRequestOpts := RequestOptions{
+		ThriftFile: validThrift,
+		MethodName: fooMethod,
+	}
+	transportOpts := s.transportOpts()
+	transportOpts.CallerName = ""
+	buf, out := getOutput(t)
+	runWithOptions(Options{
+		ROpts: validRequestOpts,
+		TOpts: transportOpts,
+		BOpts: BenchmarkOptions{
+			MaxRequests:    100,
+			WarmupRequests: 0,
+			Connections:    50,
+			Concurrency:    2,
+		},
+	}, out)
+	assert.Contains(t, buf.String(), "Total errors: 100")
+	assert.Contains(t, buf.String(), "Error rate: 100")
 }

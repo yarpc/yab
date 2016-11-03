@@ -30,7 +30,7 @@ import (
 	"github.com/yarpc/yab/transport"
 	"github.com/yarpc/yab/unmarshal"
 
-	"github.com/thriftrw/thriftrw-go/compile"
+	"go.uber.org/thriftrw/compile"
 )
 
 const _multiplexedSeparator = ":"

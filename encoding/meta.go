@@ -24,7 +24,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/thriftrw/thriftrw-go/compile"
+	"go.uber.org/thriftrw/compile"
 )
 
 // _meta_thrift is the meta.thrift file copied from https://github.com/uber/tchannel/blob/master/thrift/meta.thrift

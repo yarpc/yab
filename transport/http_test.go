@@ -182,15 +182,19 @@ func TestHTTPCall(t *testing.T) {
 	defer svr.Close()
 
 	transport, err := NewHTTP(HTTPOptions{
-		URLs:          []string{svr.URL + "/rpc"},
-		SourceService: "source",
-		TargetService: "target",
-		Encoding:      "raw",
+		URLs:            []string{svr.URL + "/rpc"},
+		SourceService:   "source",
+		TargetService:   "target",
+		ShardKey:        "sk",
+		RoutingKey:      "rk",
+		RoutingDelegate: "rd",
+		Encoding:        "raw",
 	})
 	require.NoError(t, err, "Failed to create HTTP transport")
 
 	for _, tt := range tests {
-		tt.r.Headers = map[string]string{"hook": tt.hook}
+		tt.r.TransportHeaders = map[string]string{"hook": tt.hook}
+		tt.r.Headers = map[string]string{"headerkey": "headervalue"}
 		got, err := transport.Call(tt.ctx, tt.r)
 		if tt.errMsg != "" {
 			if assert.Error(t, err, "Call(%v, %v) should fail", tt.ctx, tt.r) {
@@ -212,10 +216,14 @@ func TestHTTPCall(t *testing.T) {
 		}
 
 		assert.Equal(t, lastReq.url.Path, "/rpc", "Path mismatch")
-		assert.Equal(t, lastReq.headers.Get("RPC-Service"), "target", "Service header mismatch")
-		assert.Equal(t, lastReq.headers.Get("RPC-Caller"), "source", "Caller header mismatch")
-		assert.Equal(t, lastReq.headers.Get("RPC-Procedure"), tt.r.Method, "Method header mismatch")
-		assert.Equal(t, lastReq.headers.Get("RPC-Encoding"), "raw", "Encoding header mismatch")
+		assert.Equal(t, lastReq.headers.Get("Rpc-Service"), "target", "Service header mismatch")
+		assert.Equal(t, lastReq.headers.Get("Rpc-Caller"), "source", "Caller header mismatch")
+		assert.Equal(t, lastReq.headers.Get("Rpc-Shard-Key"), "sk", "Shard key header mismatch")
+		assert.Equal(t, lastReq.headers.Get("Rpc-Routing-Key"), "rk", "Routing key header mismatch")
+		assert.Equal(t, lastReq.headers.Get("Rpc-Routing-Delegate"), "rd", "Routing delegate header mismatch")
+		assert.Equal(t, lastReq.headers.Get("Rpc-Procedure"), tt.r.Method, "Method header mismatch")
+		assert.Equal(t, lastReq.headers.Get("Rpc-Encoding"), "raw", "Encoding header mismatch")
+		assert.Equal(t, lastReq.headers.Get("Rpc-Header-Headerkey"), "headervalue", "Application header is sent with prefix")
 
 		ttlMS, err := strconv.Atoi(lastReq.headers.Get("Context-TTL-MS"))
 		if assert.NoError(t, err, "Failed to parse TTLms header: %v", lastReq.headers.Get("YARPC-TTLms")) {
