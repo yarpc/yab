@@ -29,7 +29,7 @@ import (
 
 func TestTemplate(t *testing.T) {
 	opts := newOptions()
-	opts.ROpts.YamlTemplate("testdata/templates/foo.yaml")
+	opts.ROpts.YamlTemplate = "testdata/templates/foo.yaml"
 
 	readYamlRequest(opts)
 
