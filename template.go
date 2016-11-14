@@ -21,22 +21,22 @@ func readYamlRequest(opts *Options) error {
 
 	bytes, err := ioutil.ReadFile(opts.ROpts.YamlTemplate)
 	if err != nil {
-		return err;
+		return err
 	}
 
 	err = yaml.Unmarshal(bytes, &t)
 	if err != nil {
-		return err;
+		return err
 	}
 
 	body, err := yaml.Marshal(t.Request)
 	if err != nil {
-		return err;
+		return err
 	}
 
 	headers, err := yaml.Marshal(t.Headers)
 	if err != nil {
-		return err;
+		return err
 	}
 
 	opts.ROpts.ThriftFile = t.Thrift
