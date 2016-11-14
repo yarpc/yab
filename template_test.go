@@ -22,23 +22,21 @@ package main
 
 import (
 	"testing"
-	"code.uber.internal/rt/carlton/Godeps/_workspace/src/gopkg.in/yaml.v2"
+	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTemplate(t *testing.T) {
-	data := `
-		service: timer
-		thrift: testdata/templates/foo.thrift
-		method: Simple:foo
-		headers:
-			header1: abc
-		request:
-			location:
-				latitude: 37.7
-				longitude: -122.4
-		timeout: 5s
-	`
+	opts := newOptions()
+	opts.ROpts.YamlTemplate("testdata/templates/foo.yaml")
 
-	t := template{}
-	yaml.Unmarshal(data, &t)
+	readYamlRequest(opts)
+
+	assert.Equal(t, "testdata/templates/foo.thrift", opts.ROpts.ThriftFile)
+	assert.Equal(t, "Simple:foo", opts.ROpts.MethodName)
+	assert.Equal(t, "timer", opts.TOpts.ServiceName)
+	assert.Equal(t, "", opts.ROpts.HeadersJSON)
+	assert.Equal(t, "", opts.ROpts.RequestJSON)
+	assert.Equal(t, timeMillisFlag(5*time.Second), opts.ROpts.Timeout)
 }
