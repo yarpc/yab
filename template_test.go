@@ -38,5 +38,5 @@ func TestTemplate(t *testing.T) {
 	assert.Equal(t, "foo", opts.TOpts.ServiceName)
 	assert.Equal(t, "header1: value1\nheader2: value2\n", opts.ROpts.HeadersJSON)
 	assert.Equal(t, "location:\n  cityId: 1\n  latitude: 37.7\n  longitude: -122.4\n", opts.ROpts.RequestJSON)
-	assert.Equal(t, timeMillisFlag(4500 * time.Millisecond), opts.ROpts.Timeout)
+	assert.Equal(t, timeMillisFlag(4500*time.Millisecond), opts.ROpts.Timeout)
 }
