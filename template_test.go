@@ -34,9 +34,9 @@ func TestTemplate(t *testing.T) {
 	readYamlRequest(opts)
 
 	assert.Equal(t, "testdata/templates/foo.thrift", opts.ROpts.ThriftFile)
-	assert.Equal(t, "Simple:foo", opts.ROpts.MethodName)
-	assert.Equal(t, "timer", opts.TOpts.ServiceName)
-	assert.Equal(t, "", opts.ROpts.HeadersJSON)
-	assert.Equal(t, "", opts.ROpts.RequestJSON)
-	assert.Equal(t, timeMillisFlag(5*time.Second), opts.ROpts.Timeout)
+	assert.Equal(t, "Simple::foo", opts.ROpts.MethodName)
+	assert.Equal(t, "foo", opts.TOpts.ServiceName)
+	assert.Equal(t, "header1: value1\nheader2: value2\n", opts.ROpts.HeadersJSON)
+	assert.Equal(t, "location:\n  cityId: 1\n  latitude: 37.7\n  longitude: -122.4\n", opts.ROpts.RequestJSON)
+	assert.Equal(t, timeMillisFlag(4500 * time.Millisecond), opts.ROpts.Timeout)
 }
