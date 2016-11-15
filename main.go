@@ -242,6 +242,12 @@ func parseDefaultConfigs(parser *flags.Parser) error {
 }
 
 func runWithOptions(opts Options, out output) {
+	if opts.ROpts.YamlTemplate != "" {
+		if err := readYamlRequest(&opts); err != nil {
+			out.Fatalf("Failed while reading yaml template: %v\n", err)
+		}
+	}
+
 	reqInput, err := getRequestInput(opts.ROpts.RequestJSON, opts.ROpts.RequestFile)
 	if err != nil {
 		out.Fatalf("Failed while loading body input: %v\n", err)
