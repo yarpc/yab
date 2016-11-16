@@ -27,18 +27,48 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func mustReadYAMLRequest(t *testing.T, opts *Options) {
+	assert.NoError(t, readYAMLRequest(opts), "read request error")
+}
+
 func TestTemplate(t *testing.T) {
 	opts := newOptions()
 	opts.ROpts.YamlTemplate = "testdata/templates/foo.yaml"
 
-	readYamlRequest(opts)
+	mustReadYAMLRequest(t, opts)
 
 	assert.Equal(t, "testdata/templates/foo.thrift", opts.ROpts.ThriftFile)
 	assert.Equal(t, "Simple::foo", opts.ROpts.Procedure)
 	assert.Equal(t, "foo", opts.TOpts.ServiceName)
-	assert.Equal(t, "header1: value1\nheader2: value2\n", opts.ROpts.HeadersJSON)
+	assert.Equal(t, "bar", opts.TOpts.CallerName)
+	assert.Equal(t, "sk", opts.TOpts.ShardKey)
+	assert.Equal(t, "rk", opts.TOpts.RoutingKey)
+	assert.Equal(t, "rd", opts.TOpts.RoutingDelegate)
+	assert.Equal(t, "rd", opts.TOpts.RoutingDelegate)
+	assert.Equal(t, map[string]string{"baggage1": "value1", "baggage2": "value2"}, opts.ROpts.Baggage)
+	assert.Equal(t, true, opts.TOpts.Jaeger)
 	assert.Equal(t, "location:\n  cityId: 1\n  latitude: 37.7\n  longitude: -122.4\n", opts.ROpts.RequestJSON)
 	assert.Equal(t, timeMillisFlag(4500*time.Millisecond), opts.ROpts.Timeout)
+}
+
+func TestTemplateHeadersMerge(t *testing.T) {
+	opts := newOptions()
+	opts.ROpts.YamlTemplate = "testdata/templates/foo.yaml"
+
+	opts.ROpts.HeadersJSON = `{
+		"header2": "overridden",
+	}`
+	opts.ROpts.Headers = map[string]string{
+		"header2": "from Headers",
+		"header3": "from Headers",
+	}
+
+	mustReadYAMLRequest(t, opts)
+
+	headers, err := getHeaders(opts.ROpts.HeadersJSON, opts.ROpts.HeadersFile, opts.ROpts.Headers)
+	assert.NoError(t, err, "failed to merge headers")
+
+	assert.Equal(t, map[string]string{"header1": "from template", "header2": "from Headers", "header3": "from Headers"}, headers)
 }
 
 // This test verifies that the string alias for method to procedure follows
@@ -46,7 +76,82 @@ func TestMethodTemplate(t *testing.T) {
 	opts := newOptions()
 	opts.ROpts.YamlTemplate = "testdata/templates/foo-method.yaml"
 
-	readYamlRequest(opts)
+	mustReadYAMLRequest(t, opts)
 
 	assert.Equal(t, "Simple::foo", opts.ROpts.Procedure)
+}
+
+func TestPeerTemplate(t *testing.T) {
+	opts := newOptions()
+	opts.ROpts.YamlTemplate = "testdata/templates/peer.yaml"
+	mustReadYAMLRequest(t, opts)
+	assert.Equal(t, []string{"127.0.0.1:8080"}, opts.TOpts.HostPorts)
+}
+
+func TestPeersTemplate(t *testing.T) {
+	opts := newOptions()
+	opts.ROpts.YamlTemplate = "testdata/templates/peers.yaml"
+	mustReadYAMLRequest(t, opts)
+	assert.Equal(t, []string{"127.0.0.1:8080", "127.0.0.1:8081"}, opts.TOpts.HostPorts)
+}
+
+func TestPeerListTemplate(t *testing.T) {
+	opts := newOptions()
+	opts.ROpts.YamlTemplate = "testdata/templates/peerlist.yaml"
+	mustReadYAMLRequest(t, opts)
+	assert.Equal(t, "testdata/templates/peers.json", opts.TOpts.HostPortFile)
+}
+
+func TestAbsPeerListTemplate(t *testing.T) {
+	opts := newOptions()
+	opts.ROpts.YamlTemplate = "testdata/templates/abspeerlist.yaml"
+	mustReadYAMLRequest(t, opts)
+	assert.Equal(t, "/peers.json", opts.TOpts.HostPortFile)
+}
+
+func TestMerge(t *testing.T) {
+	tests := []struct {
+		msg         string
+		left, right headers
+		want        headers
+	}{
+		{
+			msg: "nil merge nil is nil",
+		},
+		{
+			msg:   "take non-empty source if no target",
+			left:  nil,
+			right: headers{"x": "y"},
+			want:  headers{"x": "y"},
+		},
+		{
+			msg:   "take non-empty target if no source",
+			left:  headers{"x": "y"},
+			right: nil,
+			want:  headers{"x": "y"},
+		},
+		{
+			msg:   "take non-empty source if empty target",
+			left:  headers{},
+			right: headers{"x": "y"},
+			want:  headers{"x": "y"},
+		},
+		{
+			msg:   "take non-empty target if empty source",
+			left:  headers{"x": "y"},
+			right: headers{},
+			want:  headers{"x": "y"},
+		},
+		{
+			msg:   "target overrides source",
+			left:  headers{"a": "1", "b": "2"},
+			right: headers{"a": "overridden", "c": "3"},
+			want:  headers{"a": "1", "b": "2", "c": "3"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.msg, func(t *testing.T) {
+			assert.Equal(t, merge(tt.left, tt.right), tt.want, "merge properly")
+		})
+	}
 }
