@@ -64,8 +64,7 @@ func valueFromWireStruct(spec *compile.StructSpec, w wire.Struct) (map[string]in
 		// }
 
 		if fSpec.Default != nil {
-			// TODO: Once D314594 lands, use it to set defaults properly.
-			result[fSpec.Name] = string(fSpec.Default.(compile.ConstantString))
+			result[fSpec.Name] = constToRequest(fSpec.Default)
 		}
 	}
 

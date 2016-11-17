@@ -337,6 +337,24 @@ func TestValueFromWireSuccess(t *testing.T) {
 			},
 			v: "Add",
 		},
+		{
+			// Struct with default int.
+			w: wire.NewValueStruct(wire.Struct{}),
+			spec: &compile.StructSpec{
+				Name: "S",
+				Type: ast.StructType,
+				Fields: compile.FieldGroup{{
+					ID:      1,
+					Name:    "s",
+					Type:    &compile.I32Spec{},
+					Default: compile.ConstantInt(1),
+				}},
+			},
+			v: map[string]interface{}{
+				"s": int64(1),
+			},
+			skipToWire: true, // defaults are not serialized.
+		},
 	}
 
 	for _, tt := range tests {
