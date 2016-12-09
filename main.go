@@ -120,13 +120,13 @@ yab is a benchmarking tool for TChannel and HTTP applications. It's primarily in
 	setGroupDescs(parser, "transport", "Transport Options", toGroff(_transportOptsDesc))
 	setGroupDescs(parser, "benchmark", "Benchmark Options", toGroff(_benchmarkOptsDesc))
 
+	remaining, err := parser.ParseArgs(args)
 	// If there are no arguments specified, write the help.
+	// We do this after Parse, otherwise the output doesn't show defaults.
 	if len(args) == 0 {
 		parser.WriteHelp(out)
 		return opts, errExit
 	}
-
-	remaining, err := parser.ParseArgs(args)
 	if err != nil {
 		if ferr, ok := err.(*flags.Error); ok {
 			if ferr.Type == flags.ErrHelp {
