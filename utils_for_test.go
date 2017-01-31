@@ -31,7 +31,6 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/require"
 	"github.com/uber/jaeger-client-go"
-	jaeger_config "github.com/uber/jaeger-client-go/config"
 )
 
 // Constants useful for tests
@@ -73,7 +72,6 @@ func writeFile(t *testing.T, prefix, contents string) string {
 	return f.Name()
 }
 
-func getTestTracer(serviceName string) (opentracing.Tracer, io.Closer, error) {
-	var jaegerConfig jaeger_config.Configuration
-	return jaegerConfig.New(serviceName, jaeger.NullStatsReporter)
+func getTestTracer(serviceName string) (opentracing.Tracer, io.Closer) {
+	return jaeger.NewTracer(serviceName, jaeger.NewConstSampler(true), jaeger.NewNullReporter())
 }

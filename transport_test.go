@@ -229,9 +229,8 @@ func TestGetTransportCallerName(t *testing.T) {
 }
 
 func TestGetTransportTraceEnabled(t *testing.T) {
-	tracer, closer, err := getTestTracer("foo")
+	tracer, closer := getTestTracer("foo")
 	defer closer.Close()
-	assert.NoError(t, err, "failed to instantiate jaeger")
 
 	s := newServer(t, withTracer(tracer))
 	defer s.shutdown()

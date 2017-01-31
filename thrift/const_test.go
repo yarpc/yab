@@ -64,7 +64,7 @@ func TestConstToRequest(t *testing.T) {
 		},
 		{
 			v: compile.EnumItemReference{
-				Item: compile.EnumItem{
+				Item: &compile.EnumItem{
 					Name:  "a",
 					Value: 5,
 				},

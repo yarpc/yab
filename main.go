@@ -39,7 +39,6 @@ import (
 	"github.com/opentracing/opentracing-go"
 	opentracing_ext "github.com/opentracing/opentracing-go/ext"
 	"github.com/uber/jaeger-client-go"
-	jaeger_config "github.com/uber/jaeger-client-go/config"
 	"github.com/uber/tchannel-go"
 )
 
@@ -319,12 +318,7 @@ func getTracer(opts Options, out output) (opentracing.Tracer, io.Closer) {
 		closer io.Closer
 	)
 	if opts.TOpts.Jaeger {
-		var jaegerConfig jaeger_config.Configuration
-		var err error
-		tracer, closer, err = jaegerConfig.New(opts.TOpts.CallerName, jaeger.NullStatsReporter)
-		if err != nil {
-			out.Fatalf("Failed to create Jaeger tracer: %v\n", err)
-		}
+		tracer, closer = jaeger.NewTracer(opts.TOpts.CallerName, jaeger.NewConstSampler(true), jaeger.NewNullReporter())
 	} else if len(opts.ROpts.Baggage) > 0 {
 		out.Fatalf("To propagate baggage, you must opt-into a tracing client, i.e., --jaeger")
 	}
