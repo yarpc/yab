@@ -53,8 +53,9 @@ type RequestOptions struct {
 	YamlTemplate string            `short:"y" long:"yaml-template" description:"Send a tchannel request specified by a yaml template"`
 
 	// Thrift options
-	ThriftDisableEnvelopes bool `long:"disable-thrift-envelope" description:"Disables Thrift envelopes (disabled by default for TChannel)"`
-	ThriftMultiplexed      bool `long:"multiplexed-thrift" description:"Enables the Thrift TMultiplexedProtocol used by services that host multiple Thrift services on a single endpoint."`
+	ThriftEnveloping       ThriftEnvelopeOption `long:"thrift-envelope" description:"Controls whether Thrift envelopes should be used. Set to 'auto' for automatic detection." default:"auto"`
+	ThriftDisableEnvelopes bool                 `long:"disable-thrift-envelope" description:"Disables Thrift envelopes (disabled by default for TChannel)"`
+	ThriftMultiplexed      bool                 `long:"multiplexed-thrift" description:"Enables the Thrift TMultiplexedProtocol used by services that host multiple Thrift services on a single endpoint."`
 
 	// These are aliases for tcurl compatibility.
 	Aliases struct {
@@ -117,6 +118,13 @@ func (t *timeMillisFlag) setDuration(d time.Duration) {
 
 func (t timeMillisFlag) Duration() time.Duration {
 	return time.Duration(t)
+}
+
+func (t timeMillisFlag) WithDefault() time.Duration {
+	if d := t.Duration(); d > 0 {
+		return d
+	}
+	return time.Second
 }
 
 func (t *timeMillisFlag) UnmarshalFlag(value string) error {

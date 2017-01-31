@@ -26,8 +26,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yarpc/yab/transport"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/uber-go/atomic"
 	"github.com/uber/tchannel-go/testutils"
@@ -70,7 +68,7 @@ func TestBenchmark(t *testing.T) {
 		return false
 	}))
 
-	m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
+	m := benchmarkMethodForTest(t, fooMethod)
 
 	for _, tt := range tests {
 		requests.Store(0)
@@ -135,7 +133,7 @@ func TestRunBenchmarkErrors(t *testing.T) {
 				fatalMessage = fmt.Sprintf(msg, args...)
 			},
 		}
-		m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
+		m := benchmarkMethodForTest(t, fooMethod)
 		opts := Options{BOpts: tt.opts}
 
 		var wg sync.WaitGroup

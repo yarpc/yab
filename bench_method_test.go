@@ -36,7 +36,7 @@ import (
 	"github.com/uber/tchannel-go/testutils"
 )
 
-func benchmarkMethodForTest(t *testing.T, methodString string, p transport.Protocol) benchmarkMethod {
+func benchmarkMethodForTest(t *testing.T, methodString string) benchmarkMethod {
 	rOpts := RequestOptions{
 		Encoding:   encoding.Thrift,
 		ThriftFile: validThrift,
@@ -45,7 +45,10 @@ func benchmarkMethodForTest(t *testing.T, methodString string, p transport.Proto
 	serializer, err := NewSerializer(rOpts)
 	require.NoError(t, err, "Failed to create Thrift serializer")
 
-	serializer = withTransportSerializer(p, serializer, rOpts)
+	tchan, err := transport.NewTChannel(transport.TChannelOptions{})
+	require.NoError(t, err, "NewTChannel failed")
+
+	serializer = withTransportSerializer(tchan, serializer, rOpts)
 
 	req, err := serializer.Request(nil)
 	require.NoError(t, err, "Failed to serialize Thrift body")
@@ -81,7 +84,7 @@ func TestBenchmarkMethodWarmTransport(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
+		m := benchmarkMethodForTest(t, fooMethod)
 		if tt.method != "" {
 			m.req.Method = tt.method
 		}
@@ -147,7 +150,7 @@ func TestBenchmarkMethodCall(t *testing.T) {
 	require.NoError(t, err, "Failed to get transport")
 
 	for _, tt := range tests {
-		m := benchmarkMethodForTest(t, tt.method, transport.TChannel)
+		m := benchmarkMethodForTest(t, tt.method)
 		if tt.reqMethod != "" {
 			m.req.Method = tt.reqMethod
 		}
@@ -205,7 +208,7 @@ func TestHostPortBalancer(t *testing.T) {
 
 func TestBenchmarkMethodWarmTransportsSuccess(t *testing.T) {
 	const numServers = 5
-	m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
+	m := benchmarkMethodForTest(t, fooMethod)
 
 	counters := make([]*atomic.Int32, numServers)
 	servers := make([]*server, numServers)
@@ -239,7 +242,7 @@ func TestBenchmarkMethodWarmTransportsSuccess(t *testing.T) {
 }
 
 func TestBenchmarkMethodWarmTransportsError(t *testing.T) {
-	m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
+	m := benchmarkMethodForTest(t, fooMethod)
 
 	tests := []struct {
 		success int

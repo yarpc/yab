@@ -32,7 +32,6 @@ import (
 	"time"
 
 	"github.com/yarpc/yab/encoding"
-	"github.com/yarpc/yab/transport"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -699,58 +698,58 @@ end`,
 	}
 }
 
-func TestWithTransportSerializer(t *testing.T) {
-	validRequestOpts := RequestOptions{
-		ThriftFile: validThrift,
-		MethodName: fooMethod,
-	}
-	noEnvelopeOpts := validRequestOpts
-	noEnvelopeOpts.ThriftDisableEnvelopes = true
+// func TestWithTransportSerializer(t *testing.T) {
+// 	validRequestOpts := RequestOptions{
+// 		ThriftFile: validThrift,
+// 		MethodName: fooMethod,
+// 	}
+// 	noEnvelopeOpts := validRequestOpts
+// 	noEnvelopeOpts.ThriftDisableEnvelopes = true
 
-	tests := []struct {
-		protocol transport.Protocol
-		rOpts    RequestOptions
-		want     []byte
-	}{
-		{
-			protocol: transport.HTTP,
-			rOpts:    validRequestOpts,
-			want: encodeEnveloped(wire.Envelope{
-				Name:  "foo",
-				Type:  wire.Call,
-				Value: wire.NewValueStruct(wire.Struct{}),
-			}),
-		},
-		{
-			protocol: transport.HTTP,
-			rOpts:    noEnvelopeOpts,
-			want:     []byte{0},
-		},
-		{
-			protocol: transport.TChannel,
-			rOpts:    validRequestOpts,
-			want:     []byte{0},
-		},
-		{
-			protocol: transport.TChannel,
-			rOpts:    noEnvelopeOpts,
-			want:     []byte{0},
-		},
-	}
+// 	tests := []struct {
+// 		protocol transport.Protocol
+// 		rOpts    RequestOptions
+// 		want     []byte
+// 	}{
+// 		{
+// 			protocol: transport.HTTP,
+// 			rOpts:    validRequestOpts,
+// 			want: encodeEnveloped(wire.Envelope{
+// 				Name:  "foo",
+// 				Type:  wire.Call,
+// 				Value: wire.NewValueStruct(wire.Struct{}),
+// 			}),
+// 		},
+// 		{
+// 			protocol: transport.HTTP,
+// 			rOpts:    noEnvelopeOpts,
+// 			want:     []byte{0},
+// 		},
+// 		{
+// 			protocol: transport.TChannel,
+// 			rOpts:    validRequestOpts,
+// 			want:     []byte{0},
+// 		},
+// 		{
+// 			protocol: transport.TChannel,
+// 			rOpts:    noEnvelopeOpts,
+// 			want:     []byte{0},
+// 		},
+// 	}
 
-	for _, tt := range tests {
-		serializer, err := NewSerializer(tt.rOpts)
-		require.NoError(t, err, "Failed to create serializer for %+v", tt.rOpts)
+// 	for _, tt := range tests {
+// 		serializer, err := NewSerializer(tt.rOpts)
+// 		require.NoError(t, err, "Failed to create serializer for %+v", tt.rOpts)
 
-		serializer = withTransportSerializer(tt.protocol, serializer, tt.rOpts)
-		req, err := serializer.Request(nil)
-		if !assert.NoError(t, err, "Failed to serialize request for %+v", tt.rOpts) {
-			continue
-		}
+// 		serializer = withTransportSerializer(tt.protocol, serializer, tt.rOpts)
+// 		req, err := serializer.Request(nil)
+// 		if !assert.NoError(t, err, "Failed to serialize request for %+v", tt.rOpts) {
+// 			continue
+// 		}
 
-		assert.Equal(t, tt.want, req.Body, "Body mismatch for %+v", tt.rOpts)
-	}
-}
+// 		assert.Equal(t, tt.want, req.Body, "Body mismatch for %+v", tt.rOpts)
+// 	}
+// }
 
 func cleanEnv(key, val string, wasSet bool) {
 	if wasSet {

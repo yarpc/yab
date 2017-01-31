@@ -29,7 +29,6 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
@@ -281,7 +280,7 @@ func runWithOptions(opts Options, out output) {
 		out.Fatalf("Failed while parsing options: %v\n", err)
 	}
 
-	serializer = withTransportSerializer(transport.Protocol(), serializer, opts.ROpts)
+	serializer = withTransportSerializer(transport, serializer, opts.ROpts)
 
 	// req is the transport.Request that will be used to make a call.
 	req, err := serializer.Request(reqInput)
@@ -291,10 +290,7 @@ func runWithOptions(opts Options, out output) {
 
 	req.Headers = headers
 	req.TransportHeaders = opts.TOpts.TransportHeaders
-	req.Timeout = opts.ROpts.Timeout.Duration()
-	if req.Timeout == 0 {
-		req.Timeout = time.Second
-	}
+	req.Timeout = opts.ROpts.Timeout.WithDefault()
 	req.Baggage = opts.ROpts.Baggage
 
 	// Only make the request if the user hasn't specified 0 warmup.
@@ -327,12 +323,25 @@ func getTracer(opts Options, out output) (opentracing.Tracer, io.Closer) {
 
 // withTransportSerializer may modify the serializer for the transport used.
 // E.g. Thrift payloads are not enveloped when used with TChannel.
-func withTransportSerializer(p transport.Protocol, s encoding.Serializer, rOpts RequestOptions) encoding.Serializer {
-	switch {
-	case p == transport.TChannel && s.Encoding() == encoding.Thrift,
-		rOpts.ThriftDisableEnvelopes:
-		s = s.(noEnveloper).WithoutEnvelopes()
+func withTransportSerializer(p transport.Transport, s encoding.Serializer, rOpts RequestOptions) encoding.Serializer {
+	if s.Encoding() != encoding.Thrift {
+		return s
 	}
+
+	if rOpts.ThriftDisableEnvelopes {
+		rOpts.ThriftEnveloping = DisableEnvelope
+	}
+
+	if rOpts.ThriftEnveloping == AutoDetect {
+		rOpts.ThriftEnveloping = detectThriftEnvelope(p, s, rOpts)
+	}
+
+	// Envelopes are enabled by default, no need to do anything.
+	if rOpts.ThriftEnveloping == EnableEvelope {
+		return s
+	}
+
+	s = s.(noEnveloper).WithoutEnvelopes()
 	return s
 }
 

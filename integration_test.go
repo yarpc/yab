@@ -234,6 +234,7 @@ func TestIntegrationProtocols(t *testing.T) {
 		defer shutdown()
 
 		for _, tt := range integrationTests {
+			fmt.Println("case", c.desc, c.disableEnvelope, tt.call)
 			opts := Options{
 				ROpts: RequestOptions{
 					ThriftFile:        "testdata/integration.thrift",
@@ -247,7 +248,8 @@ func TestIntegrationProtocols(t *testing.T) {
 					Baggage: map[string]string{
 						"baggagekey": "baggagevalue",
 					},
-					ThriftDisableEnvelopes: c.disableEnvelope,
+					ThriftEnveloping: AutoDetect,
+					// ThriftDisableEnvelopes: c.disableEnvelope,
 				},
 				TOpts: TransportOptions{
 					ServiceName: "foo",
