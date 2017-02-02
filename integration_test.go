@@ -22,6 +22,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -32,22 +33,21 @@ import (
 
 	"github.com/yarpc/yab/testdata/gen-go/integration"
 	yintegration "github.com/yarpc/yab/testdata/yarpc/integration"
-	"github.com/yarpc/yab/testdata/yarpc/integration/yarpc/fooserver"
+	"github.com/yarpc/yab/testdata/yarpc/integration/fooserver"
 
 	athrift "github.com/apache/thrift/lib/go/thrift"
 	"github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/uber/jaeger-client-go"
+	jaeger "github.com/uber/jaeger-client-go"
 	"github.com/uber/tchannel-go"
 	"github.com/uber/tchannel-go/testutils"
 	"github.com/uber/tchannel-go/thrift"
 	"go.uber.org/yarpc"
+	ytransport "go.uber.org/yarpc/api/transport"
 	ythrift "go.uber.org/yarpc/encoding/thrift"
-	ytransport "go.uber.org/yarpc/transport"
 	yhttp "go.uber.org/yarpc/transport/http"
 	ytchan "go.uber.org/yarpc/transport/tchannel"
-	"golang.org/x/net/context"
 )
 
 //go:generate thriftrw --plugin=yarpc --out ./testdata/yarpc ./testdata/integration.thrift
@@ -112,10 +112,9 @@ func verifyThriftHeaders(ctx thrift.Context) error {
 	return verifyHeader(val, ok)
 }
 
-func verifyYARPCHeaders(reqMeta yarpc.ReqMeta) error {
-	headers := reqMeta.Headers()
-	val, ok := headers.Get("headerkey")
-	return verifyHeader(val, ok)
+func verifyYARPCHeaders(ctx context.Context) error {
+	val := yarpc.CallFromContext(ctx).Header("headerkey")
+	return verifyHeader(val, val != "")
 }
 
 func verifyHeader(val string, ok bool) error {
@@ -149,12 +148,12 @@ func (httpHandler) Bar(arg int32) (int32, error) {
 
 type yarpcHandler struct{}
 
-func (yarpcHandler) Bar(ctx context.Context, reqMeta yarpc.ReqMeta, arg *int32) (int32, yarpc.ResMeta, error) {
-	if err := verifyYARPCHeaders(reqMeta); err != nil {
-		return 0, nil, err
+func (yarpcHandler) Bar(ctx context.Context, arg *int32) (int32, error) {
+	if err := verifyYARPCHeaders(ctx); err != nil {
+		return 0, err
 	}
 	if err := verifyBaggage(ctx); err != nil {
-		return 0, nil, err
+		return 0, err
 	}
 
 	argVal := int32(0)
@@ -165,18 +164,18 @@ func (yarpcHandler) Bar(ctx context.Context, reqMeta yarpc.ReqMeta, arg *int32) 
 	if _, ok := err.(*integration.NotFound); ok {
 		err = &yintegration.NotFound{}
 	}
-	return res, yarpc.NewResMeta(), err
+	return res, err
 }
 
 func TestIntegrationProtocols(t *testing.T) {
-	tracer, closer, err := getTestTracer("foo")
-	assert.NoError(t, err, "failed to instanitate jaeger")
+	tracer, closer := getTestTracer("foo")
 	defer closer.Close()
 
 	cases := []struct {
-		desc        string
-		setup       func() (hostPort string, shutdown func())
-		multiplexed bool
+		desc            string
+		setup           func() (hostPort string, shutdown func())
+		multiplexed     bool
+		disableEnvelope bool
 	}{
 		{
 			desc: "TChannel",
@@ -203,20 +202,30 @@ func TestIntegrationProtocols(t *testing.T) {
 		{
 			desc: "YARPC TChannel",
 			setup: func() (hostPort string, shutdown func()) {
-				ch, dispatcher := setupYARPCTchannel(t, tracer)
+				ch, dispatcher := setupYARPCTChannel(t, tracer)
 				return ch.PeerInfo().HostPort, func() {
 					dispatcher.Stop()
 				}
 			},
 		},
 		{
-			desc: "YARPC HTTP",
+			desc: "YARPC HTTP (enveloped)",
 			setup: func() (hostPort string, shutdown func()) {
-				addr, dispatcher := setupYARPCHTTP(t, tracer)
+				addr, dispatcher := setupYARPCHTTP(t, tracer, true /* enveloped */)
 				return "http://" + addr.String(), func() {
 					dispatcher.Stop()
 				}
 			},
+		},
+		{
+			desc: "YARPC HTTP (non-enveloped)",
+			setup: func() (hostPort string, shutdown func()) {
+				addr, dispatcher := setupYARPCHTTP(t, tracer, false /* enveloped */)
+				return "http://" + addr.String(), func() {
+					dispatcher.Stop()
+				}
+			},
+			disableEnvelope: true,
 		},
 	}
 
@@ -238,6 +247,7 @@ func TestIntegrationProtocols(t *testing.T) {
 					Baggage: map[string]string{
 						"baggagekey": "baggagevalue",
 					},
+					ThriftDisableEnvelopes: c.disableEnvelope,
 				},
 				TOpts: TransportOptions{
 					ServiceName: "foo",
@@ -301,26 +311,31 @@ func setupHTTPIntegrationServer(t *testing.T, multiplexed bool) *httptest.Server
 	return httptest.NewServer(http.HandlerFunc(handler))
 }
 
-func setupYARPCTchannel(t *testing.T, tracer opentracing.Tracer) (*tchannel.Channel, yarpc.Dispatcher) {
+func setupYARPCTChannel(t *testing.T, tracer opentracing.Tracer) (*tchannel.Channel, *yarpc.Dispatcher) {
 	ch := testutils.NewServer(t, testutils.NewOpts().SetServiceName("foo"))
-	inbound := ytchan.NewInbound(ch)
-	return ch, setupYARPCServer(t, inbound, tracer)
+	transport, err := ytchan.NewChannelTransport(ytchan.WithChannel(ch), ytchan.Tracer(tracer))
+	require.NoError(t, err, "Failed to set up new TChannel YARPC transport")
+	return ch, setupYARPCServer(t, transport.NewInbound())
 }
 
-func setupYARPCHTTP(t *testing.T, tracer opentracing.Tracer) (net.Addr, yarpc.Dispatcher) {
-	inbound := yhttp.NewInbound("127.0.0.1:0")
-	dispatcher := setupYARPCServer(t, inbound, tracer)
+func setupYARPCHTTP(t *testing.T, tracer opentracing.Tracer, enveloped bool) (net.Addr, *yarpc.Dispatcher) {
+	transport := yhttp.NewTransport(yhttp.Tracer(tracer))
+	inbound := transport.NewInbound("127.0.0.1:0")
+	var opts []ythrift.RegisterOption
+	if enveloped {
+		opts = append(opts, ythrift.Enveloped)
+	}
+	dispatcher := setupYARPCServer(t, inbound, opts...)
 	return inbound.Addr(), dispatcher
 }
 
-func setupYARPCServer(t *testing.T, inbound ytransport.Inbound, tracer opentracing.Tracer) yarpc.Dispatcher {
+func setupYARPCServer(t *testing.T, inbound ytransport.Inbound, opts ...ythrift.RegisterOption) *yarpc.Dispatcher {
 	cfg := yarpc.Config{
 		Name:     "foo",
 		Inbounds: []ytransport.Inbound{inbound},
-		Tracer:   tracer,
 	}
 	dispatcher := yarpc.NewDispatcher(cfg)
-	ythrift.Register(dispatcher, fooserver.New(&yarpcHandler{}))
+	dispatcher.Register(fooserver.New(&yarpcHandler{}, opts...))
 	require.NoError(t, dispatcher.Start(), "Failed to start Dispatcher")
 	return dispatcher
 }
