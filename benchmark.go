@@ -28,6 +28,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/uber-go/zap"
 	"github.com/yarpc/yab/limiter"
 	"github.com/yarpc/yab/statsd"
 	"github.com/yarpc/yab/transport"
@@ -114,6 +115,8 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 	out.Printf("  Max requests:    %v\n", opts.MaxRequests)
 	out.Printf("  Max duration:    %v\n", opts.MaxDuration)
 	out.Printf("  Max RPS:         %v\n", opts.RPS)
+
+	out.Debug("starting benchmark", zap.Int("numConns", numConns))
 
 	// Warm up number of connections.
 	connections, err := m.WarmTransports(numConns, allOpts.TOpts, opts.WarmupRequests)

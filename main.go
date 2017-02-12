@@ -31,6 +31,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/uber-go/zap"
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
 
@@ -42,7 +43,13 @@ import (
 	"github.com/uber/tchannel-go"
 )
 
-var errHealthAndMethod = errors.New("cannot specify method name and use --health")
+var (
+	errExit            = errors.New("sentinel error used to exit cleanly")
+	errHealthAndMethod = errors.New("cannot specify method name and use --health")
+
+	// dynamicLevel allows to change the logging level after setup
+	dynamicLevel = zap.DynamicLevel()
+)
 
 func findGroup(parser *flags.Parser, group string) *flags.Group {
 	if g := parser.Group.Find(group); g != nil {
@@ -72,10 +79,9 @@ func fromPositional(args []string, index int, s *string) bool {
 
 func main() {
 	log.SetFlags(0)
-	parseAndRun(consoleOutput{os.Stdout})
+	logger := zap.New(zap.NewTextEncoder(zap.TextNoTime()), dynamicLevel)
+	parseAndRun(consoleOutput{os.Stdout, logger})
 }
-
-var errExit = errors.New("sentinel error used to exit cleanly")
 
 func toGroff(s string) string {
 	// Expand tabbed lines beginning with "-" as items in a bullet list.
@@ -241,6 +247,11 @@ func parseDefaultConfigs(parser *flags.Parser) error {
 }
 
 func runWithOptions(opts Options, out output) {
+	if opts.Verbose {
+		dynamicLevel.SetLevel(zap.DebugLevel)
+		out.Debug("enabled verbose logging")
+	}
+
 	if opts.ROpts.YamlTemplate != "" {
 		if err := readYamlRequest(&opts); err != nil {
 			out.Fatalf("Failed while reading yaml template: %v\n", err)

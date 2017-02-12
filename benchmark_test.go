@@ -34,6 +34,7 @@ import (
 )
 
 func TestBenchmark(t *testing.T) {
+
 	tests := []struct {
 		msg          string
 		n            int
@@ -65,6 +66,7 @@ func TestBenchmark(t *testing.T) {
 	var requests atomic.Int32
 	s := newServer(t)
 	defer s.shutdown()
+
 	s.register(fooMethod, methods.errorIf(func() bool {
 		requests.Inc()
 		return false
@@ -74,9 +76,9 @@ func TestBenchmark(t *testing.T) {
 
 	for _, tt := range tests {
 		requests.Store(0)
+		buf, out := getOutput(t)
 
 		start := time.Now()
-		buf, out := getOutput(t)
 		runBenchmark(out, Options{
 			BOpts: BenchmarkOptions{
 				MaxRequests: tt.n,
