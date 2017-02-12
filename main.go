@@ -244,7 +244,7 @@ func parseDefaultConfigs(parser *flags.Parser) error {
 }
 
 func runWithOptions(opts Options, out output) {
-	out.Debug("testing this", zap.String("hello", "akshay"))
+	out.Debug("testing this", zap.String("hello", "joe"))
 
 	if opts.ROpts.YamlTemplate != "" {
 		if err := readYamlRequest(&opts); err != nil {
