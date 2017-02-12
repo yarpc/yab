@@ -34,6 +34,7 @@ import (
 )
 
 func TestBenchmark(t *testing.T) {
+
 	tests := []struct {
 		msg          string
 		n            int

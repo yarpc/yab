@@ -30,6 +30,7 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/require"
+	"github.com/uber-go/zap/spy"
 	"github.com/uber/jaeger-client-go"
 )
 
@@ -42,6 +43,8 @@ const (
 
 type testOutput struct {
 	*bytes.Buffer
+	*spy.Logger
+
 	fatalf func(string, ...interface{})
 }
 
@@ -56,8 +59,10 @@ func (t testOutput) Printf(format string, args ...interface{}) {
 
 func getOutput(t *testing.T) (*bytes.Buffer, output) {
 	buf := &bytes.Buffer{}
+	l, _ := spy.New()
 	out := testOutput{
 		Buffer: buf,
+		Logger: l,
 		fatalf: t.Errorf,
 	}
 	return buf, out

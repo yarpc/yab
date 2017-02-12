@@ -33,6 +33,7 @@ type Options struct {
 	ROpts          RequestOptions   `group:"request"`
 	TOpts          TransportOptions `group:"transport"`
 	BOpts          BenchmarkOptions `group:"benchmark"`
+	Verbose        bool             `short:"v" long:"verbose" description:"Print more verbose information"`
 	DisplayVersion bool             `long:"version" description:"Displays the application version"`
 	ManPage        bool             `long:"man-page" hidden:"yes" description:"Print yab's man page to stdout"`
 }

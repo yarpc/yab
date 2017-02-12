@@ -31,6 +31,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/uber-go/zap/spy"
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
 
@@ -148,8 +149,10 @@ func TestRunWithOptions(t *testing.T) {
 
 	var errBuf bytes.Buffer
 	var outBuf bytes.Buffer
+	testLogger, _ := spy.New()
 	out := testOutput{
 		Buffer: &outBuf,
+		Logger: testLogger,
 		fatalf: func(format string, args ...interface{}) {
 			errBuf.WriteString(fmt.Sprintf(format, args...))
 		},

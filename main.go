@@ -31,6 +31,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/uber-go/zap"
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
 
@@ -42,7 +43,11 @@ import (
 	"github.com/uber/tchannel-go"
 )
 
-var errHealthAndMethod = errors.New("cannot specify method name and use --health")
+var (
+	// Logger Public Logger for logging verbose output
+	errExit            = errors.New("sentinel error used to exit cleanly")
+	errHealthAndMethod = errors.New("cannot specify method name and use --health")
+)
 
 func findGroup(parser *flags.Parser, group string) *flags.Group {
 	if g := parser.Group.Find(group); g != nil {
@@ -72,10 +77,8 @@ func fromPositional(args []string, index int, s *string) bool {
 
 func main() {
 	log.SetFlags(0)
-	parseAndRun(consoleOutput{os.Stdout})
+	parseAndRun(consoleOutput{os.Stdout, zap.New(zap.NewTextEncoder())})
 }
-
-var errExit = errors.New("sentinel error used to exit cleanly")
 
 func toGroff(s string) string {
 	// Expand tabbed lines beginning with "-" as items in a bullet list.
@@ -241,6 +244,8 @@ func parseDefaultConfigs(parser *flags.Parser) error {
 }
 
 func runWithOptions(opts Options, out output) {
+	out.Debug("testing this", zap.String("hello", "akshay"))
+
 	if opts.ROpts.YamlTemplate != "" {
 		if err := readYamlRequest(&opts); err != nil {
 			out.Fatalf("Failed while reading yaml template: %v\n", err)

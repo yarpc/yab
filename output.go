@@ -25,10 +25,13 @@ import (
 	"io"
 	"log"
 	"os"
+
+	"github.com/uber-go/zap"
 )
 
 type output interface {
 	io.Writer
+	zap.Logger
 
 	Fatalf(format string, args ...interface{})
 	Printf(format string, args ...interface{})
@@ -36,6 +39,7 @@ type output interface {
 
 type consoleOutput struct {
 	*os.File
+	zap.Logger
 }
 
 func (consoleOutput) Fatalf(format string, args ...interface{}) {

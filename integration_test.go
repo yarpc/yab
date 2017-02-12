@@ -31,6 +31,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/uber-go/zap/spy"
 	"github.com/yarpc/yab/testdata/gen-go/integration"
 	yintegration "github.com/yarpc/yab/testdata/yarpc/integration"
 	"github.com/yarpc/yab/testdata/yarpc/integration/fooserver"
@@ -268,8 +269,10 @@ func TestIntegrationProtocols(t *testing.T) {
 func runTestWithOpts(opts Options) (string, string) {
 	var errBuf bytes.Buffer
 	var outBuf bytes.Buffer
+	testLogger, _ := spy.New()
 	out := testOutput{
 		Buffer: &outBuf,
+		Logger: testLogger,
 		fatalf: func(format string, args ...interface{}) {
 			errBuf.WriteString(fmt.Sprintf(format, args...))
 		},
