@@ -44,7 +44,6 @@ import (
 )
 
 var (
-	// Logger Public Logger for logging verbose output
 	errExit            = errors.New("sentinel error used to exit cleanly")
 	errHealthAndMethod = errors.New("cannot specify method name and use --health")
 
