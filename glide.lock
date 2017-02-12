@@ -1,8 +1,8 @@
-hash: 3302c04cec4c419c4fa61537d845389b6a2a79faaed682ae9f45c370800e9609
-updated: 2017-01-30T19:15:44.243195884-08:00
+hash: 32feeffdab9bd406cac99e6c9e64aab4edf85e9ea71026712b7b00606c1335e7
+updated: 2017-02-11T19:49:23.417227238-08:00
 imports:
 - name: github.com/apache/thrift
-  version: 8d377fa6befb6ef9fd2364b5cc2972406e2a92a3
+  version: bff044667caf8a8c2b0dd30ed11b328ff2902cf5
   subpackages:
   - lib/go/thrift
 - name: github.com/cactus/go-statsd-client
@@ -18,7 +18,7 @@ imports:
 - name: github.com/jessevdk/go-flags
   version: 4e64e4a4e2552194cf594243e23aa9baf3b4297e
 - name: github.com/opentracing/opentracing-go
-  version: 0c3154a3c2ce79d3271985848659870599dfb77c
+  version: 6edb48674bd9467b8e91fda004f2bd7202d60ce4
   subpackages:
   - ext
   - log
@@ -33,6 +33,10 @@ imports:
   - require
 - name: github.com/uber-go/atomic
   version: 0c9e689d64f004564b79d9a663634756df322902
+- name: github.com/uber-go/zap
+  version: c064b5c44b285a7e2fd5c9b26e8c38228ce2bccb
+  subpackages:
+  - spy
 - name: github.com/uber/jaeger-client-go
   version: e39d0f1b622558cae3d9db0062a739cc6ffa700f
   subpackages:
@@ -43,7 +47,7 @@ imports:
   - transport
   - utils
 - name: github.com/uber/tchannel-go
-  version: aeda4836756434b4077ca7ef4b6a8c0d6b382101
+  version: 79387824978f91318be3bfb43ae12e04c38cfe97
   subpackages:
   - internal/argreader
   - json
@@ -57,6 +61,8 @@ imports:
   - tnet
   - trand
   - typed
+- name: go.uber.org/atomic
+  version: 0c9e689d64f004564b79d9a663634756df322902
 - name: go.uber.org/thriftrw
   version: c98a13058faa5dd41584a77221a268d2c72d832d
   subpackages:
@@ -71,17 +77,8 @@ imports:
   - protocol/binary
   - version
   - wire
-- name: golang.org/x/net
-  version: f2499483f923065a842d38eb4c7f1927e6fc6e6d
-  subpackages:
-  - context
-- name: gopkg.in/yaml.v2
-  version: 4c78c975fe7c825c6d1466c42be594d1d6f3aba6
-testImports:
-- name: go.uber.org/atomic
-  version: 0c9e689d64f004564b79d9a663634756df322902
 - name: go.uber.org/yarpc
-  version: baf7b5524ecff45dad7aa6ff70c1fe422ea4aada
+  version: e4ae12793c38b4aea58721458670ded8bb4709a0
   subpackages:
   - api/encoding
   - api/middleware
@@ -104,3 +101,10 @@ testImports:
   - transport/http
   - transport/tchannel
   - transport/tchannel/internal
+- name: golang.org/x/net
+  version: f2499483f923065a842d38eb4c7f1927e6fc6e6d
+  subpackages:
+  - context
+- name: gopkg.in/yaml.v2
+  version: a3f3340b5840cee44f372bddb5880fcbc419b46a
+testImports: []
