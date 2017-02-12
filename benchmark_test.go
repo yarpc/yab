@@ -66,6 +66,7 @@ func TestBenchmark(t *testing.T) {
 	var requests atomic.Int32
 	s := newServer(t)
 	defer s.shutdown()
+
 	s.register(fooMethod, methods.errorIf(func() bool {
 		requests.Inc()
 		return false
@@ -75,9 +76,9 @@ func TestBenchmark(t *testing.T) {
 
 	for _, tt := range tests {
 		requests.Store(0)
+		buf, out := getOutput(t)
 
 		start := time.Now()
-		buf, out := getOutput(t)
 		runBenchmark(out, Options{
 			BOpts: BenchmarkOptions{
 				MaxRequests:    tt.n,
@@ -102,7 +103,8 @@ func TestBenchmark(t *testing.T) {
 
 		if tt.wantDuration != 0 {
 			// Make sure the total duration is within a delta.
-			slack := testutils.Timeout(500 * time.Millisecond)
+			// Should account for the request timeout set in benchmarkMethodForTest
+			slack := testutils.Timeout(time.Second)
 			duration := time.Since(start)
 			assert.True(t, duration <= tt.wantDuration+slack && duration >= tt.wantDuration-slack,
 				"%v: Took %v, wanted duration %v", tt.msg, duration, tt.wantDuration)

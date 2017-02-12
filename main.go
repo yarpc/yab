@@ -47,6 +47,9 @@ var (
 	// Logger Public Logger for logging verbose output
 	errExit            = errors.New("sentinel error used to exit cleanly")
 	errHealthAndMethod = errors.New("cannot specify method name and use --health")
+
+	// dynamicLevel allows to change the logging level after setup
+	dynamicLevel = zap.DynamicLevel()
 )
 
 func findGroup(parser *flags.Parser, group string) *flags.Group {
@@ -77,7 +80,8 @@ func fromPositional(args []string, index int, s *string) bool {
 
 func main() {
 	log.SetFlags(0)
-	parseAndRun(consoleOutput{os.Stdout, zap.New(zap.NewTextEncoder())})
+	logger := zap.New(zap.NewTextEncoder(zap.TextNoTime()), dynamicLevel)
+	parseAndRun(consoleOutput{os.Stdout, logger})
 }
 
 func toGroff(s string) string {
@@ -244,7 +248,10 @@ func parseDefaultConfigs(parser *flags.Parser) error {
 }
 
 func runWithOptions(opts Options, out output) {
-	out.Debug("testing this", zap.String("hello", "joe"))
+	if opts.Verbose {
+		dynamicLevel.SetLevel(zap.DebugLevel)
+		out.Debug("enabled verbose logging")
+	}
 
 	if opts.ROpts.YamlTemplate != "" {
 		if err := readYamlRequest(&opts); err != nil {

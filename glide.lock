@@ -1,5 +1,5 @@
 hash: 32feeffdab9bd406cac99e6c9e64aab4edf85e9ea71026712b7b00606c1335e7
-updated: 2017-02-11T19:49:23.417227238-08:00
+updated: 2017-02-11T21:32:42.372619241-08:00
 imports:
 - name: github.com/apache/thrift
   version: bff044667caf8a8c2b0dd30ed11b328ff2902cf5
@@ -61,8 +61,6 @@ imports:
   - tnet
   - trand
   - typed
-- name: go.uber.org/atomic
-  version: 0c9e689d64f004564b79d9a663634756df322902
 - name: go.uber.org/thriftrw
   version: c98a13058faa5dd41584a77221a268d2c72d832d
   subpackages:
@@ -102,9 +100,11 @@ imports:
   - transport/tchannel
   - transport/tchannel/internal
 - name: golang.org/x/net
-  version: f2499483f923065a842d38eb4c7f1927e6fc6e6d
+  version: 61557ac0112b576429a0df080e1c2cef5dfbb642
   subpackages:
   - context
 - name: gopkg.in/yaml.v2
   version: a3f3340b5840cee44f372bddb5880fcbc419b46a
-testImports: []
+testImports:
+- name: go.uber.org/atomic
+  version: 0c9e689d64f004564b79d9a663634756df322902
