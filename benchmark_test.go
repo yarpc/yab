@@ -81,12 +81,11 @@ func TestBenchmark(t *testing.T) {
 		start := time.Now()
 		runBenchmark(out, Options{
 			BOpts: BenchmarkOptions{
-				MaxRequests:    tt.n,
-				MaxDuration:    tt.d,
-				RPS:            tt.rps,
-				Connections:    50,
-				WarmupRequests: 10,
-				Concurrency:    2,
+				MaxRequests: tt.n,
+				MaxDuration: tt.d,
+				RPS:         tt.rps,
+				Connections: 50,
+				Concurrency: 2,
 			},
 			TOpts: s.transportOpts(),
 		}, m)
@@ -95,9 +94,8 @@ func TestBenchmark(t *testing.T) {
 		assert.Contains(t, bufStr, "Max RPS")
 		assert.NotContains(t, bufStr, "Errors")
 
-		warmupExtra := 10 * 50 // warmup requests * connections
 		if tt.want != 0 {
-			assert.EqualValues(t, tt.want+warmupExtra, requests.Load(),
+			assert.EqualValues(t, tt.want, requests.Load(),
 				"%v: Invalid number of requests", tt.msg)
 		}
 
