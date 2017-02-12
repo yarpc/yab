@@ -101,8 +101,7 @@ func TestBenchmark(t *testing.T) {
 
 		if tt.wantDuration != 0 {
 			// Make sure the total duration is within a delta.
-			// Should account for the request timeout set in benchmarkMethodForTest
-			slack := testutils.Timeout(time.Second)
+			slack := testutils.Timeout(500 * time.Millisecond)
 			duration := time.Since(start)
 			assert.True(t, duration <= tt.wantDuration+slack && duration >= tt.wantDuration-slack,
 				"%v: Took %v, wanted duration %v", tt.msg, duration, tt.wantDuration)
