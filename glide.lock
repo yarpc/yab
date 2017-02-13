@@ -1,8 +1,8 @@
-hash: 3302c04cec4c419c4fa61537d845389b6a2a79faaed682ae9f45c370800e9609
-updated: 2017-01-30T19:15:44.243195884-08:00
+hash: ebc2a48d963a32e862e8d5623f32c26de4541be49822748feb0706d968f170fa
+updated: 2017-02-13T13:31:24.291355436-08:00
 imports:
 - name: github.com/apache/thrift
-  version: 8d377fa6befb6ef9fd2364b5cc2972406e2a92a3
+  version: 36628a28e975e4d680fff66eec3e66c06ca86bf2
   subpackages:
   - lib/go/thrift
 - name: github.com/cactus/go-statsd-client
@@ -16,9 +16,9 @@ imports:
   subpackages:
   - spew
 - name: github.com/jessevdk/go-flags
-  version: 4e64e4a4e2552194cf594243e23aa9baf3b4297e
+  version: 460c7bb0abd6e927f2767cadc91aa6ef776a98b4
 - name: github.com/opentracing/opentracing-go
-  version: 0c3154a3c2ce79d3271985848659870599dfb77c
+  version: 6edb48674bd9467b8e91fda004f2bd7202d60ce4
   subpackages:
   - ext
   - log
@@ -43,7 +43,7 @@ imports:
   - transport
   - utils
 - name: github.com/uber/tchannel-go
-  version: aeda4836756434b4077ca7ef4b6a8c0d6b382101
+  version: 79387824978f91318be3bfb43ae12e04c38cfe97
   subpackages:
   - internal/argreader
   - json
@@ -72,16 +72,16 @@ imports:
   - version
   - wire
 - name: golang.org/x/net
-  version: f2499483f923065a842d38eb4c7f1927e6fc6e6d
+  version: 61557ac0112b576429a0df080e1c2cef5dfbb642
   subpackages:
   - context
 - name: gopkg.in/yaml.v2
-  version: 4c78c975fe7c825c6d1466c42be594d1d6f3aba6
+  version: a3f3340b5840cee44f372bddb5880fcbc419b46a
 testImports:
 - name: go.uber.org/atomic
   version: 0c9e689d64f004564b79d9a663634756df322902
 - name: go.uber.org/yarpc
-  version: baf7b5524ecff45dad7aa6ff70c1fe422ea4aada
+  version: e4ae12793c38b4aea58721458670ded8bb4709a0
   subpackages:
   - api/encoding
   - api/middleware
