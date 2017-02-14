@@ -20,6 +20,23 @@
 
 package main
 
-// versionString is the sem-ver version string for yab.
-// It will be bumped explicitly on releases.
-var versionString = "0.8.0"
+import (
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestTemplate(t *testing.T) {
+	opts := newOptions()
+	opts.ROpts.YamlTemplate = "testdata/templates/foo.yaml"
+
+	readYamlRequest(opts)
+
+	assert.Equal(t, "testdata/templates/foo.thrift", opts.ROpts.ThriftFile)
+	assert.Equal(t, "Simple::foo", opts.ROpts.MethodName)
+	assert.Equal(t, "foo", opts.TOpts.ServiceName)
+	assert.Equal(t, "header1: value1\nheader2: value2\n", opts.ROpts.HeadersJSON)
+	assert.Equal(t, "location:\n  cityId: 1\n  latitude: 37.7\n  longitude: -122.4\n", opts.ROpts.RequestJSON)
+	assert.Equal(t, timeMillisFlag(4500*time.Millisecond), opts.ROpts.Timeout)
+}

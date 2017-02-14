@@ -39,17 +39,18 @@ type Options struct {
 
 // RequestOptions are request related options
 type RequestOptions struct {
-	Encoding    encoding.Encoding `short:"e" long:"encoding" description:"The encoding of the data, options are: Thrift, JSON, raw. Defaults to Thrift if the method contains '::' or a Thrift file is specified"`
-	ThriftFile  string            `short:"t" long:"thrift" description:"Path of the .thrift file"`
-	MethodName  string            `short:"m" long:"method" description:"The full Thrift method name (Svc::Method) to invoke"`
-	RequestJSON string            `short:"r" long:"request" unquote:"false" description:"The request body, in JSON or YAML format"`
-	RequestFile string            `short:"f" long:"file" description:"Path of a file containing the request body in JSON or YAML"`
-	Headers     map[string]string `short:"H" long:"header" description:"Individual application header as a key:value pair per flag"`
-	HeadersJSON string            `long:"headers" unquote:"false" description:"The headers in JSON or YAML format"`
-	HeadersFile string            `long:"headers-file" description:"Path of a file containing the headers in JSON or YAML"`
-	Baggage     map[string]string `short:"B" long:"baggage" description:"Individual context baggage header as a key:value pair per flag"`
-	Health      bool              `long:"health" description:"Hit the health endpoint, Meta::health"`
-	Timeout     timeMillisFlag    `long:"timeout" default:"1s" description:"The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds are assumed."`
+	Encoding     encoding.Encoding `short:"e" long:"encoding" description:"The encoding of the data, options are: Thrift, JSON, raw. Defaults to Thrift if the method contains '::' or a Thrift file is specified"`
+	ThriftFile   string            `short:"t" long:"thrift" description:"Path of the .thrift file"`
+	MethodName   string            `short:"m" long:"method" description:"The full Thrift method name (Svc::Method) to invoke"`
+	RequestJSON  string            `short:"r" long:"request" unquote:"false" description:"The request body, in JSON or YAML format"`
+	RequestFile  string            `short:"f" long:"file" description:"Path of a file containing the request body in JSON or YAML"`
+	Headers      map[string]string `short:"H" long:"header" description:"Individual application header as a key:value pair per flag"`
+	HeadersJSON  string            `long:"headers" unquote:"false" description:"The headers in JSON or YAML format"`
+	HeadersFile  string            `long:"headers-file" description:"Path of a file containing the headers in JSON or YAML"`
+	Baggage      map[string]string `short:"B" long:"baggage" description:"Individual context baggage header as a key:value pair per flag"`
+	Health       bool              `long:"health" description:"Hit the health endpoint, Meta::health"`
+	Timeout      timeMillisFlag    `long:"timeout" default:"1s" description:"The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds are assumed."`
+	YamlTemplate string            `short:"y" long:"yaml-template" description:"Send a tchannel request specified by a yaml template"`
 
 	// Thrift options
 	ThriftDisableEnvelopes bool `long:"disable-thrift-envelope" description:"Disables Thrift envelopes (disabled by default for TChannel)"`
@@ -78,6 +79,13 @@ type TransportOptions struct {
 	ShardKey         string            `long:"sk" description:"The shard key is a transport header that clues where to send a request within a clustered traffic group."`
 	Jaeger           bool              `long:"jaeger" description:"Use the Jaeger tracing client to send Uber style traces and baggage headers"`
 	TransportHeaders map[string]string `short:"T" long:"topt" description:"Transport options for TChannel, protocol headers for HTTP"`
+
+	// This is a hack to work around go-flags not allowing disabling flags:
+	// https://github.com/jessevdk/go-flags/issues/191
+	// Do not specify this value in a defaults.ini file as it is not possible
+	// to enable Jaeger via CLI.
+	// Our plan is to change go-flags to support "--no-FLAG" and remove this hack.
+	NoJaeger bool `long:"no-jaeger" hidden:"true"`
 }
 
 // BenchmarkOptions are benchmark-specific options

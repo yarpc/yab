@@ -39,7 +39,6 @@ import (
 	"github.com/opentracing/opentracing-go"
 	opentracing_ext "github.com/opentracing/opentracing-go/ext"
 	"github.com/uber/jaeger-client-go"
-	jaeger_config "github.com/uber/jaeger-client-go/config"
 	"github.com/uber/tchannel-go"
 )
 
@@ -120,13 +119,13 @@ yab is a benchmarking tool for TChannel and HTTP applications. It's primarily in
 	setGroupDescs(parser, "transport", "Transport Options", toGroff(_transportOptsDesc))
 	setGroupDescs(parser, "benchmark", "Benchmark Options", toGroff(_benchmarkOptsDesc))
 
+	remaining, err := parser.ParseArgs(args)
 	// If there are no arguments specified, write the help.
+	// We do this after Parse, otherwise the output doesn't show defaults.
 	if len(args) == 0 {
 		parser.WriteHelp(out)
 		return opts, errExit
 	}
-
-	remaining, err := parser.ParseArgs(args)
 	if err != nil {
 		if ferr, ok := err.(*flags.Error); ok {
 			if ferr.Type == flags.ErrHelp {
@@ -242,6 +241,12 @@ func parseDefaultConfigs(parser *flags.Parser) error {
 }
 
 func runWithOptions(opts Options, out output) {
+	if opts.ROpts.YamlTemplate != "" {
+		if err := readYamlRequest(&opts); err != nil {
+			out.Fatalf("Failed while reading yaml template: %v\n", err)
+		}
+	}
+
 	reqInput, err := getRequestInput(opts.ROpts.RequestJSON, opts.ROpts.RequestFile)
 	if err != nil {
 		out.Fatalf("Failed while loading body input: %v\n", err)
@@ -312,13 +317,8 @@ func getTracer(opts Options, out output) (opentracing.Tracer, io.Closer) {
 		tracer opentracing.Tracer = opentracing.NoopTracer{}
 		closer io.Closer
 	)
-	if opts.TOpts.Jaeger {
-		var jaegerConfig jaeger_config.Configuration
-		var err error
-		tracer, closer, err = jaegerConfig.New(opts.TOpts.CallerName, jaeger.NullStatsReporter)
-		if err != nil {
-			out.Fatalf("Failed to create Jaeger tracer: %v\n", err)
-		}
+	if opts.TOpts.Jaeger && !opts.TOpts.NoJaeger {
+		tracer, closer = jaeger.NewTracer(opts.TOpts.CallerName, jaeger.NewConstSampler(true), jaeger.NewNullReporter())
 	} else if len(opts.ROpts.Baggage) > 0 {
 		out.Fatalf("To propagate baggage, you must opt-into a tracing client, i.e., --jaeger")
 	}

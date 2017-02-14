@@ -34,6 +34,7 @@ import (
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/uber/tchannel-go/testutils"
@@ -839,4 +840,85 @@ func TestNoWarmupBenchmark(t *testing.T) {
 	}, out)
 	assert.Contains(t, buf.String(), "Total errors: 100")
 	assert.Contains(t, buf.String(), "Error rate: 100")
+}
+
+func TestTemplates(t *testing.T) {
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+
+	echoAddr := echoServer(t, "", []byte{0})
+	os.Args = []string{
+		"yab",
+		"-y", exampleTemplate,
+		"-p", echoAddr,
+	}
+
+	main()
+}
+
+func TestGetTracer(t *testing.T) {
+	tests := []struct {
+		opts      Options
+		wantNoop  bool
+		wantFatal string
+	}{
+		{
+			opts:     Options{},
+			wantNoop: true,
+		},
+		{
+			opts: Options{
+				TOpts: TransportOptions{
+					CallerName: "test",
+					Jaeger:     true,
+				},
+			},
+		},
+		{
+			opts: Options{
+				TOpts: TransportOptions{
+					CallerName: "test",
+					Jaeger:     true,
+					NoJaeger:   true,
+				},
+			},
+			wantNoop: true,
+		},
+		{
+			opts: Options{
+				ROpts: RequestOptions{
+					Baggage: map[string]string{"k": "v"},
+				},
+			},
+			wantFatal: "propagate baggage",
+		},
+	}
+
+	for _, tt := range tests {
+		var fatalMsg string
+		out := &testOutput{
+			fatalf: func(msg string, _ ...interface{}) { fatalMsg = msg },
+		}
+
+		var tracer opentracing.Tracer
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			tracer, _ = getTracer(tt.opts, out)
+		}()
+		<-done
+
+		if tt.wantFatal != "" {
+			assert.Contains(t, fatalMsg, tt.wantFatal, "Fatal message for %+v", tt.opts)
+			continue
+		}
+
+		assert.Empty(t, fatalMsg, "Unexpected fatal for %+v", tt.opts)
+		if tt.wantNoop {
+			assert.Equal(t, opentracing.NoopTracer{}, tracer, "Expected %+v to return noop tracer", tt.opts)
+			continue
+		}
+
+		assert.NotEqual(t, opentracing.NoopTracer{}, tracer, "Expected %+v to return real tracer")
+	}
 }

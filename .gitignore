@@ -6,3 +6,4 @@
 *.prof
 
 /vendor
+/build
