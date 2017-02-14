@@ -1,6 +1,11 @@
 Changelog
 =========
 
+# 0.8.0
+
+* Support for YAML request templates with CLI overrides.
+* Add --no-jaeger to disable Jaeger.
+
 # 0.7.0
 
 * Upgrade to TChannel 1.2.0 and add Open Tracing support.
