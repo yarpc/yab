@@ -317,7 +317,7 @@ func getTracer(opts Options, out output) (opentracing.Tracer, io.Closer) {
 		tracer opentracing.Tracer = opentracing.NoopTracer{}
 		closer io.Closer
 	)
-	if opts.TOpts.Jaeger {
+	if opts.TOpts.Jaeger && !opts.TOpts.NoJaeger {
 		tracer, closer = jaeger.NewTracer(opts.TOpts.CallerName, jaeger.NewConstSampler(true), jaeger.NewNullReporter())
 	} else if len(opts.ROpts.Baggage) > 0 {
 		out.Fatalf("To propagate baggage, you must opt-into a tracing client, i.e., --jaeger")
