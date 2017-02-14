@@ -78,8 +78,14 @@ type TransportOptions struct {
 	RoutingDelegate  string            `long:"rd" description:"The routing delegate overrides the routing key traffic group for proxies."`
 	ShardKey         string            `long:"sk" description:"The shard key is a transport header that clues where to send a request within a clustered traffic group."`
 	Jaeger           bool              `long:"jaeger" description:"Use the Jaeger tracing client to send Uber style traces and baggage headers"`
-	NoJaeger         bool              `long:"no-jaeger" hidden:"true"` // go-flags doesn't make it easy to flip off bool flags, https://github.com/jessevdk/go-flags/issues/191
 	TransportHeaders map[string]string `short:"T" long:"topt" description:"Transport options for TChannel, protocol headers for HTTP"`
+
+	// This is a hack to work around go-flags not allowing disabling flags:
+	// https://github.com/jessevdk/go-flags/issues/191
+	// Do not specify this value in a defaults.ini file as it is not possible
+	// to enable Jaeger via CLI.
+	// Our plan is to change go-flags to support "--no-FLAG" and remove this hack.
+	NoJaeger bool `long:"no-jaeger" hidden:"true"`
 }
 
 // BenchmarkOptions are benchmark-specific options
