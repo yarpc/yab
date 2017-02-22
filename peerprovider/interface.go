@@ -10,7 +10,19 @@ import (
 var registry = make(map[string]PeerProvider)
 
 func init() {
+	RegisterPeerProvider("", filePeerProvider{})
 	RegisterPeerProvider("file", filePeerProvider{})
+}
+
+// Schemes returns supported peer provider protocol schemes.
+func Schemes() []string {
+	schemes := make([]string, 0, len(registry))
+	for scheme := range registry {
+		if scheme != "" {
+			schemes = append(schemes, scheme)
+		}
+	}
+	return schemes
 }
 
 // Resolve resolves a peer list from a URL, using the registered

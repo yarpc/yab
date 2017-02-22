@@ -98,13 +98,6 @@ func loadTransportHostPorts(opts TransportOptions) (TransportOptions, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 
-		// Paths are a strict subset of the URL file protocol scheme. We
-		// explicate the file protocol as a key into the peer provider
-		// registry.
-		if u.Scheme == "" {
-			u.Scheme = "file"
-		}
-
 		peers, err = peerprovider.Resolve(ctx, u)
 		if err != nil {
 			return opts, err
