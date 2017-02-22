@@ -12,6 +12,8 @@ var registry = make(map[string]PeerProvider)
 func init() {
 	RegisterPeerProvider("", filePeerProvider{})
 	RegisterPeerProvider("file", filePeerProvider{})
+	RegisterPeerProvider("http", httpPeerProvider{})
+	RegisterPeerProvider("https", httpPeerProvider{})
 }
 
 // Schemes returns supported peer provider protocol schemes.
