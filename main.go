@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/yarpc/yab/encoding"
+	"github.com/yarpc/yab/peerprovider"
 	"github.com/yarpc/yab/transport"
 
 	"github.com/casimir/xdg-go"
@@ -241,6 +242,13 @@ func parseDefaultConfigs(parser *flags.Parser) error {
 }
 
 func runWithOptions(opts Options, out output) {
+	if opts.TOpts.HostPortFile == "?" {
+		for _, scheme := range peerprovider.Schemes() {
+			out.Printf("%s\n", scheme)
+		}
+		return
+	}
+
 	if opts.ROpts.YamlTemplate != "" {
 		if err := readYamlRequest(&opts); err != nil {
 			out.Fatalf("Failed while reading yaml template: %v\n", err)

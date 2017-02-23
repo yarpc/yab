@@ -922,3 +922,16 @@ func TestGetTracer(t *testing.T) {
 		assert.NotEqual(t, opentracing.NoopTracer{}, tracer, "Expected %+v to return real tracer")
 	}
 }
+
+func TestMainSupportedPeerProviderSchemes(t *testing.T) {
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+
+	os.Args = []string{"yab", "-P?"}
+
+	buf, out := getOutput(t)
+	parseAndRun(out)
+	contents := buf.String()
+	assert.Contains(t, contents, "file\n", "Expected file protocol support")
+	assert.NotContains(t, contents, "\n\n", "Expected no blank lines")
+}

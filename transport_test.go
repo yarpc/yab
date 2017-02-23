@@ -138,7 +138,7 @@ func TestGetTransport(t *testing.T) {
 		},
 		{
 			opts:   TransportOptions{ServiceName: "svc", HostPortFile: "testdata/invalid.json"},
-			errMsg: errPeerListFile.Error(),
+			errMsg: "peer list should be YAML, JSON, or newline delimited strings",
 		},
 		{
 			opts:   TransportOptions{ServiceName: "svc", HostPortFile: "testdata/empty.txt"},
@@ -251,7 +251,6 @@ func TestGetTransportTraceEnabled(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-
 		ctx, cancel := tchannel.NewContext(time.Second)
 		defer cancel()
 
@@ -267,52 +266,5 @@ func TestGetTransportTraceEnabled(t *testing.T) {
 		require.NoError(t, err, "transport.Call failed")
 
 		assert.Equal(t, tt.traceEnabled, res.Body[0], "TraceEnabled mismatch")
-	}
-}
-
-func TestParseHostFile(t *testing.T) {
-	tests := []struct {
-		filename string
-		errMsg   string
-		want     []string
-	}{
-		{
-			filename: "/fake/file",
-			errMsg:   "failed to open peer list",
-		},
-		{
-			filename: "testdata/valid_peerlist.json",
-			want:     []string{"1.1.1.1:1", "2.2.2.2:2"},
-		},
-		{
-			filename: "testdata/valid_peerlist.yaml",
-			want:     []string{"1.1.1.1:1", "2.2.2.2:2"},
-		},
-		{
-			filename: "testdata/valid_peerlist.txt",
-			want:     []string{"1.1.1.1:1", "2.2.2.2:2"},
-		},
-		{
-			filename: "testdata/invalid_peerlist.json",
-			errMsg:   errPeerListFile.Error(),
-		},
-		{
-			filename: "testdata/invalid.json",
-			errMsg:   errPeerListFile.Error(),
-		},
-	}
-
-	for _, tt := range tests {
-		got, err := parseHostFile(tt.filename)
-		if tt.errMsg != "" {
-			if assert.Error(t, err, "parseHostFile(%v) should fail", tt.filename) {
-				assert.Contains(t, err.Error(), tt.errMsg, "Unexpected error for parseHostFile(%v)", tt.filename)
-			}
-			continue
-		}
-
-		if assert.NoError(t, err, "parseHostFile(%v) should not fail", tt.filename) {
-			assert.Equal(t, tt.want, got, "parseHostFile(%v) mismatch", tt.filename)
-		}
 	}
 }
