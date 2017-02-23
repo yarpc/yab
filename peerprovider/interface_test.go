@@ -21,9 +21,7 @@ func (fpp *fakePeerProvider) Resolve(ctx context.Context, u *url.URL) ([]string,
 }
 
 func TestSchemes(t *testing.T) {
-	oldRegistry := registry
-	defer func() { registry = oldRegistry }()
-	registry = make(map[string]PeerProvider)
+	defer stubRegistry()()
 
 	f := &fakePeerProvider{res: []string{"who's on first"}}
 	RegisterPeerProvider("fake", f)
@@ -38,9 +36,7 @@ func TestSchemes(t *testing.T) {
 }
 
 func TestResolveError(t *testing.T) {
-	oldRegistry := registry
-	defer func() { registry = oldRegistry }()
-	registry = make(map[string]PeerProvider)
+	defer stubRegistry()()
 
 	f := &fakePeerProvider{err: fmt.Errorf("noope")}
 	RegisterPeerProvider("fake", f)
@@ -68,9 +64,4 @@ func TestFileScheme(t *testing.T) {
 		"1.1.1.1:1",
 		"2.2.2.2:2",
 	}, "obtains expected peers")
-}
-
-func mustParseURL(s string) *url.URL {
-	u, _ := url.Parse(s)
-	return u
 }
