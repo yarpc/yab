@@ -237,7 +237,7 @@ func TestIntegrationProtocols(t *testing.T) {
 			opts := Options{
 				ROpts: RequestOptions{
 					ThriftFile:        "testdata/integration.thrift",
-					MethodName:        "Foo::bar",
+					Procedure:         "Foo::bar",
 					Timeout:           timeMillisFlag(time.Second),
 					RequestJSON:       fmt.Sprintf(`{"arg": %v}`, tt.call),
 					ThriftMultiplexed: c.multiplexed,

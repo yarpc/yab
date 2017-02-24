@@ -28,16 +28,18 @@ import (
 )
 
 type template struct {
-	Service string            `yaml:"service"`
-	Thrift  string            `yaml:"thrift"`
-	Method  string            `yaml:"method"`
-	Headers map[string]string `yaml:"headers"`
-	Request interface{}       `yaml:"request"`
-	Timeout time.Duration     `yaml:"timeout"`
+	Service   string            `yaml:"service"`
+	Thrift    string            `yaml:"thrift"`
+	Procedure string            `yaml:"procedure"`
+	Method    stringAlias       `yaml:"method"`
+	Headers   map[string]string `yaml:"headers"`
+	Request   interface{}       `yaml:"request"`
+	Timeout   time.Duration     `yaml:"timeout"`
 }
 
 func readYamlRequest(opts *Options) error {
 	t := template{}
+	t.Method.dest = &t.Procedure
 
 	bytes, err := ioutil.ReadFile(opts.ROpts.YamlTemplate)
 	if err != nil {
@@ -60,7 +62,7 @@ func readYamlRequest(opts *Options) error {
 	}
 
 	opts.ROpts.ThriftFile = t.Thrift
-	opts.ROpts.MethodName = t.Method
+	opts.ROpts.Procedure = t.Procedure
 	opts.TOpts.ServiceName = t.Service
 	opts.ROpts.HeadersJSON = string(headers)
 	opts.ROpts.RequestJSON = string(body)
