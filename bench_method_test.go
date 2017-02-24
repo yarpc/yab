@@ -36,11 +36,11 @@ import (
 	"github.com/uber/tchannel-go/testutils"
 )
 
-func benchmarkMethodForTest(t *testing.T, methodString string, p transport.Protocol) benchmarkMethod {
+func benchmarkMethodForTest(t *testing.T, procedure string, p transport.Protocol) benchmarkMethod {
 	rOpts := RequestOptions{
 		Encoding:   encoding.Thrift,
 		ThriftFile: validThrift,
-		MethodName: methodString,
+		Procedure:  procedure,
 	}
 	serializer, err := NewSerializer(rOpts)
 	require.NoError(t, err, "Failed to create Thrift serializer")

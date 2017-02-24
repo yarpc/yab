@@ -34,9 +34,19 @@ func TestTemplate(t *testing.T) {
 	readYamlRequest(opts)
 
 	assert.Equal(t, "testdata/templates/foo.thrift", opts.ROpts.ThriftFile)
-	assert.Equal(t, "Simple::foo", opts.ROpts.MethodName)
+	assert.Equal(t, "Simple::foo", opts.ROpts.Procedure)
 	assert.Equal(t, "foo", opts.TOpts.ServiceName)
 	assert.Equal(t, "header1: value1\nheader2: value2\n", opts.ROpts.HeadersJSON)
 	assert.Equal(t, "location:\n  cityId: 1\n  latitude: 37.7\n  longitude: -122.4\n", opts.ROpts.RequestJSON)
 	assert.Equal(t, timeMillisFlag(4500*time.Millisecond), opts.ROpts.Timeout)
+}
+
+// This test verifies that the string alias for method to procedure follows
+func TestMethodTemplate(t *testing.T) {
+	opts := newOptions()
+	opts.ROpts.YamlTemplate = "testdata/templates/foo-method.yaml"
+
+	readYamlRequest(opts)
+
+	assert.Equal(t, "Simple::foo", opts.ROpts.Procedure)
 }

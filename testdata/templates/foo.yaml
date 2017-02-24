@@ -1,5 +1,5 @@
 service: foo
-method: Simple::foo
+procedure: Simple::foo
 thrift: testdata/templates/foo.thrift
 timeout: 4.5s
 headers:

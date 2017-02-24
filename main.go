@@ -43,7 +43,7 @@ import (
 	"github.com/uber/tchannel-go"
 )
 
-var errHealthAndMethod = errors.New("cannot specify method name and use --health")
+var errHealthAndProcedure = errors.New("cannot specify procedure and use --health")
 
 func findGroup(parser *flags.Parser, group string) *flags.Group {
 	if g := parser.Group.Find(group); g != nil {
@@ -162,7 +162,7 @@ Default options can be specified in a ~/.config/yab/defaults.ini file (or ~/Libr
 	}
 
 	fromPositional(remaining, 0, &opts.TOpts.ServiceName)
-	fromPositional(remaining, 1, &opts.ROpts.MethodName)
+	fromPositional(remaining, 1, &opts.ROpts.Procedure)
 
 	// We support both:
 	// [service] [method] [request]

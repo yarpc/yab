@@ -57,7 +57,7 @@ func init() {
 func TestRunWithOptions(t *testing.T) {
 	validRequestOpts := RequestOptions{
 		ThriftFile: validThrift,
-		MethodName: fooMethod,
+		Procedure:  fooMethod,
 	}
 
 	closedHP := testutils.GetClosedHostPort(t)
@@ -83,7 +83,7 @@ func TestRunWithOptions(t *testing.T) {
 			opts: Options{
 				ROpts: RequestOptions{
 					ThriftFile:  validThrift,
-					MethodName:  fooMethod,
+					Procedure:   fooMethod,
 					RequestJSON: `{"f1": 1}`,
 				},
 				TOpts: TransportOptions{
@@ -120,7 +120,7 @@ func TestRunWithOptions(t *testing.T) {
 			opts: Options{
 				ROpts: RequestOptions{
 					ThriftFile: validThrift,
-					MethodName: fooMethod,
+					Procedure:  fooMethod,
 					Timeout:    timeMillisFlag(time.Nanosecond),
 				},
 				TOpts: TransportOptions{
@@ -393,13 +393,14 @@ func TestAlises(t *testing.T) {
 		},
 		{
 			args: []cmdArgs{
+				{"--procedure", "m"},
 				{"--method", "m"},
 				{"--endpoint", "m"},
 				{"-1", "m"},
 				{"--arg1", "m"},
 			},
 			validate: func(args cmdArgs, opts *Options) {
-				assert.Equal(t, "m", opts.ROpts.MethodName, "Args: %v", args)
+				assert.Equal(t, "m", opts.ROpts.Procedure, "Args: %v", args)
 			},
 		},
 		{
@@ -703,7 +704,7 @@ end`,
 func TestWithTransportSerializer(t *testing.T) {
 	validRequestOpts := RequestOptions{
 		ThriftFile: validThrift,
-		MethodName: fooMethod,
+		Procedure:  fooMethod,
 	}
 	noEnvelopeOpts := validRequestOpts
 	noEnvelopeOpts.ThriftDisableEnvelopes = true
@@ -823,7 +824,7 @@ func TestNoWarmupBenchmark(t *testing.T) {
 
 	validRequestOpts := RequestOptions{
 		ThriftFile: validThrift,
-		MethodName: fooMethod,
+		Procedure:  fooMethod,
 	}
 	transportOpts := s.transportOpts()
 	transportOpts.CallerName = ""
