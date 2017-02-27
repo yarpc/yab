@@ -250,7 +250,7 @@ func runWithOptions(opts Options, out output) {
 	}
 
 	if opts.ROpts.YamlTemplate != "" {
-		if err := readYamlRequest(&opts); err != nil {
+		if err := readYAMLRequest(&opts); err != nil {
 			out.Fatalf("Failed while reading yaml template: %v\n", err)
 		}
 	}
