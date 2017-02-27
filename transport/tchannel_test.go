@@ -52,7 +52,7 @@ func TestTChannelConstructor(t *testing.T) {
 			opts: TChannelOptions{SourceService: "svc"},
 		},
 		{
-			opts: TChannelOptions{SourceService: "svc", HostPorts: []string{"1.1.1.1:1"}},
+			opts: TChannelOptions{SourceService: "svc", Peers: []string{"1.1.1.1:1"}},
 		},
 		{
 			opts: TChannelOptions{SourceService: "svc", LogLevel: &warnLevel},
@@ -80,7 +80,7 @@ func setupServerAndTransport(t *testing.T, changeOpts ...func(*TChannelOptions))
 	opts := TChannelOptions{
 		SourceService: "yab",
 		TargetService: svr.ServiceName(),
-		HostPorts:     []string{svr.PeerInfo().HostPort},
+		Peers:     []string{svr.PeerInfo().HostPort},
 		Encoding:      "raw",
 	}
 

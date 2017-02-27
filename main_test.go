@@ -88,7 +88,7 @@ func TestRunWithOptions(t *testing.T) {
 				},
 				TOpts: TransportOptions{
 					ServiceName: "foo",
-					HostPorts:   []string{"1.1.1.1:1"},
+					Peers:       []string{"1.1.1.1:1"},
 				},
 			},
 			errMsg: "while parsing request input",
@@ -99,7 +99,7 @@ func TestRunWithOptions(t *testing.T) {
 				ROpts: validRequestOpts,
 				TOpts: TransportOptions{
 					ServiceName: "foo",
-					HostPorts:   []string{closedHP},
+					Peers:       []string{closedHP},
 				},
 			},
 			errMsg: "Failed while making call",
@@ -110,7 +110,7 @@ func TestRunWithOptions(t *testing.T) {
 				ROpts: validRequestOpts,
 				TOpts: TransportOptions{
 					ServiceName: "foo",
-					HostPorts:   []string{echoServer(t, fooMethod, []byte{1, 1})},
+					Peers:       []string{echoServer(t, fooMethod, []byte{1, 1})},
 				},
 			},
 			errMsg: "Failed while parsing response",
@@ -125,7 +125,7 @@ func TestRunWithOptions(t *testing.T) {
 				},
 				TOpts: TransportOptions{
 					ServiceName: "foo",
-					HostPorts:   []string{echoServer(t, fooMethod, nil)},
+					Peers:       []string{echoServer(t, fooMethod, nil)},
 				},
 			},
 			errMsg: "timeout",
@@ -136,7 +136,7 @@ func TestRunWithOptions(t *testing.T) {
 				ROpts: validRequestOpts,
 				TOpts: TransportOptions{
 					ServiceName: "foo",
-					HostPorts:   []string{echoServer(t, fooMethod, nil)},
+					Peers:       []string{echoServer(t, fooMethod, nil)},
 				},
 			},
 			wants: []string{
@@ -247,7 +247,7 @@ func TestBenchmarkIntegration(t *testing.T) {
 		serverHPs[i] = server.hostPort()
 	}
 
-	hostFile := writeFile(t, "hostPorts", strings.Join(serverHPs, "\n"))
+	hostFile := writeFile(t, "Peers", strings.Join(serverHPs, "\n"))
 	defer os.Remove(hostFile)
 
 	os.Args = []string{
@@ -388,7 +388,7 @@ func TestAlises(t *testing.T) {
 				{"--peer-list", "file"},
 			},
 			validate: func(args cmdArgs, opts *Options) {
-				assert.Equal(t, "file", opts.TOpts.HostPortFile, "Args: %v", args)
+				assert.Equal(t, "file", opts.TOpts.PeerList, "Args: %v", args)
 			},
 		},
 		{
@@ -547,8 +547,8 @@ func TestConfigOverride(t *testing.T) {
 			msg:            "peer list in config",
 			configContents: `peer-list = "/hosts.json"`,
 			validateFn: func(opts *Options, msg string) {
-				assert.Equal(t, "/hosts.json", opts.TOpts.HostPortFile, msg)
-				assert.Empty(t, opts.TOpts.HostPorts, msg)
+				assert.Equal(t, "/hosts.json", opts.TOpts.PeerList, msg)
+				assert.Empty(t, opts.TOpts.Peers, msg)
 			},
 		},
 		{
@@ -556,8 +556,8 @@ func TestConfigOverride(t *testing.T) {
 			configContents: `peer-list = "/hosts.json"`,
 			args:           []string{"-P", "/hosts2.json"},
 			validateFn: func(opts *Options, msg string) {
-				assert.Equal(t, "/hosts2.json", opts.TOpts.HostPortFile, msg)
-				assert.Empty(t, opts.TOpts.HostPorts, msg)
+				assert.Equal(t, "/hosts2.json", opts.TOpts.PeerList, msg)
+				assert.Empty(t, opts.TOpts.Peers, msg)
 			},
 		},
 		{
@@ -567,8 +567,8 @@ func TestConfigOverride(t *testing.T) {
 				peer = 1.1.1.1:1
 			`,
 			validateFn: func(opts *Options, msg string) {
-				assert.Equal(t, "/hosts.json", opts.TOpts.HostPortFile, msg)
-				assert.Equal(t, []string{"1.1.1.1:1"}, opts.TOpts.HostPorts, msg)
+				assert.Equal(t, "/hosts.json", opts.TOpts.PeerList, msg)
+				assert.Equal(t, []string{"1.1.1.1:1"}, opts.TOpts.Peers, msg)
 			},
 		},
 		{
@@ -576,8 +576,8 @@ func TestConfigOverride(t *testing.T) {
 			configContents: `peer-list = "/hosts.json"`,
 			args:           []string{"-p", "1.1.1.1:1"},
 			validateFn: func(opts *Options, msg string) {
-				assert.Empty(t, opts.TOpts.HostPortFile, "%v: hosts file should be cleared", msg)
-				assert.Equal(t, []string{"1.1.1.1:1"}, opts.TOpts.HostPorts, "%v: hostPorts", msg)
+				assert.Empty(t, opts.TOpts.PeerList, "%v: hosts file should be cleared", msg)
+				assert.Equal(t, []string{"1.1.1.1:1"}, opts.TOpts.Peers, "%v: Peers", msg)
 			},
 		},
 		{
@@ -588,8 +588,8 @@ func TestConfigOverride(t *testing.T) {
 			`,
 			args: []string{"-p", "1.1.1.1:2"},
 			validateFn: func(opts *Options, msg string) {
-				assert.Empty(t, opts.TOpts.HostPortFile, "%v: hosts file should be cleared", msg)
-				assert.Equal(t, []string{"1.1.1.1:2"}, opts.TOpts.HostPorts, "%v: hostPorts", msg)
+				assert.Empty(t, opts.TOpts.PeerList, "%v: hosts file should be cleared", msg)
+				assert.Equal(t, []string{"1.1.1.1:2"}, opts.TOpts.Peers, "%v: Peers", msg)
 			},
 		},
 		{
@@ -600,8 +600,8 @@ func TestConfigOverride(t *testing.T) {
 			`,
 			args: []string{"-P", "/hosts2.json"},
 			validateFn: func(opts *Options, msg string) {
-				assert.Equal(t, "/hosts2.json", opts.TOpts.HostPortFile, msg)
-				assert.Empty(t, opts.TOpts.HostPorts, msg)
+				assert.Equal(t, "/hosts2.json", opts.TOpts.PeerList, msg)
+				assert.Empty(t, opts.TOpts.Peers, msg)
 			},
 		},
 	}

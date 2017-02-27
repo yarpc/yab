@@ -11,10 +11,10 @@ import (
 type filePeerProvider struct{}
 
 func (filePeerProvider) Resolve(ctx context.Context, url *url.URL) ([]string, error) {
-	return parsePeersFile(url.Path)
+	return parsePeerList(url.Path)
 }
 
-func parsePeersFile(filename string) ([]string, error) {
+func parsePeerList(filename string) ([]string, error) {
 	contents, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open peer list: %v", err)

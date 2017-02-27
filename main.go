@@ -198,11 +198,11 @@ func overrideDefaults(defaults *Options, args []string) {
 	argsParser.ParseArgs(args)
 
 	// Clear default peers if the user has specified peer options in args.
-	if len(argsOnly.TOpts.HostPorts) > 0 {
-		defaults.TOpts.HostPortFile = ""
+	if len(argsOnly.TOpts.Peers) > 0 {
+		defaults.TOpts.PeerList = ""
 	}
-	if len(argsOnly.TOpts.HostPortFile) > 0 {
-		defaults.TOpts.HostPorts = nil
+	if len(argsOnly.TOpts.PeerList) > 0 {
+		defaults.TOpts.Peers = nil
 	}
 }
 
@@ -242,7 +242,7 @@ func parseDefaultConfigs(parser *flags.Parser) error {
 }
 
 func runWithOptions(opts Options, out output) {
-	if opts.TOpts.HostPortFile == "?" {
+	if opts.TOpts.PeerList == "?" {
 		for _, scheme := range peerprovider.Schemes() {
 			out.Printf("%s\n", scheme)
 		}

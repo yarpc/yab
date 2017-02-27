@@ -65,24 +65,24 @@ func (m benchmarkMethod) call(t transport.Transport) (time.Duration, error) {
 	return duration, err
 }
 
-func hostPortBalancer(hostPorts []string) func(i int) string {
-	numHostPorts := len(hostPorts)
-	startOffset := rand.Intn(numHostPorts)
+func peerBalancer(peers []string) func(i int) string {
+	numPeers := len(peers)
+	startOffset := rand.Intn(numPeers)
 	return func(i int) string {
-		offset := (startOffset + i) % numHostPorts
-		return hostPorts[offset]
+		offset := (startOffset + i) % numPeers
+		return peers[offset]
 	}
 }
 
 // WarmTransports returns n transports that have been warmed up.
 // No requests may fail during the warmup period.
 func (m benchmarkMethod) WarmTransports(n int, tOpts TransportOptions, warmupRequests int) ([]transport.Transport, error) {
-	tOpts, err := loadTransportHostPorts(tOpts)
+	tOpts, err := loadTransportPeers(tOpts)
 	if err != nil {
 		return nil, err
 	}
 
-	hostPortFor := hostPortBalancer(tOpts.HostPorts)
+	peerFor := peerBalancer(tOpts.Peers)
 	transports := make([]transport.Transport, n)
 	errs := make([]error, n)
 
@@ -91,7 +91,7 @@ func (m benchmarkMethod) WarmTransports(n int, tOpts TransportOptions, warmupReq
 		wg.Add(1)
 		go func(i int, tOpts TransportOptions) {
 			defer wg.Done()
-			tOpts.HostPorts = []string{hostPortFor(i)}
+			tOpts.Peers = []string{peerFor(i)}
 			transports[i], errs[i] = m.WarmTransport(tOpts, warmupRequests)
 		}(i, tOpts)
 	}

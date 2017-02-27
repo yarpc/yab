@@ -69,12 +69,12 @@ func readYAMLRequest(opts *Options) error {
 	}
 
 	if t.Peer != "" {
-		opts.TOpts.HostPorts = []string{t.Peer}
+		opts.TOpts.Peers = []string{t.Peer}
 	} else if len(t.Peers) > 0 {
-		opts.TOpts.HostPorts = t.Peers
+		opts.TOpts.Peers = t.Peers
 	}
 	if t.PeerList != "" {
-		opts.TOpts.HostPortFile = resolve(base, t.PeerList)
+		opts.TOpts.PeerList = resolve(base, t.PeerList)
 	}
 
 	// Baggage and headers specified with command line flags override those

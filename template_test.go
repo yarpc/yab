@@ -85,28 +85,28 @@ func TestPeerTemplate(t *testing.T) {
 	opts := newOptions()
 	opts.ROpts.YamlTemplate = "testdata/templates/peer.yaml"
 	mustReadYAMLRequest(t, opts)
-	assert.Equal(t, []string{"127.0.0.1:8080"}, opts.TOpts.HostPorts)
+	assert.Equal(t, []string{"127.0.0.1:8080"}, opts.TOpts.Peers)
 }
 
 func TestPeersTemplate(t *testing.T) {
 	opts := newOptions()
 	opts.ROpts.YamlTemplate = "testdata/templates/peers.yaml"
 	mustReadYAMLRequest(t, opts)
-	assert.Equal(t, []string{"127.0.0.1:8080", "127.0.0.1:8081"}, opts.TOpts.HostPorts)
+	assert.Equal(t, []string{"127.0.0.1:8080", "127.0.0.1:8081"}, opts.TOpts.Peers)
 }
 
 func TestPeerListTemplate(t *testing.T) {
 	opts := newOptions()
 	opts.ROpts.YamlTemplate = "testdata/templates/peerlist.yaml"
 	mustReadYAMLRequest(t, opts)
-	assert.Equal(t, "testdata/templates/peers.json", opts.TOpts.HostPortFile)
+	assert.Equal(t, "testdata/templates/peers.json", opts.TOpts.PeerList)
 }
 
 func TestAbsPeerListTemplate(t *testing.T) {
 	opts := newOptions()
 	opts.ROpts.YamlTemplate = "testdata/templates/abspeerlist.yaml"
 	mustReadYAMLRequest(t, opts)
-	assert.Equal(t, "/peers.json", opts.TOpts.HostPortFile)
+	assert.Equal(t, "/peers.json", opts.TOpts.PeerList)
 }
 
 func TestMerge(t *testing.T) {

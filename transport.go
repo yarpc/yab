@@ -58,13 +58,13 @@ func remapLocalHost(hostPorts []string) {
 	}
 }
 
-func protocolFor(hostPort string) string {
+func protocolFor(peer string) string {
 	// If we get a pure host:port, then we assume tchannel.
-	if _, _, err := net.SplitHostPort(hostPort); err == nil && !strings.Contains(hostPort, "://") {
+	if _, _, err := net.SplitHostPort(peer); err == nil && !strings.Contains(peer, "://") {
 		return "tchannel"
 	}
 
-	u, err := url.ParseRequestURI(hostPort)
+	u, err := url.ParseRequestURI(peer)
 	if err != nil {
 		return "unknown"
 	}
@@ -73,9 +73,9 @@ func protocolFor(hostPort string) string {
 }
 
 // ensureSameProtocol must get at least one host:port.
-func ensureSameProtocol(hostPorts []string) (string, error) {
-	lastProtocol := protocolFor(hostPorts[0])
-	for _, hp := range hostPorts[1:] {
+func ensureSameProtocol(peers []string) (string, error) {
+	lastProtocol := protocolFor(peers[0])
+	for _, hp := range peers[1:] {
 		if p := protocolFor(hp); lastProtocol != p {
 			return "", fmt.Errorf("found mixed protocols, expected all to be %v, got %v", lastProtocol, p)
 		}
@@ -83,14 +83,14 @@ func ensureSameProtocol(hostPorts []string) (string, error) {
 	return lastProtocol, nil
 }
 
-func loadTransportHostPorts(opts TransportOptions) (TransportOptions, error) {
-	peers := opts.HostPorts
-	if opts.HostPortFile != "" {
+func loadTransportPeers(opts TransportOptions) (TransportOptions, error) {
+	peers := opts.Peers
+	if opts.PeerList != "" {
 		if len(peers) > 0 {
 			return opts, errPeerOptions
 		}
 
-		u, err := url.Parse(opts.HostPortFile)
+		u, err := url.Parse(opts.PeerList)
 		if err != nil {
 			return opts, fmt.Errorf("could not parse peer provider URL: %v", err)
 		}
@@ -108,8 +108,8 @@ func loadTransportHostPorts(opts TransportOptions) (TransportOptions, error) {
 		return opts, errPeerRequired
 	}
 
-	opts.HostPortFile = ""
-	opts.HostPorts = peers
+	opts.PeerList = ""
+	opts.Peers = peers
 	return opts, nil
 }
 
@@ -127,18 +127,18 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding, tracer open
 		return nil, errTracerRequired
 	}
 
-	opts, err := loadTransportHostPorts(opts)
+	opts, err := loadTransportPeers(opts)
 	if err != nil {
 		return nil, err
 	}
 
-	protocol, err := ensureSameProtocol(opts.HostPorts)
+	protocol, err := ensureSameProtocol(opts.Peers)
 	if err != nil {
 		return nil, err
 	}
 
 	if protocol == "tchannel" {
-		remapLocalHost(opts.HostPorts)
+		remapLocalHost(opts.Peers)
 
 		topts := transport.TChannelOptions{
 			SourceService:   opts.CallerName,
@@ -146,7 +146,7 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding, tracer open
 			RoutingDelegate: opts.RoutingDelegate,
 			RoutingKey:      opts.RoutingKey,
 			ShardKey:        opts.ShardKey,
-			HostPorts:       opts.HostPorts,
+			Peers:           opts.Peers,
 			Encoding:        encoding.String(),
 			TransportOpts:   opts.TransportHeaders,
 			Tracer:          tracer,
@@ -161,7 +161,7 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding, tracer open
 		RoutingKey:      opts.RoutingKey,
 		ShardKey:        opts.ShardKey,
 		Encoding:        encoding.String(),
-		URLs:            opts.HostPorts,
+		URLs:            opts.Peers,
 		Tracer:          tracer,
 	}
 	return transport.NewHTTP(hopts)
