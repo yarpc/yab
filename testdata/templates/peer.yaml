@@ -9,7 +9,7 @@ caller: bar
 shardKey: sk
 routingKey: rk
 routingDelegate: rd
-thrift: testdata/templates/foo.thrift
+thrift: foo.thrift
 timeout: 4.5s
 headers:
     header1: from template

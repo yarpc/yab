@@ -56,6 +56,8 @@ func readYAMLRequest(opts *Options) error {
 		return err
 	}
 
+	base := filepath.Dir(opts.ROpts.YamlTemplate)
+
 	err = yaml.Unmarshal(bytes, &t)
 	if err != nil {
 		return err
@@ -72,11 +74,7 @@ func readYAMLRequest(opts *Options) error {
 		opts.TOpts.HostPorts = t.Peers
 	}
 	if t.PeerList != "" {
-		path := t.PeerList
-		if !filepath.IsAbs(path) {
-			path = filepath.Join(filepath.Dir(opts.ROpts.YamlTemplate), path)
-		}
-		opts.TOpts.HostPortFile = path
+		opts.TOpts.HostPortFile = resolve(base, t.PeerList)
 	}
 
 	// Baggage and headers specified with command line flags override those
@@ -87,7 +85,10 @@ func readYAMLRequest(opts *Options) error {
 		opts.TOpts.Jaeger = true
 	}
 
-	opts.ROpts.ThriftFile = t.Thrift
+	if t.Thrift != "" {
+		opts.ROpts.ThriftFile = resolve(base, t.Thrift)
+	}
+
 	opts.TOpts.CallerName = t.Caller
 	opts.TOpts.ServiceName = t.Service
 	opts.ROpts.Procedure = t.Procedure
@@ -117,4 +118,11 @@ func merge(target, source headers) headers {
 		}
 	}
 	return target
+}
+
+func resolve(base, rel string) string {
+	if filepath.IsAbs(rel) {
+		return rel
+	}
+	return filepath.Join(base, rel)
 }
