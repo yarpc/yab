@@ -192,7 +192,7 @@ func TestMainNoHeaders(t *testing.T) {
 		"yab",
 		"-t", validThrift,
 		"foo", fooMethod,
-		"-p", echoAddr,
+		"-p", "tchannel://" + echoAddr,
 	}
 
 	main()
