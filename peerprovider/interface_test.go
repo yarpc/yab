@@ -1,14 +1,13 @@
 package peerprovider
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"golang.org/x/net/context"
 )
 
 type fakePeerProvider struct {

@@ -1,10 +1,9 @@
 package peerprovider
 
 import (
+	"context"
 	"fmt"
 	"net/url"
-
-	"golang.org/x/net/context"
 )
 
 var registry = make(map[string]PeerProvider)
