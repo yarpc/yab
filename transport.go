@@ -58,29 +58,37 @@ func remapLocalHost(hostPorts []string) {
 	}
 }
 
-func protocolFor(peer string) string {
+func parsePeer(peer string) (protocol, host string) {
 	// If we get a pure host:port, then we assume tchannel.
 	if _, _, err := net.SplitHostPort(peer); err == nil && !strings.Contains(peer, "://") {
-		return "tchannel"
+		return "tchannel", peer
 	}
 
 	u, err := url.ParseRequestURI(peer)
 	if err != nil {
-		return "unknown"
+		return "unknown", ""
 	}
 
-	return u.Scheme
+	return u.Scheme, u.Host
 }
 
 // ensureSameProtocol must get at least one host:port.
 func ensureSameProtocol(peers []string) (string, error) {
-	lastProtocol := protocolFor(peers[0])
+	lastProtocol, _ := parsePeer(peers[0])
 	for _, hp := range peers[1:] {
-		if p := protocolFor(hp); lastProtocol != p {
+		if p, _ := parsePeer(hp); lastProtocol != p {
 			return "", fmt.Errorf("found mixed protocols, expected all to be %v, got %v", lastProtocol, p)
 		}
 	}
 	return lastProtocol, nil
+}
+
+func getHosts(peers []string) []string {
+	hosts := make([]string, len(peers))
+	for i, p := range peers {
+		_, hosts[i] = parsePeer(p)
+	}
+	return hosts
 }
 
 func loadTransportPeers(opts TransportOptions) (TransportOptions, error) {
@@ -114,7 +122,6 @@ func loadTransportPeers(opts TransportOptions) (TransportOptions, error) {
 }
 
 func getTransport(opts TransportOptions, encoding encoding.Encoding, tracer opentracing.Tracer) (transport.Transport, error) {
-
 	if opts.ServiceName == "" {
 		return nil, errServiceRequired
 	}
@@ -138,7 +145,8 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding, tracer open
 	}
 
 	if protocol == "tchannel" {
-		remapLocalHost(opts.Peers)
+		hostPorts := getHosts(opts.Peers)
+		remapLocalHost(hostPorts)
 
 		topts := transport.TChannelOptions{
 			SourceService:   opts.CallerName,
@@ -146,7 +154,7 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding, tracer open
 			RoutingDelegate: opts.RoutingDelegate,
 			RoutingKey:      opts.RoutingKey,
 			ShardKey:        opts.ShardKey,
-			Peers:           opts.Peers,
+			Peers:           hostPorts,
 			Encoding:        encoding.String(),
 			TransportOpts:   opts.TransportHeaders,
 			Tracer:          tracer,

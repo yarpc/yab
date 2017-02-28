@@ -38,23 +38,26 @@ import (
 	"golang.org/x/net/context"
 )
 
-func TestProtocolFor(t *testing.T) {
+func TestParsePeer(t *testing.T) {
 	tests := []struct {
 		peer     string
 		protocol string
+		host     string
 	}{
-		{"1.1.1.1:1", "tchannel"},
-		{"some.host:1234", "tchannel"},
-		{"1.1.1.1", "unknown"},
-		{"ftp://1.1.1.1", "ftp"},
-		{"http://1.1.1.1", "http"},
-		{"https://1.1.1.1", "https"},
-		{"://asd", "unknown"},
+		{"1.1.1.1:1", "tchannel", "1.1.1.1:1"},
+		{"some.host:1234", "tchannel", "some.host:1234"},
+		{"1.1.1.1", "unknown", ""},
+		{"ftp://1.1.1.1", "ftp", "1.1.1.1"},
+		{"http://1.1.1.1", "http", "1.1.1.1"},
+		{"https://1.1.1.1", "https", "1.1.1.1"},
+		{"http://1.1.1.1:8080", "http", "1.1.1.1:8080"},
+		{"://asd", "unknown", ""},
 	}
 
 	for _, tt := range tests {
-		got := protocolFor(tt.peer)
-		assert.Equal(t, tt.protocol, got, "protocolFor(%v)", tt.peer)
+		protocol, host := parsePeer(tt.peer)
+		assert.Equal(t, tt.protocol, protocol, "unexpected protocol for %q", tt.peer)
+		assert.Equal(t, tt.host, host, "unexpected host for %q", tt.peer)
 	}
 }
 
