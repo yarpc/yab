@@ -21,14 +21,35 @@
 package main
 
 import (
+	"fmt"
+	"net/url"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func mustReadYAMLRequest(t *testing.T, opts *Options) {
 	assert.NoError(t, readYAMLRequest(opts), "read request error")
+}
+
+func toAbsPath(t *testing.T, s string) string {
+	return getWd(t) + "/" + s
+}
+
+func toAbsURL(t *testing.T, s string) string {
+	return "file://" + toAbsPath(t, s)
+}
+
+func getWd(t *testing.T) string {
+	pwd, err := os.Getwd()
+	require.NoError(t, err, "Getwd failed")
+	pwd, err = filepath.Abs(pwd)
+	require.NoError(t, err, "Abs failed")
+	return pwd
 }
 
 func TestTemplate(t *testing.T) {
@@ -37,7 +58,7 @@ func TestTemplate(t *testing.T) {
 
 	mustReadYAMLRequest(t, opts)
 
-	assert.Equal(t, "testdata/templates/foo.thrift", opts.ROpts.ThriftFile)
+	assert.Equal(t, toAbsPath(t, "testdata/templates/foo.thrift"), opts.ROpts.ThriftFile)
 	assert.Equal(t, "Simple::foo", opts.ROpts.Procedure)
 	assert.Equal(t, "foo", opts.TOpts.ServiceName)
 	assert.Equal(t, "bar", opts.TOpts.CallerName)
@@ -99,14 +120,15 @@ func TestPeerListTemplate(t *testing.T) {
 	opts := newOptions()
 	opts.ROpts.YamlTemplate = "testdata/templates/peerlist.yaml"
 	mustReadYAMLRequest(t, opts)
-	assert.Equal(t, "testdata/templates/peers.json", opts.TOpts.PeerList)
+	fmt.Println("peer list", opts.TOpts.PeerList)
+	assert.Equal(t, toAbsURL(t, "testdata/templates/peers.json"), opts.TOpts.PeerList)
 }
 
 func TestAbsPeerListTemplate(t *testing.T) {
 	opts := newOptions()
 	opts.ROpts.YamlTemplate = "testdata/templates/abspeerlist.yaml"
 	mustReadYAMLRequest(t, opts)
-	assert.Equal(t, "/peers.json", opts.TOpts.PeerList)
+	assert.Equal(t, "file:///peers.json", opts.TOpts.PeerList)
 }
 
 func TestMerge(t *testing.T) {
@@ -153,5 +175,48 @@ func TestMerge(t *testing.T) {
 		t.Run(tt.msg, func(t *testing.T) {
 			assert.Equal(t, merge(tt.left, tt.right), tt.want, "merge properly")
 		})
+	}
+}
+
+func TestResolve(t *testing.T) {
+	tests := []struct {
+		base string
+		p    string
+		want string
+	}{
+		{
+			base: "/base/",
+			p:    "test",
+			want: "file:///base/test",
+		},
+		{
+			base: "/base/",
+			p:    "file:///test",
+			want: "file:///test",
+		},
+		{
+			base: "/base/",
+			p:    "/tmp/test",
+			want: "file:///tmp/test",
+		},
+		{
+			base: ".",
+			p:    "alt://some/service",
+			want: "alt://some/service",
+		},
+		{
+			base: "/tmp",
+			p:    "alt://some/service",
+			want: "alt://some/service",
+		},
+	}
+
+	for _, tt := range tests {
+		want, err := url.Parse(tt.want)
+		require.NoError(t, err, "Failed to parse %q as url", tt.want)
+
+		resolved, err := resolve(tt.base, tt.p)
+		require.NoError(t, err, "resolve %q failed", tt.p)
+		assert.Equal(t, want, resolved, "resolve(%q) failed", tt.p)
 	}
 }
