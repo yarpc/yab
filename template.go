@@ -59,10 +59,17 @@ func readYAMLRequest(opts *Options) error {
 	}
 
 	base := filepath.Dir(opts.ROpts.YamlTemplate)
+
+	// Ensuring that the base directory is fully qualified. Otherwise, whether it
+	// is fully qualified depends on argv[0].
+	// Must be fully qualified to be expressible as a file:/// URL.
+	// Go’s URL parser does not recognize file:path as host-relative, not-CWD relative.
 	base, err = filepath.Abs(base)
 	if err != nil {
 		return err
 	}
+
+	// Adding a final slash so that the base URL refers to a directory, unless the base is exactly "/".
 	if !strings.HasSuffix(base, "/") {
 		base += "/"
 	}
