@@ -31,32 +31,41 @@ import (
 )
 
 type template struct {
-	Peers           []string          `yaml:"peers"`
-	Peer            string            `yaml:"peer"`
-	PeerList        string            `yaml:"peerList"`
-	Peerlist        stringAlias       `yaml:"peerlist"`
-	PeerDashList    stringAlias       `yaml:"peer-list"`
-	Caller          string            `yaml:"caller"`
-	Service         string            `yaml:"service"`
-	Thrift          string            `yaml:"thrift"`
-	Procedure       string            `yaml:"procedure"`
-	Method          stringAlias       `yaml:"method"`
-	ShardKey        string            `yaml:"shardKey"`
-	RoutingKey      string            `yaml:"routingKey"`
-	RoutingDelegate string            `yaml:"routingDelegate"`
-	Headers         map[string]string `yaml:"headers"`
-	Baggage         map[string]string `yaml:"baggage"`
-	Jaeger          bool              `yaml:"jaeger"`
-	Request         interface{}       `yaml:"request"`
-	Timeout         time.Duration     `yaml:"timeout"`
+	Peers        []string    `yaml:"peers"`
+	Peer         string      `yaml:"peer"`
+	PeerList     string      `yaml:"peerList"`
+	Peerlist     stringAlias `yaml:"peerlist"`
+	PeerDashList stringAlias `yaml:"peer-list"`
+	Caller       string      `yaml:"caller"`
+	Service      string      `yaml:"service"`
+	Thrift       string      `yaml:"thrift"`
+	Procedure    string      `yaml:"procedure"`
+	Method       stringAlias `yaml:"method"`
+
+	ShardKey        string `yaml:"shardKey"`
+	RoutingKey      string `yaml:"routingKey"`
+	RoutingDelegate string `yaml:"routingDelegate"`
+
+	Shardkey        stringAlias `yaml:"shardkey"`
+	Routingkey      stringAlias `yaml:"routingkey"`
+	Routingdelegate stringAlias `yaml:"routingdelegate"`
+
+	ShardDashKey        stringAlias `yaml:"shard-key"`
+	RoutingDashKey      stringAlias `yaml:"routing-key"`
+	RoutingDashDelegate stringAlias `yaml:"routing-delegate"`
+
+	SK stringAlias `yaml:"sk"`
+	RK stringAlias `yaml:"rk"`
+	RD stringAlias `yaml:"rd"`
+
+	Headers map[string]string `yaml:"headers"`
+	Baggage map[string]string `yaml:"baggage"`
+	Jaeger  bool              `yaml:"jaeger"`
+	Request interface{}       `yaml:"request"`
+	Timeout time.Duration     `yaml:"timeout"`
 }
 
 func readYAMLRequest(opts *Options) error {
-	t := template{}
-	t.Method.dest = &t.Procedure
-	t.Peerlist.dest = &t.PeerList
-	t.PeerDashList.dest = &t.PeerList
-
 	bytes, err := ioutil.ReadFile(opts.ROpts.YamlTemplate)
 	if err != nil {
 		return err
@@ -78,7 +87,7 @@ func readYAMLRequest(opts *Options) error {
 		base += "/"
 	}
 
-	err = yaml.Unmarshal(bytes, &t)
+	t, err := UnmarshalTemplate(bytes)
 	if err != nil {
 		return err
 	}
@@ -126,6 +135,30 @@ func readYAMLRequest(opts *Options) error {
 	opts.ROpts.RequestJSON = string(body)
 	opts.ROpts.Timeout = timeMillisFlag(t.Timeout)
 	return nil
+}
+
+func UnmarshalTemplate(bytes []byte) (*template, error) {
+	t := &template{}
+
+	t.Method.dest = &t.Procedure
+
+	t.Peerlist.dest = &t.PeerList
+	t.PeerDashList.dest = &t.PeerList
+
+	t.Shardkey.dest = &t.ShardKey
+	t.Routingkey.dest = &t.RoutingKey
+	t.Routingdelegate.dest = &t.RoutingDelegate
+
+	t.ShardDashKey.dest = &t.ShardKey
+	t.RoutingDashKey.dest = &t.RoutingKey
+	t.RoutingDashDelegate.dest = &t.RoutingDelegate
+
+	t.SK.dest = &t.ShardKey
+	t.RK.dest = &t.RoutingKey
+	t.RD.dest = &t.RoutingDelegate
+
+	err := yaml.Unmarshal(bytes, &t)
+	return t, err
 }
 
 type headers map[string]string
