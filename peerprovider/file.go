@@ -1,11 +1,10 @@
 package peerprovider
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/url"
-
-	"golang.org/x/net/context"
 )
 
 type filePeerProvider struct{}

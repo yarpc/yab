@@ -1,19 +1,23 @@
 package peerprovider
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
-
-	"golang.org/x/net/context"
-	"golang.org/x/net/context/ctxhttp"
 )
 
 type httpPeerProvider struct{}
 
 func (httpPeerProvider) Resolve(ctx context.Context, url *url.URL) ([]string, error) {
-	resp, err := ctxhttp.Get(ctx, nil, url.String())
+	req, err := http.NewRequest("GET", url.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read peer list over HTTP: %v", err)
 	}
