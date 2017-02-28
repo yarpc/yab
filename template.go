@@ -22,7 +22,9 @@ package main
 
 import (
 	"io/ioutil"
+	"net/url"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v2"
@@ -57,6 +59,13 @@ func readYAMLRequest(opts *Options) error {
 	}
 
 	base := filepath.Dir(opts.ROpts.YamlTemplate)
+	base, err = filepath.Abs(base)
+	if err != nil {
+		return err
+	}
+	if !strings.HasSuffix(base, "/") {
+		base += "/"
+	}
 
 	err = yaml.Unmarshal(bytes, &t)
 	if err != nil {
@@ -74,7 +83,11 @@ func readYAMLRequest(opts *Options) error {
 		opts.TOpts.Peers = t.Peers
 	}
 	if t.PeerList != "" {
-		opts.TOpts.PeerList = resolve(base, t.PeerList)
+		peerListURL, err := resolve(base, t.PeerList)
+		if err != nil {
+			return err
+		}
+		opts.TOpts.PeerList = peerListURL.String()
 	}
 
 	// Baggage and headers specified with command line flags override those
@@ -86,7 +99,11 @@ func readYAMLRequest(opts *Options) error {
 	}
 
 	if t.Thrift != "" {
-		opts.ROpts.ThriftFile = resolve(base, t.Thrift)
+		thriftFileURL, err := resolve(base, t.Thrift)
+		if err != nil {
+			return err
+		}
+		opts.ROpts.ThriftFile = thriftFileURL.Path
 	}
 
 	opts.TOpts.CallerName = t.Caller
@@ -97,7 +114,6 @@ func readYAMLRequest(opts *Options) error {
 	opts.TOpts.RoutingDelegate = t.RoutingDelegate
 	opts.ROpts.RequestJSON = string(body)
 	opts.ROpts.Timeout = timeMillisFlag(t.Timeout)
-
 	return nil
 }
 
@@ -120,9 +136,16 @@ func merge(target, source headers) headers {
 	return target
 }
 
-func resolve(base, rel string) string {
-	if filepath.IsAbs(rel) {
-		return rel
+func resolve(base, rel string) (*url.URL, error) {
+	baseURL := &url.URL{
+		Scheme: "file",
+		Path:   base,
 	}
-	return filepath.Join(base, rel)
+
+	relU, err := url.Parse(rel)
+	if err != nil {
+		return nil, err
+	}
+
+	return baseURL.ResolveReference(relU), nil
 }
