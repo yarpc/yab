@@ -34,6 +34,8 @@ type template struct {
 	Peers           []string          `yaml:"peers"`
 	Peer            string            `yaml:"peer"`
 	PeerList        string            `yaml:"peerList"`
+	Peerlist        stringAlias       `yaml:"peerlist"`
+	PeerDashList    stringAlias       `yaml:"peer-list"`
 	Caller          string            `yaml:"caller"`
 	Service         string            `yaml:"service"`
 	Thrift          string            `yaml:"thrift"`
@@ -52,6 +54,8 @@ type template struct {
 func readYAMLRequest(opts *Options) error {
 	t := template{}
 	t.Method.dest = &t.Procedure
+	t.Peerlist.dest = &t.PeerList
+	t.PeerDashList.dest = &t.PeerList
 
 	bytes, err := ioutil.ReadFile(opts.ROpts.YamlTemplate)
 	if err != nil {
