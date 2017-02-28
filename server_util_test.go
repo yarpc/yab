@@ -64,7 +64,7 @@ func (s *server) transportOpts() TransportOptions {
 	return TransportOptions{
 		CallerName:  "bar",
 		ServiceName: "foo",
-		HostPorts:   []string{s.hostPort()},
+		Peers:   []string{s.hostPort()},
 	}
 }
 
