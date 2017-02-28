@@ -171,6 +171,7 @@ func TestMerge(t *testing.T) {
 			want:  headers{"a": "1", "b": "2", "c": "3"},
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.msg, func(t *testing.T) {
 			assert.Equal(t, merge(tt.left, tt.right), tt.want, "merge properly")
@@ -218,5 +219,55 @@ func TestResolve(t *testing.T) {
 		resolved, err := resolve(tt.base, tt.p)
 		require.NoError(t, err, "resolve %q failed", tt.p)
 		assert.Equal(t, want, resolved, "resolve(%q) failed", tt.p)
+	}
+}
+
+func TestTemplateAlias(t *testing.T) {
+	tests := []struct {
+		templates           []string
+		wantShardKey        string
+		wantRoutingKey      string
+		wantRoutingDelegate string
+	}{
+		{
+			templates: []string{
+				`shardKey: shardkey`,
+				`shardkey: shardkey`,
+				`shard-key: shardkey`,
+				`sk: shardkey`,
+			},
+			wantShardKey: "shardkey",
+		},
+		{
+			templates: []string{
+				`routingKey: routingkey`,
+				`routingkey: routingkey`,
+				`routing-key: routingkey`,
+				`rk: routingkey`,
+			},
+			wantRoutingKey: "routingkey",
+		},
+		{
+			templates: []string{
+				`routingDelegate: routingdelegate`,
+				`routingdelegate: routingdelegate`,
+				`routing-delegate: routingdelegate`,
+				`rd: routingdelegate`,
+			},
+			wantRoutingDelegate: "routingdelegate",
+		},
+	}
+
+	for _, tt := range tests {
+		for _, template := range tt.templates {
+			fmt.Println("hoo", template)
+			t.Run(template, func(t *testing.T) {
+				templ, err := UnmarshalTemplate([]byte(template))
+				require.NoError(t, err)
+				assert.Equal(t, tt.wantShardKey, templ.ShardKey, "shard key aliases expanded")
+				assert.Equal(t, tt.wantRoutingKey, templ.RoutingKey, "routing key aliases expanded")
+				assert.Equal(t, tt.wantRoutingDelegate, templ.RoutingDelegate, "routing delegate aliases expanded")
+			})
+		}
 	}
 }
