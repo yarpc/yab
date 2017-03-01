@@ -9,6 +9,8 @@ env:
     global:
         - GO15VENDOREXPERIMENT=1
         - TEST_TIMEOUT_SCALE=10
+        - GITHUB_USER=prashantv
+        # TODO: Add secret variable to release
 
 cache:
   directories:
@@ -20,3 +22,10 @@ install:
 script:
     - make test_ci
     - travis_retry goveralls -coverprofile=cover.out -service=travis-ci
+
+deploy:
+    - provider: script
+      script: scripts/release.sh $TRAVIS_TAG
+      skip_cleanup: true
+      on:
+          tags: true
