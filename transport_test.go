@@ -38,79 +38,82 @@ import (
 	"golang.org/x/net/context"
 )
 
-func TestProtocolFor(t *testing.T) {
+func TestParsePeer(t *testing.T) {
 	tests := []struct {
-		hostPort string
+		peer     string
 		protocol string
+		host     string
 	}{
-		{"1.1.1.1:1", "tchannel"},
-		{"some.host:1234", "tchannel"},
-		{"1.1.1.1", "unknown"},
-		{"ftp://1.1.1.1", "ftp"},
-		{"http://1.1.1.1", "http"},
-		{"https://1.1.1.1", "https"},
-		{"://asd", "unknown"},
+		{"1.1.1.1:1", "tchannel", "1.1.1.1:1"},
+		{"some.host:1234", "tchannel", "some.host:1234"},
+		{"1.1.1.1", "unknown", ""},
+		{"ftp://1.1.1.1", "ftp", "1.1.1.1"},
+		{"http://1.1.1.1", "http", "1.1.1.1"},
+		{"https://1.1.1.1", "https", "1.1.1.1"},
+		{"http://1.1.1.1:8080", "http", "1.1.1.1:8080"},
+		{"://asd", "unknown", ""},
 	}
 
 	for _, tt := range tests {
-		got := protocolFor(tt.hostPort)
-		assert.Equal(t, tt.protocol, got, "protocolFor(%v)", tt.hostPort)
+		protocol, host := parsePeer(tt.peer)
+		assert.Equal(t, tt.protocol, protocol, "unexpected protocol for %q", tt.peer)
+		assert.Equal(t, tt.host, host, "unexpected host for %q", tt.peer)
 	}
 }
 
 func TestEnsureSameProtocol(t *testing.T) {
 	tests := []struct {
-		hostPorts []string
-		want      string // if want is empty, expect an error.
+		peers []string
+		want  string // if want is empty, expect an error.
 	}{
 		{
 			// tchannel host:ports
-			hostPorts: []string{"1.1.1.1:1234", "2.2.2.2:1234"},
-			want:      "tchannel",
+			peers: []string{"1.1.1.1:1234", "2.2.2.2:1234"},
+			want:  "tchannel",
 		},
 		{
 			// only hosts without port
-			hostPorts: []string{"1.1.1.1", "2.2.2.2"},
-			want:      "unknown",
+			peers: []string{"1.1.1.1", "2.2.2.2"},
+			want:  "unknown",
 		},
 		{
-			hostPorts: []string{"http://1.1.1.1", "http://2.2.2.2:8080"},
-			want:      "http",
+			peers: []string{"http://1.1.1.1", "http://2.2.2.2:8080"},
+			want:  "http",
 		},
 		{
 			// mix of http and https
-			hostPorts: []string{"https://1.1.1.1", "http://2.2.2.2:8080"},
+			peers: []string{"https://1.1.1.1", "http://2.2.2.2:8080"},
 		},
 		{
 			// mix of tchannel and unknown
-			hostPorts: []string{"1.1.1.1:1234", "1.1.1.1"},
+			peers: []string{"1.1.1.1:1234", "1.1.1.1"},
 		},
 	}
 
 	for _, tt := range tests {
-		got, err := ensureSameProtocol(tt.hostPorts)
+		got, err := ensureSameProtocol(tt.peers)
 		if tt.want == "" {
-			assert.Error(t, err, "Expect error for %v", tt.hostPorts)
+			assert.Error(t, err, "Expect error for %v", tt.peers)
 			continue
 		}
 
-		if assert.NoError(t, err, "Expect no error for %v", tt.hostPorts) {
-			assert.Equal(t, tt.want, got, "Wrong protocol for %v", tt.hostPorts)
+		if assert.NoError(t, err, "Expect no error for %v", tt.peers) {
+			assert.Equal(t, tt.want, got, "Wrong protocol for %v", tt.peers)
 		}
 	}
 }
 
-func TestLoadTransportHostPorts(t *testing.T) {
-	hostPortFile := writeFile(t, "hostPorts", "a:1\nb:2\nc:3")
-	defer os.Remove(hostPortFile)
+func TestLoadTransportPeers(t *testing.T) {
+	peerFile := writeFile(t, "peers", "a:1\nb:2\nc:3")
+	defer os.Remove(peerFile)
 
-	opts, err := loadTransportHostPorts(TransportOptions{
-		HostPortFile: hostPortFile,
+	opts, err := loadTransportPeers(TransportOptions{
+		PeerList: peerFile,
 	})
 	require.NoError(t, err, "Failed to load transports")
 
 	assert.Equal(t, TransportOptions{
-		HostPorts: []string{"a:1", "b:2", "c:3"},
+		Peers: []string{"a:1", "b:2", "c:3"},
 	}, opts, "Unexpected transport options")
 }
 
@@ -128,31 +131,31 @@ func TestGetTransport(t *testing.T) {
 			errMsg: errPeerRequired.Error(),
 		},
 		{
-			opts: TransportOptions{ServiceName: "svc", HostPorts: []string{"1.1.1.1:1"}},
+			opts: TransportOptions{ServiceName: "svc", Peers: []string{"1.1.1.1:1"}},
 		},
 		{
-			opts: TransportOptions{ServiceName: "svc", HostPorts: []string{"localhost:1234"}},
+			opts: TransportOptions{ServiceName: "svc", Peers: []string{"localhost:1234"}},
 		},
 		{
-			opts: TransportOptions{ServiceName: "svc", HostPortFile: "testdata/valid_peerlist.json"},
+			opts: TransportOptions{ServiceName: "svc", PeerList: "testdata/valid_peerlist.json"},
 		},
 		{
-			opts:   TransportOptions{ServiceName: "svc", HostPortFile: "testdata/invalid.json"},
-			errMsg: errPeerListFile.Error(),
+			opts:   TransportOptions{ServiceName: "svc", PeerList: "testdata/invalid.json"},
+			errMsg: "peer list should be YAML, JSON, or newline delimited strings",
 		},
 		{
-			opts:   TransportOptions{ServiceName: "svc", HostPortFile: "testdata/empty.txt"},
+			opts:   TransportOptions{ServiceName: "svc", PeerList: "testdata/empty.txt"},
 			errMsg: errPeerRequired.Error(),
 		},
 		{
-			opts:   TransportOptions{ServiceName: "svc", HostPorts: []string{"1.1.1.1:1"}, HostPortFile: "testdata/valid_peerlist.json"},
+			opts:   TransportOptions{ServiceName: "svc", Peers: []string{"1.1.1.1:1"}, PeerList: "testdata/valid_peerlist.json"},
 			errMsg: errPeerOptions.Error(),
 		},
 		{
-			opts: TransportOptions{ServiceName: "svc", HostPorts: []string{"http://1.1.1.1"}},
+			opts: TransportOptions{ServiceName: "svc", Peers: []string{"http://1.1.1.1"}},
 		},
 		{
-			opts:   TransportOptions{ServiceName: "svc", HostPorts: []string{"1.1.1.1:1", "http://1.1.1.1"}},
+			opts:   TransportOptions{ServiceName: "svc", Peers: []string{"1.1.1.1:1", "http://1.1.1.1"}},
 			errMsg: "found mixed protocols",
 		},
 	}
@@ -206,7 +209,7 @@ func TestGetTransportCallerName(t *testing.T) {
 
 		opts := TransportOptions{
 			ServiceName: server.ch.ServiceName(),
-			HostPorts:   []string{server.hostPort()},
+			Peers:       []string{server.hostPort()},
 			CallerName:  tt.caller,
 		}
 		tchan, err := getTransport(opts, encoding.Raw, opentracing.NoopTracer{})
@@ -247,11 +250,10 @@ func TestGetTransportTraceEnabled(t *testing.T) {
 	opts := TransportOptions{
 		ServiceName: s.ch.ServiceName(),
 		CallerName:  "qux",
-		HostPorts:   []string{s.hostPort()},
+		Peers:       []string{s.hostPort()},
 	}
 
 	for _, tt := range tests {
-
 		ctx, cancel := tchannel.NewContext(time.Second)
 		defer cancel()
 
@@ -267,52 +269,5 @@ func TestGetTransportTraceEnabled(t *testing.T) {
 		require.NoError(t, err, "transport.Call failed")
 
 		assert.Equal(t, tt.traceEnabled, res.Body[0], "TraceEnabled mismatch")
-	}
-}
-
-func TestParseHostFile(t *testing.T) {
-	tests := []struct {
-		filename string
-		errMsg   string
-		want     []string
-	}{
-		{
-			filename: "/fake/file",
-			errMsg:   "failed to open peer list",
-		},
-		{
-			filename: "testdata/valid_peerlist.json",
-			want:     []string{"1.1.1.1:1", "2.2.2.2:2"},
-		},
-		{
-			filename: "testdata/valid_peerlist.yaml",
-			want:     []string{"1.1.1.1:1", "2.2.2.2:2"},
-		},
-		{
-			filename: "testdata/valid_peerlist.txt",
-			want:     []string{"1.1.1.1:1", "2.2.2.2:2"},
-		},
-		{
-			filename: "testdata/invalid_peerlist.json",
-			errMsg:   errPeerListFile.Error(),
-		},
-		{
-			filename: "testdata/invalid.json",
-			errMsg:   errPeerListFile.Error(),
-		},
-	}
-
-	for _, tt := range tests {
-		got, err := parseHostFile(tt.filename)
-		if tt.errMsg != "" {
-			if assert.Error(t, err, "parseHostFile(%v) should fail", tt.filename) {
-				assert.Contains(t, err.Error(), tt.errMsg, "Unexpected error for parseHostFile(%v)", tt.filename)
-			}
-			continue
-		}
-
-		if assert.NoError(t, err, "parseHostFile(%v) should not fail", tt.filename) {
-			assert.Equal(t, tt.want, got, "parseHostFile(%v) mismatch", tt.filename)
-		}
 	}
 }

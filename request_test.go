@@ -201,14 +201,14 @@ func TestNewSerializer(t *testing.T) {
 		{
 			encoding: encoding.Thrift,
 			opts: RequestOptions{
-				Health:     true,
-				MethodName: "method",
+				Health:    true,
+				Procedure: "procedure",
 			},
-			wantErr: errHealthAndMethod,
+			wantErr: errHealthAndProcedure,
 		},
 		{
 			encoding: encoding.Encoding("asd"),
-			opts:     RequestOptions{MethodName: "method"},
+			opts:     RequestOptions{Procedure: "procedure"},
 			wantErr:  errUnrecognizedEncoding,
 		},
 		{
@@ -218,39 +218,39 @@ func TestNewSerializer(t *testing.T) {
 		},
 		{
 			encoding: encoding.UnspecifiedEncoding,
-			opts:     RequestOptions{ThriftFile: validThrift, MethodName: "Simple::foo"},
+			opts:     RequestOptions{ThriftFile: validThrift, Procedure: "Simple::foo"},
 			want:     encoding.Thrift,
 		},
 		{
 			encoding: encoding.UnspecifiedEncoding,
-			opts:     RequestOptions{MethodName: "hello"},
+			opts:     RequestOptions{Procedure: "hello"},
 			want:     encoding.JSON,
 		},
 		{
 			encoding: encoding.JSON,
-			opts:     RequestOptions{MethodName: "Test::foo"},
+			opts:     RequestOptions{Procedure: "Test::foo"},
 			want:     encoding.JSON,
 		},
 		{
 			encoding: encoding.JSON,
-			wantErr:  errMissingMethodName,
+			wantErr:  errMissingProcedure,
 		},
 		{
 			encoding: encoding.Raw,
-			wantErr:  errMissingMethodName,
+			wantErr:  errMissingProcedure,
 		},
 		{
 			encoding: encoding.Thrift,
-			wantErr:  errMissingMethodName,
+			wantErr:  errMissingProcedure,
 		},
 		{
 			encoding: encoding.JSON,
-			opts:     RequestOptions{MethodName: "method"},
+			opts:     RequestOptions{Procedure: "procedure"},
 			want:     encoding.JSON,
 		},
 		{
 			encoding: encoding.Raw,
-			opts:     RequestOptions{MethodName: "method"},
+			opts:     RequestOptions{Procedure: "procedure"},
 			want:     encoding.Raw,
 		},
 	}
@@ -275,19 +275,19 @@ func TestDetectEncoding(t *testing.T) {
 		want encoding.Encoding
 	}{
 		{
-			opts: RequestOptions{Encoding: encoding.Raw, MethodName: "method"},
+			opts: RequestOptions{Encoding: encoding.Raw, Procedure: "procedure"},
 			want: encoding.Raw,
 		},
 		{
-			opts: RequestOptions{MethodName: "method"},
+			opts: RequestOptions{Procedure: "procedure"},
 			want: encoding.JSON,
 		},
 		{
-			opts: RequestOptions{MethodName: "Svc::foo"},
+			opts: RequestOptions{Procedure: "Svc::foo"},
 			want: encoding.Thrift,
 		},
 		{
-			opts: RequestOptions{ThriftFile: validThrift, MethodName: "method"},
+			opts: RequestOptions{ThriftFile: validThrift, Procedure: "procedure"},
 			want: encoding.Thrift,
 		},
 	}

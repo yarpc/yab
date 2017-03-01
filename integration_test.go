@@ -173,27 +173,27 @@ func TestIntegrationProtocols(t *testing.T) {
 
 	cases := []struct {
 		desc            string
-		setup           func() (hostPort string, shutdown func())
+		setup           func() (peer string, shutdown func())
 		multiplexed     bool
 		disableEnvelope bool
 	}{
 		{
 			desc: "TChannel",
-			setup: func() (hostPort string, shutdown func()) {
+			setup: func() (string, func()) {
 				ch := setupTChannelIntegrationServer(t, tracer)
 				return ch.PeerInfo().HostPort, ch.Close
 			},
 		},
 		{
 			desc: "Non-multiplexed HTTP",
-			setup: func() (hostPort string, shutdown func()) {
+			setup: func() (string, func()) {
 				httpServer := setupHTTPIntegrationServer(t, false /* multiplexed */)
 				return httpServer.URL, httpServer.Close
 			},
 		},
 		{
 			desc: "Multiplexed HTTP",
-			setup: func() (hostPort string, shutdown func()) {
+			setup: func() (string, func()) {
 				httpServer := setupHTTPIntegrationServer(t, true /* multiplexed */)
 				return httpServer.URL, httpServer.Close
 			},
@@ -201,7 +201,7 @@ func TestIntegrationProtocols(t *testing.T) {
 		},
 		{
 			desc: "YARPC TChannel",
-			setup: func() (hostPort string, shutdown func()) {
+			setup: func() (string, func()) {
 				ch, dispatcher := setupYARPCTChannel(t, tracer)
 				return ch.PeerInfo().HostPort, func() {
 					dispatcher.Stop()
@@ -210,7 +210,7 @@ func TestIntegrationProtocols(t *testing.T) {
 		},
 		{
 			desc: "YARPC HTTP (enveloped)",
-			setup: func() (hostPort string, shutdown func()) {
+			setup: func() (string, func()) {
 				addr, dispatcher := setupYARPCHTTP(t, tracer, true /* enveloped */)
 				return "http://" + addr.String(), func() {
 					dispatcher.Stop()
@@ -219,7 +219,7 @@ func TestIntegrationProtocols(t *testing.T) {
 		},
 		{
 			desc: "YARPC HTTP (non-enveloped)",
-			setup: func() (hostPort string, shutdown func()) {
+			setup: func() (string, func()) {
 				addr, dispatcher := setupYARPCHTTP(t, tracer, false /* enveloped */)
 				return "http://" + addr.String(), func() {
 					dispatcher.Stop()
@@ -237,7 +237,7 @@ func TestIntegrationProtocols(t *testing.T) {
 			opts := Options{
 				ROpts: RequestOptions{
 					ThriftFile:        "testdata/integration.thrift",
-					MethodName:        "Foo::bar",
+					Procedure:         "Foo::bar",
 					Timeout:           timeMillisFlag(time.Second),
 					RequestJSON:       fmt.Sprintf(`{"arg": %v}`, tt.call),
 					ThriftMultiplexed: c.multiplexed,
@@ -251,7 +251,7 @@ func TestIntegrationProtocols(t *testing.T) {
 				},
 				TOpts: TransportOptions{
 					ServiceName: "foo",
-					HostPorts:   []string{peer},
+					Peers:       []string{peer},
 					Jaeger:      true,
 				},
 			}

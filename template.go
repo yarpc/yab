@@ -22,29 +22,72 @@ package main
 
 import (
 	"io/ioutil"
+	"net/url"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v2"
 )
 
 type template struct {
-	Service string            `yaml:"service"`
-	Thrift  string            `yaml:"thrift"`
-	Method  string            `yaml:"method"`
+	Peers        []string    `yaml:"peers"`
+	Peer         string      `yaml:"peer"`
+	PeerList     string      `yaml:"peerList"`
+	Peerlist     stringAlias `yaml:"peerlist"`
+	PeerDashList stringAlias `yaml:"peer-list"`
+	Caller       string      `yaml:"caller"`
+	Service      string      `yaml:"service"`
+	Thrift       string      `yaml:"thrift"`
+	Procedure    string      `yaml:"procedure"`
+	Method       stringAlias `yaml:"method"`
+
+	ShardKey        string `yaml:"shardKey"`
+	RoutingKey      string `yaml:"routingKey"`
+	RoutingDelegate string `yaml:"routingDelegate"`
+
+	Shardkey        stringAlias `yaml:"shardkey"`
+	Routingkey      stringAlias `yaml:"routingkey"`
+	Routingdelegate stringAlias `yaml:"routingdelegate"`
+
+	ShardDashKey        stringAlias `yaml:"shard-key"`
+	RoutingDashKey      stringAlias `yaml:"routing-key"`
+	RoutingDashDelegate stringAlias `yaml:"routing-delegate"`
+
+	SK stringAlias `yaml:"sk"`
+	RK stringAlias `yaml:"rk"`
+	RD stringAlias `yaml:"rd"`
+
 	Headers map[string]string `yaml:"headers"`
+	Baggage map[string]string `yaml:"baggage"`
+	Jaeger  bool              `yaml:"jaeger"`
 	Request interface{}       `yaml:"request"`
 	Timeout time.Duration     `yaml:"timeout"`
 }
 
-func readYamlRequest(opts *Options) error {
-	t := template{}
-
+func readYAMLRequest(opts *Options) error {
 	bytes, err := ioutil.ReadFile(opts.ROpts.YamlTemplate)
 	if err != nil {
 		return err
 	}
 
-	err = yaml.Unmarshal(bytes, &t)
+	base := filepath.Dir(opts.ROpts.YamlTemplate)
+
+	// Ensuring that the base directory is fully qualified. Otherwise, whether it
+	// is fully qualified depends on argv[0].
+	// Must be fully qualified to be expressible as a file:/// URL.
+	// Go’s URL parser does not recognize file:path as host-relative, not-CWD relative.
+	base, err = filepath.Abs(base)
+	if err != nil {
+		return err
+	}
+
+	// Adding a final slash so that the base URL refers to a directory, unless the base is exactly "/".
+	if !strings.HasSuffix(base, "/") {
+		base += "/"
+	}
+
+	t, err := UnmarshalTemplate(bytes)
 	if err != nil {
 		return err
 	}
@@ -54,17 +97,99 @@ func readYamlRequest(opts *Options) error {
 		return err
 	}
 
-	headers, err := yaml.Marshal(t.Headers)
-	if err != nil {
-		return err
+	if t.Peer != "" {
+		opts.TOpts.Peers = []string{t.Peer}
+	} else if len(t.Peers) > 0 {
+		opts.TOpts.Peers = t.Peers
+	}
+	if t.PeerList != "" {
+		peerListURL, err := resolve(base, t.PeerList)
+		if err != nil {
+			return err
+		}
+		opts.TOpts.PeerList = peerListURL.String()
 	}
 
-	opts.ROpts.ThriftFile = t.Thrift
-	opts.ROpts.MethodName = t.Method
+	// Baggage and headers specified with command line flags override those
+	// specified in YAML templates.
+	opts.ROpts.Headers = merge(opts.ROpts.Headers, t.Headers)
+	opts.ROpts.Baggage = merge(opts.ROpts.Baggage, t.Baggage)
+	if t.Jaeger {
+		opts.TOpts.Jaeger = true
+	}
+
+	if t.Thrift != "" {
+		thriftFileURL, err := resolve(base, t.Thrift)
+		if err != nil {
+			return err
+		}
+		opts.ROpts.ThriftFile = thriftFileURL.Path
+	}
+
+	opts.TOpts.CallerName = t.Caller
 	opts.TOpts.ServiceName = t.Service
-	opts.ROpts.HeadersJSON = string(headers)
+	opts.ROpts.Procedure = t.Procedure
+	opts.TOpts.ShardKey = t.ShardKey
+	opts.TOpts.RoutingKey = t.RoutingKey
+	opts.TOpts.RoutingDelegate = t.RoutingDelegate
 	opts.ROpts.RequestJSON = string(body)
 	opts.ROpts.Timeout = timeMillisFlag(t.Timeout)
-
 	return nil
+}
+
+func UnmarshalTemplate(bytes []byte) (*template, error) {
+	t := &template{}
+
+	t.Method.dest = &t.Procedure
+
+	t.Peerlist.dest = &t.PeerList
+	t.PeerDashList.dest = &t.PeerList
+
+	t.Shardkey.dest = &t.ShardKey
+	t.Routingkey.dest = &t.RoutingKey
+	t.Routingdelegate.dest = &t.RoutingDelegate
+
+	t.ShardDashKey.dest = &t.ShardKey
+	t.RoutingDashKey.dest = &t.RoutingKey
+	t.RoutingDashDelegate.dest = &t.RoutingDelegate
+
+	t.SK.dest = &t.ShardKey
+	t.RK.dest = &t.RoutingKey
+	t.RD.dest = &t.RoutingDelegate
+
+	err := yaml.Unmarshal(bytes, &t)
+	return t, err
+}
+
+type headers map[string]string
+
+// In these cases, the existing item (target, from flags) overrides the source
+// (template).
+func merge(target, source headers) headers {
+	if len(source) == 0 {
+		return target
+	}
+	if len(target) == 0 {
+		return source
+	}
+	for k, v := range source {
+		if _, exists := target[k]; !exists {
+			target[k] = v
+		}
+	}
+	return target
+}
+
+func resolve(base, rel string) (*url.URL, error) {
+	baseURL := &url.URL{
+		Scheme: "file",
+		Path:   base,
+	}
+
+	relU, err := url.Parse(rel)
+	if err != nil {
+		return nil, err
+	}
+
+	return baseURL.ResolveReference(relU), nil
 }

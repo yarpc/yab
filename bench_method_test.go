@@ -36,11 +36,11 @@ import (
 	"github.com/uber/tchannel-go/testutils"
 )
 
-func benchmarkMethodForTest(t *testing.T, methodString string, p transport.Protocol) benchmarkMethod {
+func benchmarkMethodForTest(t *testing.T, procedure string, p transport.Protocol) benchmarkMethod {
 	rOpts := RequestOptions{
 		Encoding:   encoding.Thrift,
 		ThriftFile: validThrift,
-		MethodName: methodString,
+		Procedure:  procedure,
 	}
 	serializer, err := NewSerializer(rOpts)
 	require.NoError(t, err, "Failed to create Thrift serializer")
@@ -60,23 +60,23 @@ func TestBenchmarkMethodWarmTransport(t *testing.T) {
 	s.register(fooMethod, methods.echo())
 
 	tests := []struct {
-		hostPort string
-		method   string
-		wantErr  string
+		peer    string
+		method  string
+		wantErr string
 	}{
 		{
-			hostPort: s.hostPort(),
+			peer: s.hostPort(),
 		},
 		// getTransport error
 		{
-			hostPort: testutils.GetClosedHostPort(t),
-			wantErr:  "connection refused",
+			peer:    testutils.GetClosedHostPort(t),
+			wantErr: "connection refused",
 		},
 		// makeRequest error
 		{
-			hostPort: s.hostPort(),
-			method:   "Simple::unknown",
-			wantErr:  "no handler for service",
+			peer:    s.hostPort(),
+			method:  "Simple::unknown",
+			wantErr: "no handler for service",
 		},
 	}
 
@@ -89,7 +89,7 @@ func TestBenchmarkMethodWarmTransport(t *testing.T) {
 		tOpts := TransportOptions{
 			CallerName:  "bar",
 			ServiceName: "foo",
-			HostPorts:   []string{tt.hostPort},
+			Peers:       []string{tt.peer},
 		}
 
 		transport, err := m.WarmTransport(tOpts, 1 /* warmupRequests */)
@@ -141,7 +141,7 @@ func TestBenchmarkMethodCall(t *testing.T) {
 	tOpts := TransportOptions{
 		CallerName:  "bar",
 		ServiceName: "foo",
-		HostPorts:   []string{s.hostPort()},
+		Peers:       []string{s.hostPort()},
 	}
 	tp, err := getTransport(tOpts, encoding.Thrift, opentracing.NoopTracer{})
 	require.NoError(t, err, "Failed to get transport")
@@ -165,40 +165,40 @@ func TestBenchmarkMethodCall(t *testing.T) {
 	}
 }
 
-func TestHostPortBalancer(t *testing.T) {
+func TestPeerBalancer(t *testing.T) {
 	tests := []struct {
-		seed      int64
-		hostPorts []string
-		want      []string
+		seed  int64
+		peers []string
+		want  []string
 	}{
 		{
-			seed:      1,
-			hostPorts: []string{"1"},
-			want:      []string{"1", "1", "1"},
+			seed:  1,
+			peers: []string{"1"},
+			want:  []string{"1", "1", "1"},
 		},
 		{
-			seed:      1,
-			hostPorts: []string{"1", "2"},
-			want:      []string{"2", "1", "2"},
+			seed:  1,
+			peers: []string{"1", "2"},
+			want:  []string{"2", "1", "2"},
 		},
 		{
-			seed:      2,
-			hostPorts: []string{"1", "2"},
-			want:      []string{"1", "2", "1"},
+			seed:  2,
+			peers: []string{"1", "2"},
+			want:  []string{"1", "2", "1"},
 		},
 		{
-			seed:      1,
-			hostPorts: []string{"1", "2", "3", "4", "5"},
-			want:      []string{"2", "3", "4"},
+			seed:  1,
+			peers: []string{"1", "2", "3", "4", "5"},
+			want:  []string{"2", "3", "4"},
 		},
 	}
 
 	for _, tt := range tests {
 		rand.Seed(tt.seed)
-		hostPortFor := hostPortBalancer(tt.hostPorts)
+		peerFor := peerBalancer(tt.peers)
 		for i, want := range tt.want {
-			got := hostPortFor(i)
-			assert.Equal(t, want, got, "hostPortBalancer(%v) seed %v i %v failed", tt.hostPorts, tt.seed, i)
+			got := peerFor(i)
+			assert.Equal(t, want, got, "peerBalancer(%v) seed %v i %v failed", tt.peers, tt.seed, i)
 		}
 	}
 }
@@ -223,7 +223,7 @@ func TestBenchmarkMethodWarmTransportsSuccess(t *testing.T) {
 	tOpts := TransportOptions{
 		CallerName:  "bar",
 		ServiceName: "foo",
-		HostPorts:   serverHPs,
+		Peers:       serverHPs,
 	}
 	transports, err := m.WarmTransports(numServers, tOpts, 1 /* warmupRequests */)
 	assert.NoError(t, err, "WarmTransports should not fail")
@@ -282,7 +282,7 @@ func TestBenchmarkMethodWarmTransportsError(t *testing.T) {
 		tOpts := TransportOptions{
 			CallerName:  "bar",
 			ServiceName: "foo",
-			HostPorts:   []string{s.hostPort()},
+			Peers:       []string{s.hostPort()},
 		}
 		_, err := m.WarmTransports(10, tOpts, tt.warmup)
 		if tt.wantErr {

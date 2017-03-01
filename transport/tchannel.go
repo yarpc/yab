@@ -68,8 +68,8 @@ type TChannelOptions struct {
 	// LogLevel overrides the default LogLevel (Warn).
 	LogLevel *tchannel.LogLevel
 
-	// HostPorts is a list of host:ports to add to the channel.
-	HostPorts []string
+	// Peers is a list of host:ports to add to the channel.
+	Peers []string
 
 	// Encoding is used to set the TChannel format ("as" header).
 	Encoding string
@@ -113,7 +113,7 @@ func NewTChannel(opts TChannelOptions) (Transport, error) {
 		return nil, fmt.Errorf("failed to create TChannel: %v", err)
 	}
 
-	for _, hp := range opts.HostPorts {
+	for _, hp := range opts.Peers {
 		ch.Peers().Add(hp)
 	}
 

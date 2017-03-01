@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/yarpc/yab/encoding"
+	"github.com/yarpc/yab/peerprovider"
 	"github.com/yarpc/yab/transport"
 
 	"github.com/casimir/xdg-go"
@@ -42,7 +43,7 @@ import (
 	"github.com/uber/tchannel-go"
 )
 
-var errHealthAndMethod = errors.New("cannot specify method name and use --health")
+var errHealthAndProcedure = errors.New("cannot specify procedure and use --health")
 
 func findGroup(parser *flags.Parser, group string) *flags.Group {
 	if g := parser.Group.Find(group); g != nil {
@@ -161,7 +162,7 @@ Default options can be specified in a ~/.config/yab/defaults.ini file (or ~/Libr
 	}
 
 	fromPositional(remaining, 0, &opts.TOpts.ServiceName)
-	fromPositional(remaining, 1, &opts.ROpts.MethodName)
+	fromPositional(remaining, 1, &opts.ROpts.Procedure)
 
 	// We support both:
 	// [service] [method] [request]
@@ -197,11 +198,11 @@ func overrideDefaults(defaults *Options, args []string) {
 	argsParser.ParseArgs(args)
 
 	// Clear default peers if the user has specified peer options in args.
-	if len(argsOnly.TOpts.HostPorts) > 0 {
-		defaults.TOpts.HostPortFile = ""
+	if len(argsOnly.TOpts.Peers) > 0 {
+		defaults.TOpts.PeerList = ""
 	}
-	if len(argsOnly.TOpts.HostPortFile) > 0 {
-		defaults.TOpts.HostPorts = nil
+	if len(argsOnly.TOpts.PeerList) > 0 {
+		defaults.TOpts.Peers = nil
 	}
 }
 
@@ -241,8 +242,15 @@ func parseDefaultConfigs(parser *flags.Parser) error {
 }
 
 func runWithOptions(opts Options, out output) {
+	if opts.TOpts.PeerList == "?" {
+		for _, scheme := range peerprovider.Schemes() {
+			out.Printf("%s\n", scheme)
+		}
+		return
+	}
+
 	if opts.ROpts.YamlTemplate != "" {
-		if err := readYamlRequest(&opts); err != nil {
+		if err := readYAMLRequest(&opts); err != nil {
 			out.Fatalf("Failed while reading yaml template: %v\n", err)
 		}
 	}

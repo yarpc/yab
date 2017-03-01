@@ -1,5 +1,5 @@
 <!-- Creator     : groff version 1.19.2 -->
-<!-- CreationDate: Wed Nov  2 15:00:07 2016 -->
+<!-- CreationDate: Tue Feb 28 20:24:34 2017 -->
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
 "http://www.w3.org/TR/html4/loose.dtd">
 <html>
@@ -203,11 +203,16 @@ specified</p>
 
 <p style="margin-left:22%;">Path of the .thrift file</p>
 
-<p style="margin-left:11%;"><b>&minus;m</b>,
-<b>&minus;&minus;method</b></p>
+
+<p style="margin-left:11%;"><b>&minus;&minus;procedure</b></p>
 
 <p style="margin-left:22%;">The full Thrift method name
 (Svc::Method) to invoke</p>
+
+<p style="margin-left:11%;"><b>&minus;m</b>,
+<b>&minus;&minus;method</b></p>
+
+<p style="margin-left:22%;">Alias for procedure</p>
 
 <p style="margin-left:11%;"><b>&minus;r</b>,
 <b>&minus;&minus;request</b></p>
@@ -257,6 +262,12 @@ Meta::health</p>
 <p style="margin-left:22%;">The timeout for each request.
 E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds
 are assumed.</p>
+
+<p style="margin-left:11%;"><b>&minus;y</b>,
+<b>&minus;&minus;yaml-template</b></p>
+
+<p style="margin-left:22%;">Send a tchannel request
+specified by a yaml template</p>
 
 
 <p style="margin-left:11%;"><b>&minus;&minus;disable-thrift-envelope</b></p>
@@ -321,8 +332,9 @@ call</p>
 <p style="margin-left:11%;"><b>&minus;P</b>,
 <b>&minus;&minus;peer-list</b></p>
 
-<p style="margin-left:22%;">Path of a JSON or YAML file
-containing a list of host:ports</p>
+<p style="margin-left:22%;">Path or URL of a JSON, YAML, or
+flat file containing a list of host:ports. -P? for supported
+protocols.</p>
 
 
 <p style="margin-left:11%;"><b>&minus;&minus;caller</b></p>

@@ -21,22 +21,20 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
+	"context"
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"net"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/yarpc/yab/encoding"
+	"github.com/yarpc/yab/peerprovider"
 	"github.com/yarpc/yab/transport"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/uber/tchannel-go"
-	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -45,7 +43,6 @@ var (
 	errTracerRequired  = errors.New("tracer is required, or explicit NoopTracer")
 	errPeerRequired    = errors.New("specify at least one peer using --peer or using --peer-list")
 	errPeerOptions     = errors.New("do not specify peers using --peer and --peer-list")
-	errPeerListFile    = errors.New("peer list should be a JSON file with a list of strings")
 )
 
 func remapLocalHost(hostPorts []string) {
@@ -61,59 +58,70 @@ func remapLocalHost(hostPorts []string) {
 	}
 }
 
-func protocolFor(hostPort string) string {
+func parsePeer(peer string) (protocol, host string) {
 	// If we get a pure host:port, then we assume tchannel.
-	if _, _, err := net.SplitHostPort(hostPort); err == nil && !strings.Contains(hostPort, "://") {
-		return "tchannel"
+	if _, _, err := net.SplitHostPort(peer); err == nil && !strings.Contains(peer, "://") {
+		return "tchannel", peer
 	}
 
-	u, err := url.ParseRequestURI(hostPort)
+	u, err := url.ParseRequestURI(peer)
 	if err != nil {
-		return "unknown"
+		return "unknown", ""
 	}
 
-	return u.Scheme
+	return u.Scheme, u.Host
 }
 
 // ensureSameProtocol must get at least one host:port.
-func ensureSameProtocol(hostPorts []string) (string, error) {
-	lastProtocol := protocolFor(hostPorts[0])
-	for _, hp := range hostPorts[1:] {
-		if p := protocolFor(hp); lastProtocol != p {
+func ensureSameProtocol(peers []string) (string, error) {
+	lastProtocol, _ := parsePeer(peers[0])
+	for _, hp := range peers[1:] {
+		if p, _ := parsePeer(hp); lastProtocol != p {
 			return "", fmt.Errorf("found mixed protocols, expected all to be %v, got %v", lastProtocol, p)
 		}
 	}
 	return lastProtocol, nil
 }
 
-func loadTransportHostPorts(opts TransportOptions) (TransportOptions, error) {
-	if len(opts.HostPorts) == 0 && opts.HostPortFile == "" {
+func getHosts(peers []string) []string {
+	hosts := make([]string, len(peers))
+	for i, p := range peers {
+		_, hosts[i] = parsePeer(p)
+	}
+	return hosts
+}
+
+func loadTransportPeers(opts TransportOptions) (TransportOptions, error) {
+	peers := opts.Peers
+	if opts.PeerList != "" {
+		if len(peers) > 0 {
+			return opts, errPeerOptions
+		}
+
+		u, err := url.Parse(opts.PeerList)
+		if err != nil {
+			return opts, fmt.Errorf("could not parse peer provider URL: %v", err)
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		peers, err = peerprovider.Resolve(ctx, u)
+		if err != nil {
+			return opts, err
+		}
+	}
+
+	if len(peers) == 0 {
 		return opts, errPeerRequired
 	}
 
-	hostPorts := opts.HostPorts
-	if opts.HostPortFile != "" {
-		if len(hostPorts) > 0 {
-			return opts, errPeerOptions
-		}
-		var err error
-		hostPorts, err = parseHostFile(opts.HostPortFile)
-		if err != nil {
-			return opts, fmt.Errorf("failed to parse host file: %v", err)
-		}
-
-		if len(hostPorts) == 0 {
-			return opts, errPeerRequired
-		}
-	}
-
-	opts.HostPortFile = ""
-	opts.HostPorts = hostPorts
+	opts.PeerList = ""
+	opts.Peers = peers
 	return opts, nil
 }
 
 func getTransport(opts TransportOptions, encoding encoding.Encoding, tracer opentracing.Tracer) (transport.Transport, error) {
-
 	if opts.ServiceName == "" {
 		return nil, errServiceRequired
 	}
@@ -126,18 +134,19 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding, tracer open
 		return nil, errTracerRequired
 	}
 
-	opts, err := loadTransportHostPorts(opts)
+	opts, err := loadTransportPeers(opts)
 	if err != nil {
 		return nil, err
 	}
 
-	protocol, err := ensureSameProtocol(opts.HostPorts)
+	protocol, err := ensureSameProtocol(opts.Peers)
 	if err != nil {
 		return nil, err
 	}
 
 	if protocol == "tchannel" {
-		remapLocalHost(opts.HostPorts)
+		hostPorts := getHosts(opts.Peers)
+		remapLocalHost(hostPorts)
 
 		topts := transport.TChannelOptions{
 			SourceService:   opts.CallerName,
@@ -145,7 +154,7 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding, tracer open
 			RoutingDelegate: opts.RoutingDelegate,
 			RoutingKey:      opts.RoutingKey,
 			ShardKey:        opts.ShardKey,
-			HostPorts:       opts.HostPorts,
+			Peers:           hostPorts,
 			Encoding:        encoding.String(),
 			TransportOpts:   opts.TransportHeaders,
 			Tracer:          tracer,
@@ -160,58 +169,8 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding, tracer open
 		RoutingKey:      opts.RoutingKey,
 		ShardKey:        opts.ShardKey,
 		Encoding:        encoding.String(),
-		URLs:            opts.HostPorts,
+		URLs:            opts.Peers,
 		Tracer:          tracer,
 	}
 	return transport.NewHTTP(hopts)
-}
-
-func parseHostFile(filename string) ([]string, error) {
-	contents, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open peer list: %v", err)
-	}
-
-	// Try as JSON.
-	hosts, err := parseHostFileYAML(contents)
-	if err != nil {
-		hosts, err = parseHostsFileNewLines(bytes.NewReader(contents))
-	}
-	if err != nil {
-		return nil, errPeerListFile
-	}
-
-	return hosts, nil
-}
-
-func parseHostFileYAML(contents []byte) ([]string, error) {
-	var hosts []string
-	return hosts, yaml.Unmarshal(contents, &hosts)
-}
-
-func parseHostsFileNewLines(r io.Reader) ([]string, error) {
-	var hosts []string
-	rdr := bufio.NewReader(r)
-	for {
-		line, err := rdr.ReadString('\n')
-		if line == "" && err != nil {
-			if err == io.EOF {
-				break
-			}
-			return nil, err
-		}
-
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-
-		if _, _, err := net.SplitHostPort(line); err != nil {
-			return nil, err
-		}
-
-		hosts = append(hosts, line)
-	}
-
-	return hosts, nil
 }

@@ -121,7 +121,7 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 		out.Fatalf("Failed to warmup connections for benchmark: %v", err)
 	}
 
-	statter, err := statsd.NewClient(opts.StatsdHostPort, allOpts.TOpts.ServiceName, allOpts.ROpts.MethodName)
+	statter, err := statsd.NewClient(opts.StatsdHostPort, allOpts.TOpts.ServiceName, allOpts.ROpts.Procedure)
 	if err != nil {
 		out.Fatalf("Failed to create statsd client for benchmark: %v", err)
 	}

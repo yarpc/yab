@@ -34,7 +34,7 @@ import (
 
 var (
 	errUnrecognizedEncoding = errors.New("unrecognized encoding, must be one of: json, thrift, raw")
-	errMissingMethodName    = errors.New("no method specified, specify --method method")
+	errMissingProcedure     = errors.New("no procedure specified, specify --procedure [procedure]")
 )
 
 // getRequestInput gets the byte body passed in by the user via flags or through a file.
@@ -84,24 +84,24 @@ func getHeaders(inline, file string, override map[string]string) (map[string]str
 // NewSerializer creates a Serializer for the specific encoding.
 func NewSerializer(opts RequestOptions) (encoding.Serializer, error) {
 	if opts.Health {
-		if opts.MethodName != "" {
-			return nil, errHealthAndMethod
+		if opts.Procedure != "" {
+			return nil, errHealthAndProcedure
 		}
 
 		return opts.Encoding.GetHealth()
 	}
 
-	if opts.MethodName == "" {
-		return nil, errMissingMethodName
+	if opts.Procedure == "" {
+		return nil, errMissingProcedure
 	}
 
 	switch e := detectEncoding(opts); e {
 	case encoding.Thrift:
-		return encoding.NewThrift(opts.ThriftFile, opts.MethodName, opts.ThriftMultiplexed)
+		return encoding.NewThrift(opts.ThriftFile, opts.Procedure, opts.ThriftMultiplexed)
 	case encoding.JSON:
-		return encoding.NewJSON(opts.MethodName), nil
+		return encoding.NewJSON(opts.Procedure), nil
 	case encoding.Raw:
-		return encoding.NewRaw(opts.MethodName), nil
+		return encoding.NewRaw(opts.Procedure), nil
 	}
 
 	return nil, errUnrecognizedEncoding
@@ -112,7 +112,7 @@ func detectEncoding(opts RequestOptions) encoding.Encoding {
 		return opts.Encoding
 	}
 
-	if strings.Contains(opts.MethodName, "::") || opts.ThriftFile != "" {
+	if strings.Contains(opts.Procedure, "::") || opts.ThriftFile != "" {
 		return encoding.Thrift
 	}
 

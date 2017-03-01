@@ -57,7 +57,7 @@ func init() {
 func TestRunWithOptions(t *testing.T) {
 	validRequestOpts := RequestOptions{
 		ThriftFile: validThrift,
-		MethodName: fooMethod,
+		Procedure:  fooMethod,
 	}
 
 	closedHP := testutils.GetClosedHostPort(t)
@@ -83,12 +83,12 @@ func TestRunWithOptions(t *testing.T) {
 			opts: Options{
 				ROpts: RequestOptions{
 					ThriftFile:  validThrift,
-					MethodName:  fooMethod,
+					Procedure:   fooMethod,
 					RequestJSON: `{"f1": 1}`,
 				},
 				TOpts: TransportOptions{
 					ServiceName: "foo",
-					HostPorts:   []string{"1.1.1.1:1"},
+					Peers:       []string{"1.1.1.1:1"},
 				},
 			},
 			errMsg: "while parsing request input",
@@ -99,7 +99,7 @@ func TestRunWithOptions(t *testing.T) {
 				ROpts: validRequestOpts,
 				TOpts: TransportOptions{
 					ServiceName: "foo",
-					HostPorts:   []string{closedHP},
+					Peers:       []string{closedHP},
 				},
 			},
 			errMsg: "Failed while making call",
@@ -110,7 +110,7 @@ func TestRunWithOptions(t *testing.T) {
 				ROpts: validRequestOpts,
 				TOpts: TransportOptions{
 					ServiceName: "foo",
-					HostPorts:   []string{echoServer(t, fooMethod, []byte{1, 1})},
+					Peers:       []string{echoServer(t, fooMethod, []byte{1, 1})},
 				},
 			},
 			errMsg: "Failed while parsing response",
@@ -120,12 +120,12 @@ func TestRunWithOptions(t *testing.T) {
 			opts: Options{
 				ROpts: RequestOptions{
 					ThriftFile: validThrift,
-					MethodName: fooMethod,
+					Procedure:  fooMethod,
 					Timeout:    timeMillisFlag(time.Nanosecond),
 				},
 				TOpts: TransportOptions{
 					ServiceName: "foo",
-					HostPorts:   []string{echoServer(t, fooMethod, nil)},
+					Peers:       []string{echoServer(t, fooMethod, nil)},
 				},
 			},
 			errMsg: "timeout",
@@ -136,7 +136,7 @@ func TestRunWithOptions(t *testing.T) {
 				ROpts: validRequestOpts,
 				TOpts: TransportOptions{
 					ServiceName: "foo",
-					HostPorts:   []string{echoServer(t, fooMethod, nil)},
+					Peers:       []string{echoServer(t, fooMethod, nil)},
 				},
 			},
 			wants: []string{
@@ -192,7 +192,7 @@ func TestMainNoHeaders(t *testing.T) {
 		"yab",
 		"-t", validThrift,
 		"foo", fooMethod,
-		"-p", echoAddr,
+		"-p", "tchannel://" + echoAddr,
 	}
 
 	main()
@@ -247,7 +247,7 @@ func TestBenchmarkIntegration(t *testing.T) {
 		serverHPs[i] = server.hostPort()
 	}
 
-	hostFile := writeFile(t, "hostPorts", strings.Join(serverHPs, "\n"))
+	hostFile := writeFile(t, "Peers", strings.Join(serverHPs, "\n"))
 	defer os.Remove(hostFile)
 
 	os.Args = []string{
@@ -388,18 +388,19 @@ func TestAlises(t *testing.T) {
 				{"--peer-list", "file"},
 			},
 			validate: func(args cmdArgs, opts *Options) {
-				assert.Equal(t, "file", opts.TOpts.HostPortFile, "Args: %v", args)
+				assert.Equal(t, "file", opts.TOpts.PeerList, "Args: %v", args)
 			},
 		},
 		{
 			args: []cmdArgs{
+				{"--procedure", "m"},
 				{"--method", "m"},
 				{"--endpoint", "m"},
 				{"-1", "m"},
 				{"--arg1", "m"},
 			},
 			validate: func(args cmdArgs, opts *Options) {
-				assert.Equal(t, "m", opts.ROpts.MethodName, "Args: %v", args)
+				assert.Equal(t, "m", opts.ROpts.Procedure, "Args: %v", args)
 			},
 		},
 		{
@@ -546,8 +547,8 @@ func TestConfigOverride(t *testing.T) {
 			msg:            "peer list in config",
 			configContents: `peer-list = "/hosts.json"`,
 			validateFn: func(opts *Options, msg string) {
-				assert.Equal(t, "/hosts.json", opts.TOpts.HostPortFile, msg)
-				assert.Empty(t, opts.TOpts.HostPorts, msg)
+				assert.Equal(t, "/hosts.json", opts.TOpts.PeerList, msg)
+				assert.Empty(t, opts.TOpts.Peers, msg)
 			},
 		},
 		{
@@ -555,8 +556,8 @@ func TestConfigOverride(t *testing.T) {
 			configContents: `peer-list = "/hosts.json"`,
 			args:           []string{"-P", "/hosts2.json"},
 			validateFn: func(opts *Options, msg string) {
-				assert.Equal(t, "/hosts2.json", opts.TOpts.HostPortFile, msg)
-				assert.Empty(t, opts.TOpts.HostPorts, msg)
+				assert.Equal(t, "/hosts2.json", opts.TOpts.PeerList, msg)
+				assert.Empty(t, opts.TOpts.Peers, msg)
 			},
 		},
 		{
@@ -566,8 +567,8 @@ func TestConfigOverride(t *testing.T) {
 				peer = 1.1.1.1:1
 			`,
 			validateFn: func(opts *Options, msg string) {
-				assert.Equal(t, "/hosts.json", opts.TOpts.HostPortFile, msg)
-				assert.Equal(t, []string{"1.1.1.1:1"}, opts.TOpts.HostPorts, msg)
+				assert.Equal(t, "/hosts.json", opts.TOpts.PeerList, msg)
+				assert.Equal(t, []string{"1.1.1.1:1"}, opts.TOpts.Peers, msg)
 			},
 		},
 		{
@@ -575,8 +576,8 @@ func TestConfigOverride(t *testing.T) {
 			configContents: `peer-list = "/hosts.json"`,
 			args:           []string{"-p", "1.1.1.1:1"},
 			validateFn: func(opts *Options, msg string) {
-				assert.Empty(t, opts.TOpts.HostPortFile, "%v: hosts file should be cleared", msg)
-				assert.Equal(t, []string{"1.1.1.1:1"}, opts.TOpts.HostPorts, "%v: hostPorts", msg)
+				assert.Empty(t, opts.TOpts.PeerList, "%v: hosts file should be cleared", msg)
+				assert.Equal(t, []string{"1.1.1.1:1"}, opts.TOpts.Peers, "%v: Peers", msg)
 			},
 		},
 		{
@@ -587,8 +588,8 @@ func TestConfigOverride(t *testing.T) {
 			`,
 			args: []string{"-p", "1.1.1.1:2"},
 			validateFn: func(opts *Options, msg string) {
-				assert.Empty(t, opts.TOpts.HostPortFile, "%v: hosts file should be cleared", msg)
-				assert.Equal(t, []string{"1.1.1.1:2"}, opts.TOpts.HostPorts, "%v: hostPorts", msg)
+				assert.Empty(t, opts.TOpts.PeerList, "%v: hosts file should be cleared", msg)
+				assert.Equal(t, []string{"1.1.1.1:2"}, opts.TOpts.Peers, "%v: Peers", msg)
 			},
 		},
 		{
@@ -599,8 +600,8 @@ func TestConfigOverride(t *testing.T) {
 			`,
 			args: []string{"-P", "/hosts2.json"},
 			validateFn: func(opts *Options, msg string) {
-				assert.Equal(t, "/hosts2.json", opts.TOpts.HostPortFile, msg)
-				assert.Empty(t, opts.TOpts.HostPorts, msg)
+				assert.Equal(t, "/hosts2.json", opts.TOpts.PeerList, msg)
+				assert.Empty(t, opts.TOpts.Peers, msg)
 			},
 		},
 	}
@@ -703,7 +704,7 @@ end`,
 func TestWithTransportSerializer(t *testing.T) {
 	validRequestOpts := RequestOptions{
 		ThriftFile: validThrift,
-		MethodName: fooMethod,
+		Procedure:  fooMethod,
 	}
 	noEnvelopeOpts := validRequestOpts
 	noEnvelopeOpts.ThriftDisableEnvelopes = true
@@ -823,7 +824,7 @@ func TestNoWarmupBenchmark(t *testing.T) {
 
 	validRequestOpts := RequestOptions{
 		ThriftFile: validThrift,
-		MethodName: fooMethod,
+		Procedure:  fooMethod,
 	}
 	transportOpts := s.transportOpts()
 	transportOpts.CallerName = ""
@@ -921,4 +922,17 @@ func TestGetTracer(t *testing.T) {
 
 		assert.NotEqual(t, opentracing.NoopTracer{}, tracer, "Expected %+v to return real tracer")
 	}
+}
+
+func TestMainSupportedPeerProviderSchemes(t *testing.T) {
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+
+	os.Args = []string{"yab", "-P?"}
+
+	buf, out := getOutput(t)
+	parseAndRun(out)
+	contents := buf.String()
+	assert.Contains(t, contents, "file\n", "Expected file protocol support")
+	assert.NotContains(t, contents, "\n\n", "Expected no blank lines")
 }

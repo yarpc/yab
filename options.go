@@ -41,7 +41,8 @@ type Options struct {
 type RequestOptions struct {
 	Encoding     encoding.Encoding `short:"e" long:"encoding" description:"The encoding of the data, options are: Thrift, JSON, raw. Defaults to Thrift if the method contains '::' or a Thrift file is specified"`
 	ThriftFile   string            `short:"t" long:"thrift" description:"Path of the .thrift file"`
-	MethodName   string            `short:"m" long:"method" description:"The full Thrift method name (Svc::Method) to invoke"`
+	Procedure    string            `long:"procedure" description:"The full Thrift method name (Svc::Method) to invoke"`
+	MethodName   stringAlias       `short:"m" long:"method" description:"Alias for procedure"`
 	RequestJSON  string            `short:"r" long:"request" unquote:"false" description:"The request body, in JSON or YAML format"`
 	RequestFile  string            `short:"f" long:"file" description:"Path of a file containing the request body in JSON or YAML"`
 	Headers      map[string]string `short:"H" long:"header" description:"Individual application header as a key:value pair per flag"`
@@ -71,8 +72,8 @@ type RequestOptions struct {
 // TransportOptions are transport related options.
 type TransportOptions struct {
 	ServiceName      string            `short:"s" long:"service" description:"The TChannel/Hyperbahn service name"`
-	HostPorts        []string          `short:"p" long:"peer" description:"The host:port of the service to call"`
-	HostPortFile     string            `short:"P" long:"peer-list" description:"Path of a JSON or YAML file containing a list of host:ports"`
+	Peers            []string          `short:"p" long:"peer" description:"The host:port of the service to call"`
+	PeerList        string            `short:"P" long:"peer-list" description:"Path or URL of a JSON, YAML, or flat file containing a list of host:ports. -P? for supported protocols."`
 	CallerName       string            `long:"caller" description:"Caller will override the default caller name (which is yab-$USER)."`
 	RoutingKey       string            `long:"rk" description:"The routing key overrides the service name traffic group for proxies."`
 	RoutingDelegate  string            `long:"rd" description:"The routing delegate overrides the routing key traffic group for proxies."`
@@ -107,9 +108,10 @@ type BenchmarkOptions struct {
 
 func newOptions() *Options {
 	var opts Options
+	opts.ROpts.MethodName.dest = &opts.ROpts.Procedure
 	aliases := &opts.ROpts.Aliases
-	aliases.Arg1.dest = &opts.ROpts.MethodName
-	aliases.Endpoint.dest = &opts.ROpts.MethodName
+	aliases.Arg1.dest = &opts.ROpts.Procedure
+	aliases.Endpoint.dest = &opts.ROpts.Procedure
 	aliases.Arg2.dest = &opts.ROpts.HeadersJSON
 	aliases.Arg3.dest = &opts.ROpts.RequestJSON
 	aliases.Body.dest = &opts.ROpts.RequestJSON
@@ -155,6 +157,10 @@ func (s *stringAlias) UnmarshalFlag(value string) error {
 	}
 	*s.dest = value
 	return nil
+}
+
+func (s *stringAlias) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	return unmarshal(s.dest)
 }
 
 func setEncodingOptions(opts *Options) {

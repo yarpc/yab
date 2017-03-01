@@ -1,6 +1,16 @@
 Changelog
 =========
 
+# 0.9.0
+
+* Support for custom peer providers to provide a list of peers such as
+  over HTTP.
+* Support more options in YAML templates such peers, baggage, and other
+  transport headers.
+* Rename method to procedure, and maintain aliases for `--method`.
+* Allow TChannel peers to be specified using a URI with a TChannel scheme,
+  e.g., `tchannel://host:port`.
+
 # 0.8.0
 
 * Support for YAML request templates with CLI overrides.
