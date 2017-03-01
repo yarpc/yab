@@ -1,4 +1,4 @@
-.TH yab 1 "2 November 2016"
+.TH yab 1 "28 February 2017"
 .SH NAME
 yab \- yet another benchmarker
 .SH SYNOPSIS
@@ -154,8 +154,11 @@ The encoding of the data, options are: Thrift, JSON, raw. Defaults to Thrift if 
 \fB\fB\-t\fR, \fB\-\-thrift\fR\fP
 Path of the .thrift file
 .TP
-\fB\fB\-m\fR, \fB\-\-method\fR\fP
+\fB\fB\-\-procedure\fR\fP
 The full Thrift method name (Svc::Method) to invoke
+.TP
+\fB\fB\-m\fR, \fB\-\-method\fR\fP
+Alias for procedure
 .TP
 \fB\fB\-r\fR, \fB\-\-request\fR\fP
 The request body, in JSON or YAML format
@@ -180,6 +183,9 @@ Hit the health endpoint, Meta::health
 .TP
 \fB\fB\-\-timeout\fR <default: \fI"1s"\fR>\fP
 The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds are assumed.
+.TP
+\fB\fB\-y\fR, \fB\-\-yaml-template\fR\fP
+Send a tchannel request specified by a yaml template
 .TP
 \fB\fB\-\-disable-thrift-envelope\fR\fP
 Disables Thrift envelopes (disabled by default for TChannel)
@@ -235,7 +241,7 @@ The TChannel/Hyperbahn service name
 The host:port of the service to call
 .TP
 \fB\fB\-P\fR, \fB\-\-peer-list\fR\fP
-Path of a JSON or YAML file containing a list of host:ports
+Path or URL of a JSON, YAML, or flat file containing a list of host:ports. -P? for supported protocols.
 .TP
 \fB\fB\-\-caller\fR\fP
 Caller will override the default caller name (which is yab-$USER).
