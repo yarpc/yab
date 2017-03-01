@@ -1,5 +1,5 @@
 <!-- Creator     : groff version 1.19.2 -->
-<!-- CreationDate: Fri Jul 15 17:11:46 2016 -->
+<!-- CreationDate: Tue Feb 28 20:24:34 2017 -->
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
 "http://www.w3.org/TR/html4/loose.dtd">
 <html>
@@ -48,15 +48,14 @@ another benchmarker</p>
 <p style="margin-left:11%; margin-top: 1em">yab is a
 benchmarking tool for TChannel and HTTP applications.
 It&rsquo;s primarily intended for Thrift applications but
-supports other encodings like JSON and binary (raw).</p>
-
-<p style="margin-left:11%; margin-top: 1em">It can be used
-in a curl-like fashion when benchmarking features are
-disabled.</p>
+supports other encodings like JSON and binary (raw). It can
+be used in a curl-like fashion when benchmarking features
+are disabled.</p>
 
 <p style="margin-left:11%; margin-top: 1em">Default options
-can be specified in a ~/.config/yab/defaults.ini file with
-contents similar to this:</p>
+can be specified in a ~/.config/yab/defaults.ini file (or
+~/Library/Preferences/yab/defaults.ini on Mac) with contents
+similar to this:</p>
 
 <p style="margin-left:22%; margin-top: 1em">[request] <br>
 timeout = 2s</p>
@@ -204,11 +203,16 @@ specified</p>
 
 <p style="margin-left:22%;">Path of the .thrift file</p>
 
-<p style="margin-left:11%;"><b>&minus;m</b>,
-<b>&minus;&minus;method</b></p>
+
+<p style="margin-left:11%;"><b>&minus;&minus;procedure</b></p>
 
 <p style="margin-left:22%;">The full Thrift method name
 (Svc::Method) to invoke</p>
+
+<p style="margin-left:11%;"><b>&minus;m</b>,
+<b>&minus;&minus;method</b></p>
+
+<p style="margin-left:22%;">Alias for procedure</p>
 
 <p style="margin-left:11%;"><b>&minus;r</b>,
 <b>&minus;&minus;request</b></p>
@@ -222,6 +226,12 @@ YAML format</p>
 <p style="margin-left:22%;">Path of a file containing the
 request body in JSON or YAML</p>
 
+<p style="margin-left:11%;"><b>&minus;H</b>,
+<b>&minus;&minus;header</b></p>
+
+<p style="margin-left:22%;">Individual application header
+as a key:value pair per flag</p>
+
 
 <p style="margin-left:11%;"><b>&minus;&minus;headers</b></p>
 
@@ -233,6 +243,12 @@ format</p>
 
 <p style="margin-left:22%;">Path of a file containing the
 headers in JSON or YAML</p>
+
+<p style="margin-left:11%;"><b>&minus;B</b>,
+<b>&minus;&minus;baggage</b></p>
+
+<p style="margin-left:22%;">Individual context baggage
+header as a key:value pair per flag</p>
 
 
 <p style="margin-left:11%;"><b>&minus;&minus;health</b></p>
@@ -246,6 +262,25 @@ Meta::health</p>
 <p style="margin-left:22%;">The timeout for each request.
 E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds
 are assumed.</p>
+
+<p style="margin-left:11%;"><b>&minus;y</b>,
+<b>&minus;&minus;yaml-template</b></p>
+
+<p style="margin-left:22%;">Send a tchannel request
+specified by a yaml template</p>
+
+
+<p style="margin-left:11%;"><b>&minus;&minus;disable-thrift-envelope</b></p>
+
+<p style="margin-left:22%;">Disables Thrift envelopes
+(disabled by default for TChannel)</p>
+
+
+<p style="margin-left:11%;"><b>&minus;&minus;multiplexed-thrift</b></p>
+
+<p style="margin-left:22%;">Enables the Thrift
+TMultiplexedProtocol used by services that host multiple
+Thrift services on a single endpoint.</p>
 
 <p style="margin-left:11%; margin-top: 1em"><b>Transport
 Options</b> <br>
@@ -297,8 +332,9 @@ call</p>
 <p style="margin-left:11%;"><b>&minus;P</b>,
 <b>&minus;&minus;peer-list</b></p>
 
-<p style="margin-left:22%;">Path of a JSON or YAML file
-containing a list of host:ports</p>
+<p style="margin-left:22%;">Path or URL of a JSON, YAML, or
+flat file containing a list of host:ports. -P? for supported
+protocols.</p>
 
 
 <p style="margin-left:11%;"><b>&minus;&minus;caller</b></p>
@@ -310,18 +346,58 @@ default caller name (which is yab-$USER).</p>
        cellspacing="0" cellpadding="0">
 <tr valign="top" align="left">
 <td width="11%"></td>
-<td width="9%">
+<td width="6%">
 
 
 
-<p style="margin-top: 1em" valign="top"><b>&minus;&minus;topt</b></p> </td>
-<td width="2%"></td>
+<p style="margin-top: 1em" valign="top"><b>&minus;&minus;rk</b></p> </td>
+<td width="5%"></td>
 <td width="78%">
 
 
-<p style="margin-top: 1em" valign="top">Custom options for
-the specific transport being used</p></td>
+<p style="margin-top: 1em" valign="top">The routing key
+overrides the service name traffic group for proxies.</p></td>
+<tr valign="top" align="left">
+<td width="11%"></td>
+<td width="6%">
+
+
+
+<p style="margin-top: 1em" valign="top"><b>&minus;&minus;rd</b></p> </td>
+<td width="5%"></td>
+<td width="78%">
+
+
+<p style="margin-top: 1em" valign="top">The routing
+delegate overrides the routing key traffic group for
+proxies.</p> </td>
+<tr valign="top" align="left">
+<td width="11%"></td>
+<td width="6%">
+
+
+
+<p style="margin-top: 1em" valign="top"><b>&minus;&minus;sk</b></p> </td>
+<td width="5%"></td>
+<td width="78%">
+
+
+<p style="margin-top: 1em" valign="top">The shard key is a
+transport header that clues where to send a request within a
+clustered traffic group.</p></td>
 </table>
+
+
+<p style="margin-left:11%;"><b>&minus;&minus;jaeger</b></p>
+
+<p style="margin-left:22%;">Use the Jaeger tracing client
+to send Uber style traces and baggage headers</p>
+
+<p style="margin-left:11%;"><b>&minus;T</b>,
+<b>&minus;&minus;topt</b></p>
+
+<p style="margin-left:22%;">Transport options for TChannel,
+protocol headers for HTTP</p>
 
 <p style="margin-left:11%; margin-top: 1em"><b>Benchmark
 Options</b> <br>
@@ -358,17 +434,17 @@ call per connection. The number of connections and
 concurrent calls per connection can be controlled using
 --connections and --concurrency. <b><br>
 &minus;n</b>, <b>&minus;&minus;max-requests</b> &lt;default:
-<i>&quot;1000000&quot;</i>&gt;</p>
+<i>&quot;0&quot;</i>&gt;</p>
 
 <p style="margin-left:22%;">The maximum number of requests
-to make</p>
+to make. 0 implies no limit.</p>
 
 <p style="margin-left:11%;"><b>&minus;d</b>,
 <b>&minus;&minus;max-duration</b> &lt;default:
 <i>&quot;0s&quot;</i>&gt;</p>
 
 <p style="margin-left:22%;">The maximum amount of time to
-run the benchmark for</p>
+run the benchmark for. 0 implies no duration limit.</p>
 
 <table width="100%" border=0 rules="none" frame="void"
        cellspacing="0" cellpadding="0">
