@@ -28,4 +28,5 @@ deploy:
       script: scripts/release.sh $TRAVIS_TAG
       skip_cleanup: true
       on:
+          go: 1.8
           tags: true
