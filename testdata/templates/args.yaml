@@ -1,0 +1,8 @@
+service: foo
+headers:
+  header1: ${user:foo}
+request:
+  fallback: ${unspecified:fallback}
+  fallbacklist: ${unspecified:[1,2]}
+  nofallback: ${unspecified}
+  replaced: ${user:u}

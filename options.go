@@ -52,6 +52,7 @@ type RequestOptions struct {
 	Health       bool              `long:"health" description:"Hit the health endpoint, Meta::health"`
 	Timeout      timeMillisFlag    `long:"timeout" default:"1s" description:"The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds are assumed."`
 	YamlTemplate string            `short:"y" long:"yaml-template" description:"Send a tchannel request specified by a yaml template"`
+	TemplateArgs map[string]string `short:"A" long:"arg" description:"A list of key-value template arguments"`
 
 	// Thrift options
 	ThriftDisableEnvelopes bool `long:"disable-thrift-envelope" description:"Disables Thrift envelopes (disabled by default for TChannel)"`

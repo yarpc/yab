@@ -27,6 +27,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/yarpc/yab/templateargs"
+
 	"gopkg.in/yaml.v2"
 )
 
@@ -61,14 +63,14 @@ type template struct {
 	RK stringAlias `yaml:"rk"`
 	RD stringAlias `yaml:"rd"`
 
-	Headers map[string]string `yaml:"headers"`
-	Baggage map[string]string `yaml:"baggage"`
-	Jaeger  bool              `yaml:"jaeger"`
-	Request interface{}       `yaml:"request"`
-	Timeout time.Duration     `yaml:"timeout"`
+	Headers map[string]string           `yaml:"headers"`
+	Baggage map[string]string           `yaml:"baggage"`
+	Jaeger  bool                        `yaml:"jaeger"`
+	Request map[interface{}]interface{} `yaml:"request"`
+	Timeout time.Duration               `yaml:"timeout"`
 }
 
-func readYAMLFile(yamlTemplate string, opts *Options) error {
+func readYAMLFile(yamlTemplate string, templateArgs map[string]string, opts *Options) error {
 	contents, err := ioutil.ReadFile(yamlTemplate)
 	if err != nil {
 		return err
@@ -90,11 +92,16 @@ func readYAMLFile(yamlTemplate string, opts *Options) error {
 		base += "/"
 	}
 
-	return readYAMLRequest(base, contents, opts)
+	return readYAMLRequest(base, contents, templateArgs, opts)
 }
 
-func readYAMLRequest(base string, contents []byte, opts *Options) error {
+func readYAMLRequest(base string, contents []byte, templateArgs map[string]string, opts *Options) error {
 	t, err := UnmarshalTemplate(contents)
+	if err != nil {
+		return err
+	}
+
+	t.Request, err = templateargs.ProcessMap(t.Request, templateArgs)
 	if err != nil {
 		return err
 	}

@@ -32,11 +32,17 @@ import (
 )
 
 func mustReadYAMLFile(t *testing.T, yamlTemplate string, opts *Options) {
-	assert.NoError(t, readYAMLFile(yamlTemplate, opts), "read request error")
+	args := map[string]string{
+		"user": "foo",
+	}
+	assert.NoError(t, readYAMLFile(yamlTemplate, args, opts), "read request error")
 }
 
 func mustReadYAMLRequest(t *testing.T, contents string, opts *Options) {
-	assert.NoError(t, readYAMLRequest("/base", []byte(contents), opts), "read request error")
+	args := map[string]string{
+		"user": "foo",
+	}
+	assert.NoError(t, readYAMLRequest("/base", []byte(contents), args, opts), "read request error")
 }
 
 func toAbsPath(t *testing.T, s string) string {
@@ -72,6 +78,24 @@ func TestTemplate(t *testing.T) {
 	assert.Equal(t, "location:\n  cityId: 1\n  latitude: 37.7\n  longitude: -122.4\n  message: true\n", opts.ROpts.RequestJSON)
 	assert.Equal(t, timeMillisFlag(4500*time.Millisecond), opts.ROpts.Timeout)
 	assert.True(t, opts.ROpts.ThriftDisableEnvelopes)
+}
+
+func TestTemplateArgs(t *testing.T) {
+	opts := newOptions()
+	args := map[string]string{"user": "bar"}
+	err := readYAMLRequest("testdata/templates/args.yaml", args, opts)
+	require.NoError(t, err, "Failed to parse template")
+
+	assert.Equal(t, "foo", opts.TOpts.ServiceName)
+	assert.Equal(t, "${user:foo}", opts.ROpts.Headers["header1"], "Templates are only used in the request body")
+	want := `fallback: fallback
+fallbacklist:
+- 1
+- 2
+nofallback: ""
+replaced: bar
+`
+	assert.Equal(t, want, opts.ROpts.RequestJSON, "Unexpected request")
 }
 
 func TestTemplateHeadersMerge(t *testing.T) {
@@ -324,12 +348,16 @@ func TestReadYAMLRequestFails(t *testing.T) {
 			yamlTemplate: "testdata/templates/invalid.yaml",
 			wantErr:      "yaml:",
 		},
+		{
+			yamlTemplate: "testdata/templates/bad-arg.yaml",
+			wantErr:      "not in the form",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.yamlTemplate, func(t *testing.T) {
 			opts := newOptions()
-			err := readYAMLFile(tt.yamlTemplate, opts)
+			err := readYAMLFile(tt.yamlTemplate, nil, opts)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.wantErr)
 		})
