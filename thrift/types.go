@@ -170,6 +170,11 @@ func parseBinary(value interface{}) ([]byte, error) {
 	case map[interface{}]interface{}:
 		return parseBinaryMap(v)
 	default:
-		return nil, fmt.Errorf("cannot parse binary/string from %T: %v", value, v)
+		// Since YAML tries to guess the type of a value, if the value
+		// looks like an integer, YAML will use int types even though the
+		// user needs a string. E.g., `msg: true` will treat "true" as a bool,
+		// but `msg: t` will be treat "t"" as a string. So instead of throwing
+		// an error at the user, convert the value we have to a string.
+		return []byte(fmt.Sprint(v)), nil
 	}
 }

@@ -68,7 +68,7 @@ func TestTemplate(t *testing.T) {
 	assert.Equal(t, "rd", opts.TOpts.RoutingDelegate)
 	assert.Equal(t, map[string]string{"baggage1": "value1", "baggage2": "value2"}, opts.ROpts.Baggage)
 	assert.Equal(t, true, opts.TOpts.Jaeger)
-	assert.Equal(t, "location:\n  cityId: 1\n  latitude: 37.7\n  longitude: -122.4\n", opts.ROpts.RequestJSON)
+	assert.Equal(t, "location:\n  cityId: 1\n  latitude: 37.7\n  longitude: -122.4\n  message: true\n", opts.ROpts.RequestJSON)
 	assert.Equal(t, timeMillisFlag(4500*time.Millisecond), opts.ROpts.Timeout)
 }
 
