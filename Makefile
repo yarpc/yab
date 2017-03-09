@@ -12,8 +12,9 @@ build:
 
 .PHONY: install
 install:
+	git --version
 	glide --version || go get github.com/Masterminds/glide
-	glide install
+	glide --debug install
 
 
 .PHONY: test
