@@ -174,7 +174,7 @@ func parseBinary(value interface{}) ([]byte, error) {
 		// looks like an integer, YAML will use int types even though the
 		// user needs a string. E.g., `msg: true` will treat "true" as a bool,
 		// but `msg: t` will be treat "t"" as a string. So instead of throwing
-		// an error at the user, coerce known YAML scalae types to a string.
+		// an error at the user, coerce known YAML scalar types to a string.
 		return []byte(fmt.Sprint(v)), nil
 	default:
 		return nil, fmt.Errorf("cannot parse binary/string from %T: %v", value, v)
