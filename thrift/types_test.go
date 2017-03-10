@@ -329,6 +329,10 @@ func TestParseBinary(t *testing.T) {
 			want:  []byte("1"),
 		},
 		{
+			value:  []bool{true},
+			errMsg: "cannot parse binary/string",
+		},
+		{
 			value: []interface{}{0, 0, 0},
 			want:  []byte{0, 0, 0},
 		},
