@@ -95,6 +95,7 @@ func TestParseRequest(t *testing.T) {
 				16: optional map<i32, i32> i_i_map;
 				17: optional map<bool, i32> b_i_map;
 				18: optional Op op;
+				19: optional list<i32> i32_list;
       )
     }
 
@@ -284,9 +285,8 @@ func TestParseRequest(t *testing.T) {
 			errMsg: "must be specified using list[*]",
 		},
 		{
-			// wrong type for value in the list
 			request: map[string]interface{}{
-				"str_list": []interface{}{"a", 1, "c"},
+				"i32_list": []interface{}{1, "a"},
 			},
 			errMsg: "list item failed",
 		},

@@ -18,3 +18,4 @@ request:
         latitude: 37.7
         longitude: -122.4
         cityId: 1
+        message: true
