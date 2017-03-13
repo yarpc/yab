@@ -936,3 +936,116 @@ func TestMainSupportedPeerProviderSchemes(t *testing.T) {
 	assert.Contains(t, contents, "file\n", "Expected file protocol support")
 	assert.NotContains(t, contents, "\n\n", "Expected no blank lines")
 }
+
+func TestOverrideDefaultsFails(t *testing.T) {
+	_, out := getOutput(t)
+	_, err := getOptions([]string{"-y", "testdata/templates/invalid.yaml"}, out)
+	require.Error(t, err, "Invalid YAML template should fail to parse")
+	assert.Contains(t, err.Error(), "failed to read yaml template")
+}
+
+func TestOptionsInheritance(t *testing.T) {
+	originalConfigHome := os.Getenv(_configHomeEnv)
+	defer os.Setenv(_configHomeEnv, originalConfigHome)
+
+	tests := []struct {
+		args          []string
+		yaml          string
+		defaults      string
+		wantPeers     []string
+		wantPeerList  string
+		wantProcedure string
+		wantTimeout   time.Duration
+	}{
+		{
+			defaults:  "peer=1.1.1.1",
+			yaml:      "",
+			wantPeers: []string{"1.1.1.1"},
+		},
+		{
+			defaults:  "peer=1.1.1.1",
+			args:      []string{"--peer", "2.2.2.2"},
+			wantPeers: []string{"2.2.2.2"},
+		},
+		{
+			defaults:  "peer=1.1.1.1",
+			yaml:      "peer: 2.2.2.2",
+			args:      []string{"--peer", "3.3.3.3"},
+			wantPeers: []string{"3.3.3.3"},
+		},
+		{
+			defaults:  "peer-list=http://foo",
+			yaml:      "peer: 1.1.1.1",
+			wantPeers: []string{"1.1.1.1"},
+		},
+		{
+			defaults:     "peer=1.1.1.1",
+			yaml:         "peerList: http://foo",
+			wantPeerList: "http://foo",
+		},
+		{
+			defaults:     "peer=1.1.1.1",
+			yaml:         "peerList: http://foo",
+			args:         []string{"--peer-list", "http://bar"},
+			wantPeerList: "http://bar",
+		},
+		{
+			defaults:  "peer=1.1.1.1",
+			yaml:      "peerList: http://foo",
+			args:      []string{"--peer", "2.2.2.2"},
+			wantPeers: []string{"2.2.2.2"},
+		},
+		{
+			defaults:     "peer=1.1.1.1",
+			yaml:         "peer: 2.2.2.2",
+			args:         []string{"--peer-list", "http://bar"},
+			wantPeerList: "http://bar",
+		},
+		{
+			defaults:      "method=foo",
+			wantProcedure: "foo",
+		},
+		{
+			defaults:      "procedure=foo",
+			yaml:          "procedure: bar",
+			wantProcedure: "bar",
+		},
+		{
+			defaults:      "procedure=foo",
+			yaml:          "procedure: bar",
+			args:          []string{"--procedure", "baz"},
+			wantProcedure: "baz",
+		},
+		{
+			defaults:    "timeout=2s",
+			wantTimeout: 2 * time.Second,
+		},
+	}
+
+	xdgBase, err := ioutil.TempDir("", "options")
+	require.NoError(t, err, "Failed to create temp dir")
+	os.Setenv(_configHomeEnv, xdgBase)
+
+	xdgFile := filepath.Join(xdgBase, "yab", "defaults.ini")
+	require.NoError(t, os.MkdirAll(filepath.Dir(xdgFile), 0777), "Failed to create yab XDG dir")
+
+	for _, tt := range tests {
+		msg := fmt.Sprintf("Test case: %+v", tt)
+		err := ioutil.WriteFile(xdgFile, []byte(tt.defaults), 0666)
+		require.NoError(t, err, "Failed to write out defaults.ini")
+
+		_, out := getOutput(t)
+
+		tt.args = append(tt.args, "-y", writeFile(t, "yaml", tt.yaml))
+		opts, err := getOptions(tt.args, out)
+		require.NoError(t, err, "getOptions failed")
+
+		assert.Equal(t, tt.wantPeers, opts.TOpts.Peers, msg)
+		assert.Equal(t, tt.wantPeerList, opts.TOpts.PeerList, msg)
+		assert.Equal(t, tt.wantProcedure, opts.ROpts.Procedure, "procedure")
+
+		if tt.wantTimeout != 0 {
+			assert.Equal(t, tt.wantTimeout, opts.ROpts.Timeout.Duration(), "timeout")
+		}
+	}
+}

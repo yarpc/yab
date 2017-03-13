@@ -21,7 +21,6 @@
 package main
 
 import (
-	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -32,8 +31,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func mustReadYAMLRequest(t *testing.T, opts *Options) {
-	assert.NoError(t, readYAMLRequest(opts), "read request error")
+func mustReadYAMLRequest(t *testing.T, yamlTemplate string, opts *Options) {
+	assert.NoError(t, readYAMLRequest(yamlTemplate, opts), "read request error")
 }
 
 func toAbsPath(t *testing.T, s string) string {
@@ -54,9 +53,7 @@ func getWd(t *testing.T) string {
 
 func TestTemplate(t *testing.T) {
 	opts := newOptions()
-	opts.ROpts.YamlTemplate = "testdata/templates/foo.yaml"
-
-	mustReadYAMLRequest(t, opts)
+	mustReadYAMLRequest(t, "testdata/templates/foo.yaml", opts)
 
 	assert.Equal(t, toAbsPath(t, "testdata/templates/foo.thrift"), opts.ROpts.ThriftFile)
 	assert.Equal(t, "Simple::foo", opts.ROpts.Procedure)
@@ -74,8 +71,6 @@ func TestTemplate(t *testing.T) {
 
 func TestTemplateHeadersMerge(t *testing.T) {
 	opts := newOptions()
-	opts.ROpts.YamlTemplate = "testdata/templates/foo.yaml"
-
 	opts.ROpts.HeadersJSON = `{
 		"header2": "overridden",
 	}`
@@ -84,7 +79,7 @@ func TestTemplateHeadersMerge(t *testing.T) {
 		"header3": "from Headers",
 	}
 
-	mustReadYAMLRequest(t, opts)
+	mustReadYAMLRequest(t, "testdata/templates/foo.yaml", opts)
 
 	headers, err := getHeaders(opts.ROpts.HeadersJSON, opts.ROpts.HeadersFile, opts.ROpts.Headers)
 	assert.NoError(t, err, "failed to merge headers")
@@ -95,39 +90,32 @@ func TestTemplateHeadersMerge(t *testing.T) {
 // This test verifies that the string alias for method to procedure follows
 func TestMethodTemplate(t *testing.T) {
 	opts := newOptions()
-	opts.ROpts.YamlTemplate = "testdata/templates/foo-method.yaml"
-
-	mustReadYAMLRequest(t, opts)
+	mustReadYAMLRequest(t, "testdata/templates/foo-method.yaml", opts)
 
 	assert.Equal(t, "Simple::foo", opts.ROpts.Procedure)
 }
 
 func TestPeerTemplate(t *testing.T) {
 	opts := newOptions()
-	opts.ROpts.YamlTemplate = "testdata/templates/peer.yaml"
-	mustReadYAMLRequest(t, opts)
+	mustReadYAMLRequest(t, "testdata/templates/peer.yaml", opts)
 	assert.Equal(t, []string{"127.0.0.1:8080"}, opts.TOpts.Peers)
 }
 
 func TestPeersTemplate(t *testing.T) {
 	opts := newOptions()
-	opts.ROpts.YamlTemplate = "testdata/templates/peers.yaml"
-	mustReadYAMLRequest(t, opts)
+	mustReadYAMLRequest(t, "testdata/templates/peers.yaml", opts)
 	assert.Equal(t, []string{"127.0.0.1:8080", "127.0.0.1:8081"}, opts.TOpts.Peers)
 }
 
 func TestPeerListTemplate(t *testing.T) {
 	opts := newOptions()
-	opts.ROpts.YamlTemplate = "testdata/templates/peerlist.yaml"
-	mustReadYAMLRequest(t, opts)
-	fmt.Println("peer list", opts.TOpts.PeerList)
+	mustReadYAMLRequest(t, "testdata/templates/peerlist.yaml", opts)
 	assert.Equal(t, toAbsURL(t, "testdata/templates/peers.json"), opts.TOpts.PeerList)
 }
 
 func TestAbsPeerListTemplate(t *testing.T) {
 	opts := newOptions()
-	opts.ROpts.YamlTemplate = "testdata/templates/abspeerlist.yaml"
-	mustReadYAMLRequest(t, opts)
+	mustReadYAMLRequest(t, "testdata/templates/abspeerlist.yaml", opts)
 	assert.Equal(t, "file:///peers.json", opts.TOpts.PeerList)
 }
 
@@ -260,7 +248,6 @@ func TestTemplateAlias(t *testing.T) {
 
 	for _, tt := range tests {
 		for _, template := range tt.templates {
-			fmt.Println("hoo", template)
 			t.Run(template, func(t *testing.T) {
 				templ, err := UnmarshalTemplate([]byte(template))
 				require.NoError(t, err)
@@ -269,5 +256,30 @@ func TestTemplateAlias(t *testing.T) {
 				assert.Equal(t, tt.wantRoutingDelegate, templ.RoutingDelegate, "routing delegate aliases expanded")
 			})
 		}
+	}
+}
+
+func TestReadYAMLRequestFails(t *testing.T) {
+	tests := []struct {
+		yamlTemplate string
+		wantErr      string
+	}{
+		{
+			yamlTemplate: "testdata/not-found.yaml",
+			wantErr:      "no such file",
+		},
+		{
+			yamlTemplate: "testdata/templates/invalid.yaml",
+			wantErr:      "yaml:",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.yamlTemplate, func(t *testing.T) {
+			opts := newOptions()
+			err := readYAMLRequest(tt.yamlTemplate, opts)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantErr)
+		})
 	}
 }

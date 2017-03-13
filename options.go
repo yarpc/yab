@@ -73,7 +73,7 @@ type RequestOptions struct {
 type TransportOptions struct {
 	ServiceName      string            `short:"s" long:"service" description:"The TChannel/Hyperbahn service name"`
 	Peers            []string          `short:"p" long:"peer" description:"The host:port of the service to call"`
-	PeerList        string            `short:"P" long:"peer-list" description:"Path or URL of a JSON, YAML, or flat file containing a list of host:ports. -P? for supported protocols."`
+	PeerList         string            `short:"P" long:"peer-list" description:"Path or URL of a JSON, YAML, or flat file containing a list of host:ports. -P? for supported protocols."`
 	CallerName       string            `long:"caller" description:"Caller will override the default caller name (which is yab-$USER)."`
 	RoutingKey       string            `long:"rk" description:"The routing key overrides the service name traffic group for proxies."`
 	RoutingDelegate  string            `long:"rd" description:"The routing delegate overrides the routing key traffic group for proxies."`
