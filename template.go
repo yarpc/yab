@@ -65,13 +65,13 @@ type template struct {
 	Timeout time.Duration     `yaml:"timeout"`
 }
 
-func readYAMLRequest(opts *Options) error {
-	bytes, err := ioutil.ReadFile(opts.ROpts.YamlTemplate)
+func readYAMLRequest(yamlTemplate string, opts *Options) error {
+	bytes, err := ioutil.ReadFile(yamlTemplate)
 	if err != nil {
 		return err
 	}
 
-	base := filepath.Dir(opts.ROpts.YamlTemplate)
+	base := filepath.Dir(yamlTemplate)
 
 	// Ensuring that the base directory is fully qualified. Otherwise, whether it
 	// is fully qualified depends on argv[0].
@@ -99,15 +99,17 @@ func readYAMLRequest(opts *Options) error {
 
 	if t.Peer != "" {
 		opts.TOpts.Peers = []string{t.Peer}
+		opts.TOpts.PeerList = ""
 	} else if len(t.Peers) > 0 {
 		opts.TOpts.Peers = t.Peers
-	}
-	if t.PeerList != "" {
+		opts.TOpts.PeerList = ""
+	} else if t.PeerList != "" {
 		peerListURL, err := resolve(base, t.PeerList)
 		if err != nil {
 			return err
 		}
 		opts.TOpts.PeerList = peerListURL.String()
+		opts.TOpts.Peers = nil
 	}
 
 	// Baggage and headers specified with command line flags override those
@@ -126,15 +128,24 @@ func readYAMLRequest(opts *Options) error {
 		opts.ROpts.ThriftFile = thriftFileURL.Path
 	}
 
-	opts.TOpts.CallerName = t.Caller
-	opts.TOpts.ServiceName = t.Service
-	opts.ROpts.Procedure = t.Procedure
-	opts.TOpts.ShardKey = t.ShardKey
-	opts.TOpts.RoutingKey = t.RoutingKey
-	opts.TOpts.RoutingDelegate = t.RoutingDelegate
-	opts.ROpts.RequestJSON = string(body)
-	opts.ROpts.Timeout = timeMillisFlag(t.Timeout)
+	overrideParam(&opts.TOpts.CallerName, t.Caller)
+	overrideParam(&opts.TOpts.ServiceName, t.Service)
+	overrideParam(&opts.ROpts.Procedure, t.Procedure)
+	overrideParam(&opts.TOpts.ShardKey, t.ShardKey)
+	overrideParam(&opts.TOpts.RoutingKey, t.RoutingKey)
+	overrideParam(&opts.TOpts.RoutingDelegate, t.RoutingDelegate)
+	overrideParam(&opts.ROpts.RequestJSON, string(body))
+
+	if t.Timeout != 0 {
+		opts.ROpts.Timeout = timeMillisFlag(t.Timeout)
+	}
 	return nil
+}
+
+func overrideParam(s *string, newS string) {
+	if newS != "" {
+		*s = newS
+	}
 }
 
 func UnmarshalTemplate(bytes []byte) (*template, error) {

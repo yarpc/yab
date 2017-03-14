@@ -114,7 +114,9 @@ yab is a benchmarking tool for TChannel and HTTP applications. It's primarily in
 		return nil, fmt.Errorf("error reading defaults: %v", err)
 	}
 
-	overrideDefaults(opts, args)
+	if err := overrideDefaults(opts, args); err != nil {
+		return nil, err
+	}
 
 	setGroupDescs(parser, "request", "Request Options", toGroff(_reqOptsDesc))
 	setGroupDescs(parser, "transport", "Transport Options", toGroff(_transportOptsDesc))
@@ -193,9 +195,16 @@ func parseAndRun(out output) {
 // E.g., if the defaults has a peer list file, and the user has specifed
 // a peer through the command line, then the final options should only
 // contain the peer specified in the args.
-func overrideDefaults(defaults *Options, args []string) {
+func overrideDefaults(defaults *Options, args []string) error {
 	argsParser, argsOnly := newParser()
 	argsParser.ParseArgs(args)
+
+	// If there's a YAML request specified, read that now.
+	if argsOnly.ROpts.YamlTemplate != "" {
+		if err := readYAMLRequest(argsOnly.ROpts.YamlTemplate, defaults); err != nil {
+			return fmt.Errorf("failed to read yaml template: %v", err)
+		}
+	}
 
 	// Clear default peers if the user has specified peer options in args.
 	if len(argsOnly.TOpts.Peers) > 0 {
@@ -204,6 +213,8 @@ func overrideDefaults(defaults *Options, args []string) {
 	if len(argsOnly.TOpts.PeerList) > 0 {
 		defaults.TOpts.Peers = nil
 	}
+
+	return nil
 }
 
 // findBestConfigFile finds the best config file to use. An empty string will be
@@ -247,12 +258,6 @@ func runWithOptions(opts Options, out output) {
 			out.Printf("%s\n", scheme)
 		}
 		return
-	}
-
-	if opts.ROpts.YamlTemplate != "" {
-		if err := readYAMLRequest(&opts); err != nil {
-			out.Fatalf("Failed while reading yaml template: %v\n", err)
-		}
 	}
 
 	reqInput, err := getRequestInput(opts.ROpts.RequestJSON, opts.ROpts.RequestFile)
