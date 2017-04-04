@@ -18,10 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-// NOTE: This package is a copy of the interpolate package from YARPC:
-// https://github.com/yarpc/yarpc-go/pull/888
-// Once it has been moved out to a new uber-go repo, we can delete this package.
-
 package interpolate
 
 //go:generate ragel -Z -G2 -o parse.go parse.rl
