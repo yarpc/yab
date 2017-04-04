@@ -1,10 +1,7 @@
 package templateargs
 
 import (
-	"fmt"
-	"strings"
-
-	"github.com/yarpc/yab/templateargs/argparser"
+	"github.com/yarpc/yab/templateargs/interpolate"
 
 	"gopkg.in/yaml.v2"
 )
@@ -12,51 +9,34 @@ import (
 // ProcessMap takes a YAML request that may contain values like ${name:prashant}
 // and replaces any template arguments with those specified in args.
 func ProcessMap(req map[interface{}]interface{}, args map[string]string) (map[interface{}]interface{}, error) {
-	argsUnmarshalled := make(map[string]interface{}, len(args))
-
-	for k, v := range args {
-		var unmarshalled interface{}
-		if err := yaml.Unmarshal([]byte(v), &unmarshalled); err != nil {
-			return nil, fmt.Errorf("failed to process %q with value %q: %v", k, v, err)
-		}
-		argsUnmarshalled[k] = unmarshalled
-	}
-
-	return processMap(req, argsUnmarshalled)
+	return processMap(req, args)
 }
 
-func processString(v string, args map[string]interface{}) (interface{}, error) {
-	// If a string starts with \, avoid processing the value and strip the prefix.
-	if strings.HasPrefix(v, `\`) {
-		return v[1:], nil
-	}
-
-	// Anything that starts with "${ " should be processed as a template arg.
-	if !strings.HasPrefix(v, "${") {
-		return v, nil
-	}
-
-	parsed, err := argparser.Parse(v)
+func processString(v string, args map[string]string) (interface{}, error) {
+	parsed, err := interpolate.Parse(v)
 	if err != nil {
 		return nil, err
 	}
 
-	// See if we have an argument for the specified variable.
-	if replacement, ok := args[parsed.Name]; ok {
-		return replacement, nil
+	rendered, err := parsed.Render(func(name string) (value string, ok bool) {
+		v, ok := args[name]
+		return v, ok
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	if parsed.Value == "" {
+	if rendered == "" {
 		return "", nil
 	}
 
 	// Otherwise, unmarshal the value and return that.
 	var unmarshalled interface{}
-	err = yaml.Unmarshal([]byte(parsed.Value), &unmarshalled)
+	err = yaml.Unmarshal([]byte(rendered), &unmarshalled)
 	return unmarshalled, err
 }
 
-func processValue(v interface{}, args map[string]interface{}) (interface{}, error) {
+func processValue(v interface{}, args map[string]string) (interface{}, error) {
 	switch v := v.(type) {
 	case string:
 		return processString(v, args)
@@ -70,7 +50,7 @@ func processValue(v interface{}, args map[string]interface{}) (interface{}, erro
 
 }
 
-func processList(l []interface{}, args map[string]interface{}) ([]interface{}, error) {
+func processList(l []interface{}, args map[string]string) ([]interface{}, error) {
 	replacement := make([]interface{}, len(l))
 	for i, v := range l {
 		newV, err := processValue(v, args)
@@ -83,7 +63,7 @@ func processList(l []interface{}, args map[string]interface{}) ([]interface{}, e
 	return replacement, nil
 }
 
-func processMap(m map[interface{}]interface{}, args map[string]interface{}) (map[interface{}]interface{}, error) {
+func processMap(m map[interface{}]interface{}, args map[string]string) (map[interface{}]interface{}, error) {
 	replacement := make(map[interface{}]interface{}, len(m))
 	for k, v := range m {
 		newK, err := processValue(k, args)

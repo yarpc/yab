@@ -15,9 +15,9 @@ type (
 )
 
 func TestProcessString(t *testing.T) {
-	args := map[string]interface{}{
+	args := map[string]string{
 		"user":  "prashant",
-		"count": 10,
+		"count": "10",
 	}
 	tests := []struct {
 		v       string
@@ -29,26 +29,28 @@ func TestProcessString(t *testing.T) {
 			want: "s",
 		},
 		{
-			v:    "${unknown}",
-			want: "",
+			v:       "${unknown}",
+			wantErr: `unknown variable "unknown"`,
 		},
 		{
 			v:    "${name:John Smith}",
 			want: "John Smith",
 		},
 		{
+			v:    "User ${user} has ${count}",
+			want: "User prashant has 10",
+		},
+		{
 			v:    "${user:moe}",
 			want: "prashant",
 		},
 		{
-			// "\" acts like an escape character at the beginning of the string.
 			v:    `\${user}`,
 			want: "${user}",
 		},
 		{
-			// "\" acts like an escape character at the beginning of the string.
 			v:    `\\${user}`,
-			want: `\${user}`,
+			want: `\prashant`,
 		},
 		{
 			// the type of the default value and argument do not necessarily match.
@@ -57,11 +59,15 @@ func TestProcessString(t *testing.T) {
 		},
 		{
 			v:       "${invalid",
-			wantErr: "not in the form",
+			wantErr: "cannot parse string",
 		},
 		{
 			v:    "$notvar",
 			want: "$notvar",
+		},
+		{
+			v:    "${no-value:}",
+			want: "",
 		},
 	}
 
@@ -181,21 +187,16 @@ func TestProcessMapErrors(t *testing.T) {
 		wantErr string
 	}{
 		{
-			req:     Map{"user": "moe"},
-			args:    Args{"counts": "[1.2,3"},
-			wantErr: "failed to process",
-		},
-		{
 			req:     Map{"${invalidKey": "v"},
-			wantErr: "not in the form",
+			wantErr: `cannot parse string "${invalidKey"`,
 		},
 		{
 			req:     Map{"key": "${invalidValue"},
-			wantErr: "not in the form",
+			wantErr: `cannot parse string "${invalidValue"`,
 		},
 		{
 			req:     Map{"key": []interface{}{"${invalidValue"}},
-			wantErr: "not in the form",
+			wantErr: `cannot parse string "${invalidValue"`,
 		},
 	}
 
