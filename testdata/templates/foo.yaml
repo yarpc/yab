@@ -6,6 +6,7 @@ routingKey: rk
 routingDelegate: rd
 thrift: foo.thrift
 timeout: 4.5s
+disableThriftEnvelope: false
 headers:
     header1: from template
     header3: overridden by Headers

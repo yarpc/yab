@@ -31,16 +31,19 @@ import (
 )
 
 type template struct {
-	Peers        []string    `yaml:"peers"`
-	Peer         string      `yaml:"peer"`
-	PeerList     string      `yaml:"peerList"`
-	Peerlist     stringAlias `yaml:"peerlist"`
-	PeerDashList stringAlias `yaml:"peer-list"`
-	Caller       string      `yaml:"caller"`
-	Service      string      `yaml:"service"`
-	Thrift       string      `yaml:"thrift"`
-	Procedure    string      `yaml:"procedure"`
-	Method       stringAlias `yaml:"method"`
+	Peers                     []string    `yaml:"peers"`
+	Peer                      string      `yaml:"peer"`
+	PeerList                  string      `yaml:"peerList"`
+	Peerlist                  stringAlias `yaml:"peerlist"`
+	PeerDashList              stringAlias `yaml:"peer-list"`
+	Caller                    string      `yaml:"caller"`
+	Service                   string      `yaml:"service"`
+	Thrift                    string      `yaml:"thrift"`
+	Procedure                 string      `yaml:"procedure"`
+	Method                    stringAlias `yaml:"method"`
+	DisableThriftEnvelope     *bool       `yaml:"disableThriftEnvelope"`
+	DisableDashThriftEnvelope **bool      `yaml:"disable-thrift-envelope"`
+	Disablethriftenvelope     **bool      `yaml:"disablethriftenvelope"`
 
 	ShardKey        string `yaml:"shardKey"`
 	RoutingKey      string `yaml:"routingKey"`
@@ -65,8 +68,8 @@ type template struct {
 	Timeout time.Duration     `yaml:"timeout"`
 }
 
-func readYAMLRequest(yamlTemplate string, opts *Options) error {
-	bytes, err := ioutil.ReadFile(yamlTemplate)
+func readYAMLFile(yamlTemplate string, opts *Options) error {
+	contents, err := ioutil.ReadFile(yamlTemplate)
 	if err != nil {
 		return err
 	}
@@ -87,7 +90,11 @@ func readYAMLRequest(yamlTemplate string, opts *Options) error {
 		base += "/"
 	}
 
-	t, err := UnmarshalTemplate(bytes)
+	return readYAMLRequest(base, contents, opts)
+}
+
+func readYAMLRequest(base string, contents []byte, opts *Options) error {
+	t, err := UnmarshalTemplate(contents)
 	if err != nil {
 		return err
 	}
@@ -136,6 +143,10 @@ func readYAMLRequest(yamlTemplate string, opts *Options) error {
 	overrideParam(&opts.TOpts.RoutingDelegate, t.RoutingDelegate)
 	overrideParam(&opts.ROpts.RequestJSON, string(body))
 
+	if t.DisableThriftEnvelope != nil {
+		opts.ROpts.ThriftDisableEnvelopes = *t.DisableThriftEnvelope
+	}
+
 	if t.Timeout != 0 {
 		opts.ROpts.Timeout = timeMillisFlag(t.Timeout)
 	}
@@ -167,6 +178,9 @@ func UnmarshalTemplate(bytes []byte) (*template, error) {
 	t.SK.dest = &t.ShardKey
 	t.RK.dest = &t.RoutingKey
 	t.RD.dest = &t.RoutingDelegate
+
+	t.Disablethriftenvelope = &t.DisableThriftEnvelope
+	t.DisableDashThriftEnvelope = &t.DisableThriftEnvelope
 
 	err := yaml.Unmarshal(bytes, &t)
 	return t, err
