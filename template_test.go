@@ -57,7 +57,6 @@ func getWd(t *testing.T) string {
 
 func TestTemplate(t *testing.T) {
 	opts := newOptions()
-	opts.ROpts.ThriftDisableEnvelopes = true
 	mustReadYAMLFile(t, "testdata/templates/foo.yaml", opts)
 
 	assert.Equal(t, toAbsPath(t, "testdata/templates/foo.thrift"), opts.ROpts.ThriftFile)
@@ -72,7 +71,7 @@ func TestTemplate(t *testing.T) {
 	assert.Equal(t, true, opts.TOpts.Jaeger)
 	assert.Equal(t, "location:\n  cityId: 1\n  latitude: 37.7\n  longitude: -122.4\n  message: true\n", opts.ROpts.RequestJSON)
 	assert.Equal(t, timeMillisFlag(4500*time.Millisecond), opts.ROpts.Timeout)
-	assert.False(t, opts.ROpts.ThriftDisableEnvelopes)
+	assert.True(t, opts.ROpts.ThriftDisableEnvelopes)
 }
 
 func TestTemplateHeadersMerge(t *testing.T) {
