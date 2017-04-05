@@ -83,7 +83,7 @@ func TestTemplate(t *testing.T) {
 func TestTemplateArgs(t *testing.T) {
 	opts := newOptions()
 	args := map[string]string{"user": "bar", "uuids": "[1,2,3,4,5]"}
-	err := readYAMLRequest("testdata/templates/args.yaml", args, opts)
+	err := readYAMLFile("testdata/templates/args.yaml", args, opts)
 	require.NoError(t, err, "Failed to parse template")
 
 	assert.Equal(t, "foo", opts.TOpts.ServiceName)
