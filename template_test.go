@@ -82,17 +82,24 @@ func TestTemplate(t *testing.T) {
 
 func TestTemplateArgs(t *testing.T) {
 	opts := newOptions()
-	args := map[string]string{"user": "bar"}
+	args := map[string]string{"user": "bar", "uuids": "[1,2,3,4,5]"}
 	err := readYAMLRequest("testdata/templates/args.yaml", args, opts)
 	require.NoError(t, err, "Failed to parse template")
 
 	assert.Equal(t, "foo", opts.TOpts.ServiceName)
 	assert.Equal(t, "${user:foo}", opts.ROpts.Headers["header1"], "Templates are only used in the request body")
-	want := `fallback: fallback
+	want := `emptyfallback: ""
+fallback: fallback
 fallbacklist:
 - 1
 - 2
-nofallback: ""
+noReplace: ${user} \${
+replaceList:
+- 1
+- 2
+- 3
+- 4
+- 5
 replaced: bar
 `
 	assert.Equal(t, want, opts.ROpts.RequestJSON, "Unexpected request")
@@ -350,7 +357,7 @@ func TestReadYAMLRequestFails(t *testing.T) {
 		},
 		{
 			yamlTemplate: "testdata/templates/bad-arg.yaml",
-			wantErr:      "not in the form",
+			wantErr:      "cannot parse",
 		},
 	}
 

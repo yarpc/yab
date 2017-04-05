@@ -2,7 +2,9 @@ service: foo
 headers:
   header1: ${user:foo}
 request:
+  emptyfallback: ${unspecified:}
   fallback: ${unspecified:fallback}
   fallbacklist: ${unspecified:[1,2]}
-  nofallback: ${unspecified}
+  noReplace: \${user} \\\${
+  replaceList: ${uuids}
   replaced: ${user:u}
