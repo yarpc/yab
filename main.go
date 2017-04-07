@@ -201,7 +201,7 @@ func overrideDefaults(defaults *Options, args []string) error {
 
 	// If there's a YAML request specified, read that now.
 	if argsOnly.ROpts.YamlTemplate != "" {
-		if err := readYAMLFile(argsOnly.ROpts.YamlTemplate, defaults); err != nil {
+		if err := readYAMLFile(argsOnly.ROpts.YamlTemplate, argsOnly.ROpts.TemplateArgs, defaults); err != nil {
 			return fmt.Errorf("failed to read yaml template: %v", err)
 		}
 	}

@@ -1,0 +1,3 @@
+service: foo
+request:
+  name: ${user:foo
