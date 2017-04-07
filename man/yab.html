@@ -1,5 +1,5 @@
 <!-- Creator     : groff version 1.19.2 -->
-<!-- CreationDate: Fri Apr  7 14:07:23 2017 -->
+<!-- CreationDate: Fri Apr  7 14:23:24 2017 -->
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
 "http://www.w3.org/TR/html4/loose.dtd">
 <html>
@@ -137,7 +137,24 @@ req.yaml</p>
 <p style="margin-left:11%; margin-top: 1em">Request options
 can also be specified in a YAML file, e.g., get.yab:</p>
 
-<p style="margin-left:22%;">#!/usr/bin/env yab -y</p>
+<p style="margin-left:22%; margin-top: 1em">service: kv
+<br>
+peer: localhost:9787 <br>
+method: KeyValue::get <br>
+thrift: kv.thrift <br>
+request: <br>
+key: hello</p>
+
+<p style="margin-left:11%; margin-top: 1em">The above YAML
+file represents the same request as the command above, and
+can be run using yab -y get.yab.</p>
+
+<p style="margin-left:11%; margin-top: 1em">You can make
+the request by directly executing the file (./get.yab) if
+you add a shebang and mark the file as executable:</p>
+
+<p style="margin-left:22%; margin-top: 1em">#!/usr/bin/env
+yab -y</p>
 
 <p style="margin-left:22%; margin-top: 1em">service: kv
 <br>
@@ -145,21 +162,40 @@ peer: localhost:9787 <br>
 method: KeyValue::get <br>
 thrift: kv.thrift <br>
 request: <br>
-key: &quot;${key:hello}&quot;</p>
-
-<p style="margin-left:11%; margin-top: 1em">The above YAML
-file represents the same request as the command line, and
-can be run using yab -y get.yab. If the file is marked as
-executable, we can run it by simply executing the file,
-./get.yab.</p>
+key: hello</p>
 
 <p style="margin-left:11%; margin-top: 1em">YAML templates
 can use arguments using ${ARGNAME:default_value} in the
 body, which can be specified on the command line using -A.
 If an argument is not specified on the command line, then
-the default value is used. For example, we could pass in a
-custom key to be loaded by running ./get.yab -A
-key:world.</p>
+the default value is used. For example, we can update the
+YAML template to take an argument for the key:</p>
+
+<p style="margin-left:22%; margin-top: 1em">#!/usr/bin/env
+yab -y</p>
+
+<p style="margin-left:22%; margin-top: 1em">service: kv
+<br>
+peer: localhost:9787 <br>
+method: KeyValue::get <br>
+thrift: kv.thrift <br>
+request: <br>
+key: ${key:hello}</p>
+
+<p style="margin-left:11%; margin-top: 1em">If no key is
+specified on the command line, the default value of
+&quot;hello&quot; is used as the key. However we can specify
+the key on the command line:</p>
+
+<p style="margin-left:22%; margin-top: 1em">$ ./get.yab -A
+key:world</p>
+
+<p style="margin-left:11%; margin-top: 1em">A YAML template
+may have multiple keys and multiple keys can be specified on
+the command line:</p>
+
+<p style="margin-left:22%; margin-top: 1em">$ ./set.yab -A
+key:hello -A value:world</p>
 
 <p style="margin-left:11%; margin-top: 1em">Binary data can
 be specified in one of many ways:</p>
@@ -294,7 +330,7 @@ are assumed.</p>
 <b>&minus;&minus;yaml-template</b></p>
 
 <p style="margin-left:22%;">Send a tchannel request
-specified by a yaml template</p>
+specified by a YAML template</p>
 
 <p style="margin-left:11%;"><b>&minus;A</b>,
 <b>&minus;&minus;arg</b></p>

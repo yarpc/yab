@@ -55,7 +55,7 @@ Request Options:
       --timeout=                 The timeout for each request. E.g., 100ms,
                                  0.5s, 1s. If no unit is specified,
                                  milliseconds are assumed. (default: 1s)
-  -y, --yaml-template=           Send a tchannel request specified by a yaml
+  -y, --yaml-template=           Send a tchannel request specified by a YAML
                                  template
   -A, --arg=                     A list of key-value template arguments,
                                  specified as -A foo:bar -A user:me
