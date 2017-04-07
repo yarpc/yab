@@ -29,6 +29,9 @@ intended for Thrift applications but supports other encodings like JSON and
 binary (raw). It can be used in a curl-like fashion when benchmarking features
 are disabled.
 
+yab includes a full man page (man yab), which is also available online:
+http://yarpc.github.io/yab/man.html
+
 
 Application Options:
       --version                  Displays the application version
