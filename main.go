@@ -107,6 +107,8 @@ func getOptions(args []string, out output) (*Options, error) {
 	parser.ShortDescription = "yet another benchmarker"
 	parser.LongDescription = `
 yab is a benchmarking tool for TChannel and HTTP applications. It's primarily intended for Thrift applications but supports other encodings like JSON and binary (raw). It can be used in a curl-like fashion when benchmarking features are disabled.
+
+yab includes a full man page (man yab), which is also available online: http://yarpc.github.io/yab/man.html
 `
 
 	// Read defaults if they're available, before we change the group names.
@@ -114,7 +116,9 @@ yab is a benchmarking tool for TChannel and HTTP applications. It's primarily in
 		return nil, fmt.Errorf("error reading defaults: %v", err)
 	}
 
-	overrideDefaults(opts, args)
+	if err := overrideDefaults(opts, args); err != nil {
+		return nil, err
+	}
 
 	setGroupDescs(parser, "request", "Request Options", toGroff(_reqOptsDesc))
 	setGroupDescs(parser, "transport", "Transport Options", toGroff(_transportOptsDesc))
@@ -193,9 +197,16 @@ func parseAndRun(out output) {
 // E.g., if the defaults has a peer list file, and the user has specifed
 // a peer through the command line, then the final options should only
 // contain the peer specified in the args.
-func overrideDefaults(defaults *Options, args []string) {
+func overrideDefaults(defaults *Options, args []string) error {
 	argsParser, argsOnly := newParser()
 	argsParser.ParseArgs(args)
+
+	// If there's a YAML request specified, read that now.
+	if argsOnly.ROpts.YamlTemplate != "" {
+		if err := readYAMLFile(argsOnly.ROpts.YamlTemplate, argsOnly.ROpts.TemplateArgs, defaults); err != nil {
+			return fmt.Errorf("failed to read yaml template: %v", err)
+		}
+	}
 
 	// Clear default peers if the user has specified peer options in args.
 	if len(argsOnly.TOpts.Peers) > 0 {
@@ -204,6 +215,8 @@ func overrideDefaults(defaults *Options, args []string) {
 	if len(argsOnly.TOpts.PeerList) > 0 {
 		defaults.TOpts.Peers = nil
 	}
+
+	return nil
 }
 
 // findBestConfigFile finds the best config file to use. An empty string will be
@@ -247,12 +260,6 @@ func runWithOptions(opts Options, out output) {
 			out.Printf("%s\n", scheme)
 		}
 		return
-	}
-
-	if opts.ROpts.YamlTemplate != "" {
-		if err := readYAMLRequest(&opts); err != nil {
-			out.Fatalf("Failed while reading yaml template: %v\n", err)
-		}
 	}
 
 	reqInput, err := getRequestInput(opts.ROpts.RequestJSON, opts.ROpts.RequestFile)

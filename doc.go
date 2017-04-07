@@ -63,6 +63,54 @@ Or it can be loaded from a file using -f or --file:
 
 	$ yab -p localhost:9787 -t kv.thrift kv KeyValue::Get --file req.yaml
 
+Request options can also be specified in a YAML file, e.g., get.yab:
+
+	service: kv
+	peer: localhost:9787
+	method: KeyValue::get
+	thrift: kv.thrift
+	request:
+	  key: hello
+
+The above YAML file represents the same request as the command above, and can
+be run using yab -y get.yab.
+
+You can make the request by directly executing the file (./get.yab) if you
+add a shebang and mark the file as executable:
+
+	#!/usr/bin/env yab -y
+
+	service: kv
+	peer: localhost:9787
+	method: KeyValue::get
+	thrift: kv.thrift
+	request:
+	  key: hello
+
+YAML templates can use arguments using ${ARGNAME:default_value} in the body,
+which can be specified on the command line using -A. If an argument is not
+specified on the command line, then the default value is used. For example,
+we can update the YAML template to take an argument for the key:
+
+	#!/usr/bin/env yab -y
+
+	service: kv
+	peer: localhost:9787
+	method: KeyValue::get
+	thrift: kv.thrift
+	request:
+	  key: ${key:hello}
+
+If no key is specified on the command line, the default value of "hello" is
+used as the key. However we can specify the key on the command line:
+
+	$ ./get.yab -A key:world
+
+A YAML template may have multiple keys and multiple keys can be specified on
+the command line:
+
+	$ ./set.yab -A key:hello -A value:world
+
 Binary data can be specified in one of many ways:
 	* As a string or an array of bytes: "data" or [100, 97, 116, 97]
 	* As base64: {"base64": "ZGF0YQ=="}

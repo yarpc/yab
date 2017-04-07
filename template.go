@@ -27,20 +27,25 @@ import (
 	"strings"
 	"time"
 
+	"github.com/yarpc/yab/templateargs"
+
 	"gopkg.in/yaml.v2"
 )
 
 type template struct {
-	Peers        []string    `yaml:"peers"`
-	Peer         string      `yaml:"peer"`
-	PeerList     string      `yaml:"peerList"`
-	Peerlist     stringAlias `yaml:"peerlist"`
-	PeerDashList stringAlias `yaml:"peer-list"`
-	Caller       string      `yaml:"caller"`
-	Service      string      `yaml:"service"`
-	Thrift       string      `yaml:"thrift"`
-	Procedure    string      `yaml:"procedure"`
-	Method       stringAlias `yaml:"method"`
+	Peers                     []string    `yaml:"peers"`
+	Peer                      string      `yaml:"peer"`
+	PeerList                  string      `yaml:"peerList"`
+	Peerlist                  stringAlias `yaml:"peerlist"`
+	PeerDashList              stringAlias `yaml:"peer-list"`
+	Caller                    string      `yaml:"caller"`
+	Service                   string      `yaml:"service"`
+	Thrift                    string      `yaml:"thrift"`
+	Procedure                 string      `yaml:"procedure"`
+	Method                    stringAlias `yaml:"method"`
+	DisableThriftEnvelope     *bool       `yaml:"disableThriftEnvelope"`
+	DisableDashThriftEnvelope **bool      `yaml:"disable-thrift-envelope"`
+	Disablethriftenvelope     **bool      `yaml:"disablethriftenvelope"`
 
 	ShardKey        string `yaml:"shardKey"`
 	RoutingKey      string `yaml:"routingKey"`
@@ -58,20 +63,20 @@ type template struct {
 	RK stringAlias `yaml:"rk"`
 	RD stringAlias `yaml:"rd"`
 
-	Headers map[string]string `yaml:"headers"`
-	Baggage map[string]string `yaml:"baggage"`
-	Jaeger  bool              `yaml:"jaeger"`
-	Request interface{}       `yaml:"request"`
-	Timeout time.Duration     `yaml:"timeout"`
+	Headers map[string]string           `yaml:"headers"`
+	Baggage map[string]string           `yaml:"baggage"`
+	Jaeger  bool                        `yaml:"jaeger"`
+	Request map[interface{}]interface{} `yaml:"request"`
+	Timeout time.Duration               `yaml:"timeout"`
 }
 
-func readYAMLRequest(opts *Options) error {
-	bytes, err := ioutil.ReadFile(opts.ROpts.YamlTemplate)
+func readYAMLFile(yamlTemplate string, templateArgs map[string]string, opts *Options) error {
+	contents, err := ioutil.ReadFile(yamlTemplate)
 	if err != nil {
 		return err
 	}
 
-	base := filepath.Dir(opts.ROpts.YamlTemplate)
+	base := filepath.Dir(yamlTemplate)
 
 	// Ensuring that the base directory is fully qualified. Otherwise, whether it
 	// is fully qualified depends on argv[0].
@@ -87,7 +92,16 @@ func readYAMLRequest(opts *Options) error {
 		base += "/"
 	}
 
-	t, err := UnmarshalTemplate(bytes)
+	return readYAMLRequest(base, contents, templateArgs, opts)
+}
+
+func readYAMLRequest(base string, contents []byte, templateArgs map[string]string, opts *Options) error {
+	t, err := UnmarshalTemplate(contents)
+	if err != nil {
+		return err
+	}
+
+	t.Request, err = templateargs.ProcessMap(t.Request, templateArgs)
 	if err != nil {
 		return err
 	}
@@ -99,15 +113,17 @@ func readYAMLRequest(opts *Options) error {
 
 	if t.Peer != "" {
 		opts.TOpts.Peers = []string{t.Peer}
+		opts.TOpts.PeerList = ""
 	} else if len(t.Peers) > 0 {
 		opts.TOpts.Peers = t.Peers
-	}
-	if t.PeerList != "" {
+		opts.TOpts.PeerList = ""
+	} else if t.PeerList != "" {
 		peerListURL, err := resolve(base, t.PeerList)
 		if err != nil {
 			return err
 		}
 		opts.TOpts.PeerList = peerListURL.String()
+		opts.TOpts.Peers = nil
 	}
 
 	// Baggage and headers specified with command line flags override those
@@ -126,15 +142,28 @@ func readYAMLRequest(opts *Options) error {
 		opts.ROpts.ThriftFile = thriftFileURL.Path
 	}
 
-	opts.TOpts.CallerName = t.Caller
-	opts.TOpts.ServiceName = t.Service
-	opts.ROpts.Procedure = t.Procedure
-	opts.TOpts.ShardKey = t.ShardKey
-	opts.TOpts.RoutingKey = t.RoutingKey
-	opts.TOpts.RoutingDelegate = t.RoutingDelegate
-	opts.ROpts.RequestJSON = string(body)
-	opts.ROpts.Timeout = timeMillisFlag(t.Timeout)
+	overrideParam(&opts.TOpts.CallerName, t.Caller)
+	overrideParam(&opts.TOpts.ServiceName, t.Service)
+	overrideParam(&opts.ROpts.Procedure, t.Procedure)
+	overrideParam(&opts.TOpts.ShardKey, t.ShardKey)
+	overrideParam(&opts.TOpts.RoutingKey, t.RoutingKey)
+	overrideParam(&opts.TOpts.RoutingDelegate, t.RoutingDelegate)
+	overrideParam(&opts.ROpts.RequestJSON, string(body))
+
+	if t.DisableThriftEnvelope != nil {
+		opts.ROpts.ThriftDisableEnvelopes = *t.DisableThriftEnvelope
+	}
+
+	if t.Timeout != 0 {
+		opts.ROpts.Timeout = timeMillisFlag(t.Timeout)
+	}
 	return nil
+}
+
+func overrideParam(s *string, newS string) {
+	if newS != "" {
+		*s = newS
+	}
 }
 
 func UnmarshalTemplate(bytes []byte) (*template, error) {
@@ -156,6 +185,9 @@ func UnmarshalTemplate(bytes []byte) (*template, error) {
 	t.SK.dest = &t.ShardKey
 	t.RK.dest = &t.RoutingKey
 	t.RD.dest = &t.RoutingDelegate
+
+	t.Disablethriftenvelope = &t.DisableThriftEnvelope
+	t.DisableDashThriftEnvelope = &t.DisableThriftEnvelope
 
 	err := yaml.Unmarshal(bytes, &t)
 	return t, err

@@ -51,7 +51,8 @@ type RequestOptions struct {
 	Baggage      map[string]string `short:"B" long:"baggage" description:"Individual context baggage header as a key:value pair per flag"`
 	Health       bool              `long:"health" description:"Hit the health endpoint, Meta::health"`
 	Timeout      timeMillisFlag    `long:"timeout" default:"1s" description:"The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds are assumed."`
-	YamlTemplate string            `short:"y" long:"yaml-template" description:"Send a tchannel request specified by a yaml template"`
+	YamlTemplate string            `short:"y" long:"yaml-template" description:"Send a tchannel request specified by a YAML template"`
+	TemplateArgs map[string]string `short:"A" long:"arg" description:"A list of key-value template arguments, specified as -A foo:bar -A user:me"`
 
 	// Thrift options
 	ThriftDisableEnvelopes bool `long:"disable-thrift-envelope" description:"Disables Thrift envelopes (disabled by default for TChannel)"`
@@ -73,7 +74,7 @@ type RequestOptions struct {
 type TransportOptions struct {
 	ServiceName      string            `short:"s" long:"service" description:"The TChannel/Hyperbahn service name"`
 	Peers            []string          `short:"p" long:"peer" description:"The host:port of the service to call"`
-	PeerList        string            `short:"P" long:"peer-list" description:"Path or URL of a JSON, YAML, or flat file containing a list of host:ports. -P? for supported protocols."`
+	PeerList         string            `short:"P" long:"peer-list" description:"Path or URL of a JSON, YAML, or flat file containing a list of host:ports. -P? for supported protocols."`
 	CallerName       string            `long:"caller" description:"Caller will override the default caller name (which is yab-$USER)."`
 	RoutingKey       string            `long:"rk" description:"The routing key overrides the service name traffic group for proxies."`
 	RoutingDelegate  string            `long:"rd" description:"The routing delegate overrides the routing key traffic group for proxies."`

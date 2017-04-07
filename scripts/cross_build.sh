@@ -1,13 +1,19 @@
-#!/bin/bash
+#!/bin/bash -e
 
-mkdir -p build
-for GOOS in linux darwin
-do
-  for GOARCH in amd64
-    do
-    echo Building $GOOS/$GOARCH
-    GOOS=$GOOS GOARCH=$GOARCH go build -o build/yab-$GOOS-$GOARCH .
-    zip build/yab-$GOOS-$GOARCH.zip build/yab-$GOOS-$GOARCH
+VERSION="$1"
+if [ -z "$VERSION" ]; then
+  echo "USAGE: $0 VERSION"
+  exit 1
+fi
+
+OSs=(linux darwin)
+ARCHs=(amd64)
+
+for OS in "${OSs[@]}"; do
+  for ARCH in "${ARCHs[@]}"; do
+    echo Building "$OS/$ARCH"
+    mkdir -p "build/$OS-$ARCH" .
+    GOOS=$OS GOARCH=$ARCH go build -o "build/$OS-$ARCH/yab" .
+    (cd "build/$OS-$ARCH" && zip "../yab-$VERSION-$OS-$ARCH.zip" yab)
   done
 done
-

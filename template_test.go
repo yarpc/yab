@@ -21,7 +21,6 @@
 package main
 
 import (
-	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -32,8 +31,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func mustReadYAMLRequest(t *testing.T, opts *Options) {
-	assert.NoError(t, readYAMLRequest(opts), "read request error")
+func mustReadYAMLFile(t *testing.T, yamlTemplate string, opts *Options) {
+	args := map[string]string{
+		"user": "foo",
+	}
+	assert.NoError(t, readYAMLFile(yamlTemplate, args, opts), "read request error")
+}
+
+func mustReadYAMLRequest(t *testing.T, contents string, opts *Options) {
+	args := map[string]string{
+		"user": "foo",
+	}
+	assert.NoError(t, readYAMLRequest("/base", []byte(contents), args, opts), "read request error")
 }
 
 func toAbsPath(t *testing.T, s string) string {
@@ -54,9 +63,7 @@ func getWd(t *testing.T) string {
 
 func TestTemplate(t *testing.T) {
 	opts := newOptions()
-	opts.ROpts.YamlTemplate = "testdata/templates/foo.yaml"
-
-	mustReadYAMLRequest(t, opts)
+	mustReadYAMLFile(t, "testdata/templates/foo.yaml", opts)
 
 	assert.Equal(t, toAbsPath(t, "testdata/templates/foo.thrift"), opts.ROpts.ThriftFile)
 	assert.Equal(t, "Simple::foo", opts.ROpts.Procedure)
@@ -68,14 +75,38 @@ func TestTemplate(t *testing.T) {
 	assert.Equal(t, "rd", opts.TOpts.RoutingDelegate)
 	assert.Equal(t, map[string]string{"baggage1": "value1", "baggage2": "value2"}, opts.ROpts.Baggage)
 	assert.Equal(t, true, opts.TOpts.Jaeger)
-	assert.Equal(t, "location:\n  cityId: 1\n  latitude: 37.7\n  longitude: -122.4\n", opts.ROpts.RequestJSON)
+	assert.Equal(t, "location:\n  cityId: 1\n  latitude: 37.7\n  longitude: -122.4\n  message: true\n", opts.ROpts.RequestJSON)
 	assert.Equal(t, timeMillisFlag(4500*time.Millisecond), opts.ROpts.Timeout)
+	assert.True(t, opts.ROpts.ThriftDisableEnvelopes)
+}
+
+func TestTemplateArgs(t *testing.T) {
+	opts := newOptions()
+	args := map[string]string{"user": "bar", "uuids": "[1,2,3,4,5]"}
+	err := readYAMLFile("testdata/templates/args.yaml", args, opts)
+	require.NoError(t, err, "Failed to parse template")
+
+	assert.Equal(t, "foo", opts.TOpts.ServiceName)
+	assert.Equal(t, "${user:foo}", opts.ROpts.Headers["header1"], "Templates are only used in the request body")
+	want := `emptyfallback: ""
+fallback: fallback
+fallbacklist:
+- 1
+- 2
+noReplace: ${user} \${
+replaceList:
+- 1
+- 2
+- 3
+- 4
+- 5
+replaced: bar
+`
+	assert.Equal(t, want, opts.ROpts.RequestJSON, "Unexpected request")
 }
 
 func TestTemplateHeadersMerge(t *testing.T) {
 	opts := newOptions()
-	opts.ROpts.YamlTemplate = "testdata/templates/foo.yaml"
-
 	opts.ROpts.HeadersJSON = `{
 		"header2": "overridden",
 	}`
@@ -84,7 +115,7 @@ func TestTemplateHeadersMerge(t *testing.T) {
 		"header3": "from Headers",
 	}
 
-	mustReadYAMLRequest(t, opts)
+	mustReadYAMLFile(t, "testdata/templates/foo.yaml", opts)
 
 	headers, err := getHeaders(opts.ROpts.HeadersJSON, opts.ROpts.HeadersFile, opts.ROpts.Headers)
 	assert.NoError(t, err, "failed to merge headers")
@@ -95,39 +126,32 @@ func TestTemplateHeadersMerge(t *testing.T) {
 // This test verifies that the string alias for method to procedure follows
 func TestMethodTemplate(t *testing.T) {
 	opts := newOptions()
-	opts.ROpts.YamlTemplate = "testdata/templates/foo-method.yaml"
-
-	mustReadYAMLRequest(t, opts)
+	mustReadYAMLFile(t, "testdata/templates/foo-method.yaml", opts)
 
 	assert.Equal(t, "Simple::foo", opts.ROpts.Procedure)
 }
 
 func TestPeerTemplate(t *testing.T) {
 	opts := newOptions()
-	opts.ROpts.YamlTemplate = "testdata/templates/peer.yaml"
-	mustReadYAMLRequest(t, opts)
+	mustReadYAMLFile(t, "testdata/templates/peer.yaml", opts)
 	assert.Equal(t, []string{"127.0.0.1:8080"}, opts.TOpts.Peers)
 }
 
 func TestPeersTemplate(t *testing.T) {
 	opts := newOptions()
-	opts.ROpts.YamlTemplate = "testdata/templates/peers.yaml"
-	mustReadYAMLRequest(t, opts)
+	mustReadYAMLFile(t, "testdata/templates/peers.yaml", opts)
 	assert.Equal(t, []string{"127.0.0.1:8080", "127.0.0.1:8081"}, opts.TOpts.Peers)
 }
 
 func TestPeerListTemplate(t *testing.T) {
 	opts := newOptions()
-	opts.ROpts.YamlTemplate = "testdata/templates/peerlist.yaml"
-	mustReadYAMLRequest(t, opts)
-	fmt.Println("peer list", opts.TOpts.PeerList)
+	mustReadYAMLFile(t, "testdata/templates/peerlist.yaml", opts)
 	assert.Equal(t, toAbsURL(t, "testdata/templates/peers.json"), opts.TOpts.PeerList)
 }
 
 func TestAbsPeerListTemplate(t *testing.T) {
 	opts := newOptions()
-	opts.ROpts.YamlTemplate = "testdata/templates/abspeerlist.yaml"
-	mustReadYAMLRequest(t, opts)
+	mustReadYAMLFile(t, "testdata/templates/abspeerlist.yaml", opts)
 	assert.Equal(t, "file:///peers.json", opts.TOpts.PeerList)
 }
 
@@ -224,10 +248,11 @@ func TestResolve(t *testing.T) {
 
 func TestTemplateAlias(t *testing.T) {
 	tests := []struct {
-		templates           []string
-		wantShardKey        string
-		wantRoutingKey      string
-		wantRoutingDelegate string
+		templates                 []string
+		wantShardKey              string
+		wantRoutingKey            string
+		wantRoutingDelegate       string
+		wantDisableThriftEnvelope *bool
 	}{
 		{
 			templates: []string{
@@ -256,18 +281,92 @@ func TestTemplateAlias(t *testing.T) {
 			},
 			wantRoutingDelegate: "routingdelegate",
 		},
+		{
+			templates: []string{
+				`disableThriftEnvelope: false`,
+				`disablethriftenvelope: false`,
+				`disable-thrift-envelope: false`,
+			},
+			wantDisableThriftEnvelope: new(bool),
+		},
 	}
 
 	for _, tt := range tests {
 		for _, template := range tt.templates {
-			fmt.Println("hoo", template)
 			t.Run(template, func(t *testing.T) {
 				templ, err := UnmarshalTemplate([]byte(template))
 				require.NoError(t, err)
 				assert.Equal(t, tt.wantShardKey, templ.ShardKey, "shard key aliases expanded")
 				assert.Equal(t, tt.wantRoutingKey, templ.RoutingKey, "routing key aliases expanded")
 				assert.Equal(t, tt.wantRoutingDelegate, templ.RoutingDelegate, "routing delegate aliases expanded")
+				assert.Equal(t, tt.wantDisableThriftEnvelope, templ.DisableThriftEnvelope, "disable thrift envelope aliases expanded")
 			})
 		}
+	}
+}
+
+func TestDisableThriftEnvelopeOverride(t *testing.T) {
+	tests := []struct {
+		initial                   bool
+		yaml                      string
+		wantDisableThriftEnvelope bool
+	}{
+		{
+			initial: false,
+			yaml:    "method: foo",
+			wantDisableThriftEnvelope: false,
+		},
+		{
+			initial: true,
+			yaml:    "method: foo",
+			wantDisableThriftEnvelope: true,
+		},
+		{
+			initial: false,
+			yaml:    "disable-thrift-envelope: true",
+			wantDisableThriftEnvelope: true,
+		},
+		{
+			initial: true,
+			yaml:    "disable-thrift-envelope: true",
+			wantDisableThriftEnvelope: true,
+		},
+	}
+
+	for _, tt := range tests {
+		opts := newOptions()
+		opts.ROpts.ThriftDisableEnvelopes = tt.initial
+		mustReadYAMLRequest(t, tt.yaml, opts)
+		assert.Equal(t, tt.wantDisableThriftEnvelope, opts.ROpts.ThriftDisableEnvelopes,
+			"initial %v yaml: %v", tt.initial, tt.yaml)
+	}
+}
+
+func TestReadYAMLRequestFails(t *testing.T) {
+	tests := []struct {
+		yamlTemplate string
+		wantErr      string
+	}{
+		{
+			yamlTemplate: "testdata/not-found.yaml",
+			wantErr:      "no such file",
+		},
+		{
+			yamlTemplate: "testdata/templates/invalid.yaml",
+			wantErr:      "yaml:",
+		},
+		{
+			yamlTemplate: "testdata/templates/bad-arg.yaml",
+			wantErr:      "cannot parse",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.yamlTemplate, func(t *testing.T) {
+			opts := newOptions()
+			err := readYAMLFile(tt.yamlTemplate, nil, opts)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantErr)
+		})
 	}
 }

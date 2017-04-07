@@ -317,15 +317,19 @@ func TestParseBinary(t *testing.T) {
 			errMsg: "no such file or directory",
 		},
 		{
-			value:  3.14159,
-			errMsg: "cannot parse binary/string",
+			value: 3.14159,
+			want:  []byte("3.14159"),
 		},
 		{
-			value:  true,
-			errMsg: "cannot parse binary/string",
+			value: true,
+			want:  []byte("true"),
 		},
 		{
-			value:  1,
+			value: 1,
+			want:  []byte("1"),
+		},
+		{
+			value:  []bool{true},
 			errMsg: "cannot parse binary/string",
 		},
 		{
