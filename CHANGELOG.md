@@ -1,6 +1,12 @@
 Changelog
 =========
 
+# 0.9.1
+
+* Support disabling Thrift envelopes from YAML templates.
+* Add template argument support, which allows passing parameters
+  to YAML templates.
+
 # 0.9.0
 
 * Support for custom peer providers to provide a list of peers such as
