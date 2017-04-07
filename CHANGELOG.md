@@ -1,7 +1,7 @@
 Changelog
 =========
 
-# 0.9.1
+# 0.10.0
 
 * Support disabling Thrift envelopes from YAML templates.
 * Add template argument support, which allows passing parameters
