@@ -28,7 +28,7 @@ mkdir -p "$RELEASEDIR"
 mv build/yab-"$VERSION"-*.zip "$RELEASEDIR"
 
 ghr \
-  -username "$GITHUB_USER" \
+  -owner yarpc \
   -token "$GITHUB_TOKEN" \
   -body "$CHANGELOG" \
   "$VERSION" "$RELEASEDIR"
