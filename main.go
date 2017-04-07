@@ -107,6 +107,8 @@ func getOptions(args []string, out output) (*Options, error) {
 	parser.ShortDescription = "yet another benchmarker"
 	parser.LongDescription = `
 yab is a benchmarking tool for TChannel and HTTP applications. It's primarily intended for Thrift applications but supports other encodings like JSON and binary (raw). It can be used in a curl-like fashion when benchmarking features are disabled.
+
+yab includes a full man page (man yab), which is also available online: http://yarpc.github.io/yab/man.html
 `
 
 	// Read defaults if they're available, before we change the group names.
