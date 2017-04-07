@@ -1,4 +1,4 @@
-.TH yab 1 "28 February 2017"
+.TH yab 1 "7 April 2017"
 .SH NAME
 yab \- yet another benchmarker
 .SH SYNOPSIS
@@ -115,6 +115,53 @@ $ yab -p localhost:9787 -t kv.thrift kv KeyValue::Get --file req.yaml
 .RE
 .fi
 .PP
+Request options can also be specified in a YAML file, e.g., get.yab:
+.nf
+.RS
+#!/usr/bin/env yab -y
+.RE
+.fi
+.PP
+.nf
+.RS
+service: kv
+.RE
+.fi
+.nf
+.RS
+peer: localhost:9787
+.RE
+.fi
+.nf
+.RS
+method: KeyValue::get
+.RE
+.fi
+.nf
+.RS
+thrift: kv.thrift
+.RE
+.fi
+.nf
+.RS
+request:
+.RE
+.fi
+.nf
+.RS
+  key: "${key:hello}"
+.RE
+.fi
+.PP
+The above YAML file represents the same request as the command line, and can
+be run using yab -y get.yab. If the file is marked as executable, we can
+run it by simply executing the file, ./get.yab.
+.PP
+YAML templates can use arguments using ${ARGNAME:default_value} in the body,
+which can be specified on the command line using -A. If an argument is not
+specified on the command line, then the default value is used. For example, we
+could pass in a custom key to be loaded by running ./get.yab -A key:world.
+.PP
 Binary data can be specified in one of many ways:
 .IP \\[bu]
 As a string or an array of bytes: "data" or [100, 97, 116, 97]
@@ -186,6 +233,9 @@ The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, mi
 .TP
 \fB\fB\-y\fR, \fB\-\-yaml-template\fR\fP
 Send a tchannel request specified by a yaml template
+.TP
+\fB\fB\-A\fR, \fB\-\-arg\fR\fP
+A list of key-value template arguments, specified as -A foo:bar -A user:me
 .TP
 \fB\fB\-\-disable-thrift-envelope\fR\fP
 Disables Thrift envelopes (disabled by default for TChannel)

@@ -38,8 +38,9 @@ Request Options:
                                  JSON, raw. Defaults to Thrift if the method
                                  contains '::' or a Thrift file is specified
   -t, --thrift=                  Path of the .thrift file
-  -m, --method=                  The full Thrift method name (Svc::Method) to
+      --procedure=               The full Thrift method name (Svc::Method) to
                                  invoke
+  -m, --method=                  Alias for procedure
   -r, --request=                 The request body, in JSON or YAML format
   -f, --file=                    Path of a file containing the request body in
                                  JSON or YAML
@@ -54,6 +55,10 @@ Request Options:
       --timeout=                 The timeout for each request. E.g., 100ms,
                                  0.5s, 1s. If no unit is specified,
                                  milliseconds are assumed. (default: 1s)
+  -y, --yaml-template=           Send a tchannel request specified by a yaml
+                                 template
+  -A, --arg=                     A list of key-value template arguments,
+                                 specified as -A foo:bar -A user:me
       --disable-thrift-envelope  Disables Thrift envelopes (disabled by default
                                  for TChannel)
       --multiplexed-thrift       Enables the Thrift TMultiplexedProtocol used
@@ -63,8 +68,9 @@ Request Options:
 Transport Options:
   -s, --service=                 The TChannel/Hyperbahn service name
   -p, --peer=                    The host:port of the service to call
-  -P, --peer-list=               Path of a JSON or YAML file containing a list
-                                 of host:ports
+  -P, --peer-list=               Path or URL of a JSON, YAML, or flat file
+                                 containing a list of host:ports. -P? for
+                                 supported protocols.
       --caller=                  Caller will override the default caller name
                                  (which is yab-$USER).
       --rk=                      The routing key overrides the service name
