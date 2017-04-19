@@ -28,6 +28,9 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+
 	"github.com/yarpc/yab/limiter"
 	"github.com/yarpc/yab/statsd"
 	"github.com/yarpc/yab/transport"
@@ -37,6 +40,17 @@ var (
 	errNegativeDuration = errors.New("duration cannot be negative")
 	errNegativeMaxReqs  = errors.New("max requests cannot be negative")
 )
+
+// MarshalLogObject defines how to log the BenchMarking options with zap
+func (o BenchmarkOptions) MarshalLogObject(om zapcore.ObjectEncoder) error {
+	om.AddDuration("max_duration", o.MaxDuration)
+	om.AddInt("concurrency", o.Concurrency)
+	om.AddInt("max_requests", o.MaxRequests)
+	om.AddInt("connections", o.Connections)
+	om.AddInt("cpus", o.NumCPUs)
+	om.AddInt("rps", o.RPS)
+	return nil
+}
 
 // setGoMaxProcs sets runtime.GOMAXPROCS if the option is set
 // and returns the number of GOMAXPROCS configured.
@@ -75,11 +89,12 @@ func (o BenchmarkOptions) enabled() bool {
 	return o.MaxDuration != 0 || o.MaxRequests != 0
 }
 
-func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run *limiter.Run) {
+func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run *limiter.Run, logger *zap.Logger) {
 	for cur := run; cur.More(); {
 		latency, err := m.call(t)
 		if err != nil {
 			s.recordError(err)
+			logger.Info("error occured", zap.Error(err))
 			continue
 		}
 
@@ -87,7 +102,7 @@ func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run 
 	}
 }
 
-func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
+func runBenchmark(out output, logger *zap.Logger, allOpts Options, m benchmarkMethod) {
 	opts := allOpts.BOpts
 
 	if err := opts.validate(); err != nil {
@@ -116,11 +131,17 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 	out.Printf("  Max RPS:         %v\n", opts.RPS)
 
 	// Warm up number of connections.
+	logger.Debug("warmup connections", zap.Int("num_conns", numConns))
 	connections, err := m.WarmTransports(numConns, allOpts.TOpts, opts.WarmupRequests)
 	if err != nil {
 		out.Fatalf("Failed to warmup connections for benchmark: %v", err)
 	}
 
+	logger.Debug("setup statsd client",
+		zap.String("hostPort", opts.StatsdHostPort),
+		zap.String("service_name", allOpts.TOpts.ServiceName),
+		zap.String("procedure", allOpts.ROpts.Procedure),
+	)
 	statter, err := statsd.NewClient(opts.StatsdHostPort, allOpts.TOpts.ServiceName, allOpts.ROpts.Procedure)
 	if err != nil {
 		out.Fatalf("Failed to create statsd client for benchmark: %v", err)
@@ -135,6 +156,7 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 	run := limiter.New(opts.MaxRequests, opts.RPS, opts.MaxDuration)
 	stopOnInterrupt(out, run)
 
+	logger.Info("starting benchmark", zap.Object("options", opts))
 	start := time.Now()
 	for i, c := range connections {
 		for j := 0; j < opts.Concurrency; j++ {
@@ -143,7 +165,7 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 			wg.Add(1)
 			go func(c transport.Transport) {
 				defer wg.Done()
-				runWorker(c, m, state, run)
+				runWorker(c, m, state, run, logger)
 			}(c)
 		}
 	}
@@ -154,6 +176,7 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 	wg.Wait()
 	total := time.Since(start)
 
+	logger.Info("ended benchmark", zap.Duration("total_time", total), zap.Time("start_time", start))
 	// Merge all the states into 0
 	overall := states[0]
 	for _, s := range states[1:] {

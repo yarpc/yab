@@ -274,6 +274,7 @@ func runTestWithOpts(opts Options) (string, string) {
 			errBuf.WriteString(fmt.Sprintf(format, args...))
 		},
 	}
+	logger := getTestLogger()
 
 	runDone := make(chan struct{})
 
@@ -281,7 +282,7 @@ func runTestWithOpts(opts Options) (string, string) {
 	// will kill the running goroutine.
 	go func() {
 		defer close(runDone)
-		runWithOptions(opts, out)
+		runWithOptions(opts, out, logger)
 	}()
 	<-runDone
 

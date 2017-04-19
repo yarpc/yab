@@ -26,6 +26,8 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap/zapcore"
+
 	"github.com/yarpc/yab/transport"
 
 	"github.com/stretchr/testify/assert"
@@ -69,6 +71,7 @@ func TestBenchmark(t *testing.T) {
 		requests.Inc()
 		return false
 	}))
+	logger := getTestLogger()
 
 	m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
 
@@ -77,7 +80,7 @@ func TestBenchmark(t *testing.T) {
 
 		start := time.Now()
 		buf, out := getOutput(t)
-		runBenchmark(out, Options{
+		runBenchmark(out, logger, Options{
 			BOpts: BenchmarkOptions{
 				MaxRequests: tt.n,
 				MaxDuration: tt.d,
@@ -135,6 +138,7 @@ func TestRunBenchmarkErrors(t *testing.T) {
 		}
 		m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
 		opts := Options{BOpts: tt.opts}
+		logger := getTestLogger()
 
 		var wg sync.WaitGroup
 		wg.Add(1)
@@ -142,10 +146,72 @@ func TestRunBenchmarkErrors(t *testing.T) {
 		// need to run the benchmark in a separate goroutine.
 		go func() {
 			defer wg.Done()
-			runBenchmark(out, opts, m)
+			runBenchmark(out, logger, opts, m)
 		}()
 
 		wg.Wait()
 		assert.Contains(t, fatalMessage, tt.wantErr, "Missing error for %+v", tt.opts)
+	}
+}
+
+func TestBenchmarkOptionsMarshalLog(t *testing.T) {
+	mem := zapcore.NewMapObjectEncoder()
+	tests := []struct {
+		want map[string]interface{}
+		opts BenchmarkOptions
+	}{
+		{
+			want: map[string]interface{}{
+				"max_duration": 10 * time.Second,
+				"max_requests": 100,
+				"concurrency":  2,
+				"connections":  50,
+				"rps":          150,
+				"cpus":         0,
+			},
+			opts: BenchmarkOptions{
+				MaxRequests: 100,
+				MaxDuration: 10 * time.Second,
+				RPS:         150,
+				Connections: 50,
+				Concurrency: 2,
+			},
+		},
+		{
+			want: map[string]interface{}{
+				"max_duration": 12 * time.Second,
+				"max_requests": 101,
+				"concurrency":  4,
+				"connections":  0,
+				"rps":          180,
+				"cpus":         5,
+			},
+			opts: BenchmarkOptions{
+				MaxRequests: 101,
+				MaxDuration: 12 * time.Second,
+				RPS:         180,
+				Concurrency: 4,
+				NumCPUs:     5,
+			},
+		},
+		{
+			want: map[string]interface{}{
+				"max_duration": 0 * time.Second,
+				"max_requests": 0,
+				"concurrency":  0,
+				"connections":  0,
+				"rps":          0,
+				"cpus":         0,
+			},
+			opts: BenchmarkOptions{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("BenchmarkOptions %v", tt.opts), func(t *testing.T) {
+			err := tt.opts.MarshalLogObject(mem)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, mem.Fields)
+		})
 	}
 }

@@ -155,6 +155,7 @@ func TestRunWithOptions(t *testing.T) {
 			errBuf.WriteString(fmt.Sprintf(format, args...))
 		},
 	}
+	logger := getTestLogger()
 
 	for _, tt := range tests {
 		errBuf.Reset()
@@ -165,7 +166,7 @@ func TestRunWithOptions(t *testing.T) {
 		// new goroutine and testoutput.Fatalf will only exit the goroutine.
 		go func() {
 			defer close(runComplete)
-			runWithOptions(tt.opts, out)
+			runWithOptions(tt.opts, out, logger)
 		}()
 
 		<-runComplete
@@ -829,6 +830,7 @@ func TestNoWarmupBenchmark(t *testing.T) {
 	transportOpts := s.transportOpts()
 	transportOpts.CallerName = ""
 	buf, out := getOutput(t)
+	logger := getTestLogger()
 	runWithOptions(Options{
 		ROpts: validRequestOpts,
 		TOpts: transportOpts,
@@ -838,7 +840,7 @@ func TestNoWarmupBenchmark(t *testing.T) {
 			Connections:    50,
 			Concurrency:    2,
 		},
-	}, out)
+	}, out, logger)
 	assert.Contains(t, buf.String(), "Total errors: 100")
 	assert.Contains(t, buf.String(), "Error rate: 100")
 }

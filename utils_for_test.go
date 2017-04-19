@@ -31,6 +31,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/require"
 	"github.com/uber/jaeger-client-go"
+	"go.uber.org/zap"
 )
 
 // Constants useful for tests
@@ -74,4 +75,9 @@ func writeFile(t *testing.T, prefix, contents string) string {
 
 func getTestTracer(serviceName string) (opentracing.Tracer, io.Closer) {
 	return jaeger.NewTracer(serviceName, jaeger.NewConstSampler(true), jaeger.NewNullReporter())
+}
+
+func getTestLogger() *zap.Logger {
+	logger := zap.NewNop()
+	return logger
 }
