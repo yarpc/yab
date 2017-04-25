@@ -1,6 +1,9 @@
 Changelog
 =========
 
+# 0.10.1
+* Fix for HTTP not respecting context timeout.
+
 # 0.10.0
 
 * Support disabling Thrift envelopes from YAML templates.

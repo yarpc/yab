@@ -72,6 +72,7 @@ func TestHTTPConstructor(t *testing.T) {
 
 func TestHTTPCall(t *testing.T) {
 	timeoutCtx, _ := context.WithTimeout(context.Background(), 3*time.Second)
+	immediateTimeout, _ := context.WithTimeout(context.Background(), time.Nanosecond)
 
 	tests := []struct {
 		ctx      context.Context
@@ -96,6 +97,12 @@ func TestHTTPCall(t *testing.T) {
 			ttlMin:   3*time.Second - 100*time.Millisecond,
 			ttlMax:   3 * time.Second,
 			wantCode: http.StatusOK,
+		},
+		{
+			ctx: immediateTimeout,
+			r:   &Request{Method: "method", Body: []byte{1, 2, 3}},
+			// "context deadline exceeded" after 1.7 support is dropped
+			errMsg: "Post ",
 		},
 		{
 			ctx:  context.Background(),

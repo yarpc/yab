@@ -144,7 +144,7 @@ func (h *httpTransport) Call(ctx context.Context, r *Request) (*Response, error)
 		return nil, err
 	}
 
-	resp, err := h.client.Do(req)
+	resp, err := h.client.Do(req.WithContext(ctx))
 	if err != nil {
 		return nil, err
 	}
