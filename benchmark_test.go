@@ -29,8 +29,8 @@ import (
 	"github.com/yarpc/yab/transport"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/uber-go/atomic"
 	"github.com/uber/tchannel-go/testutils"
+	"go.uber.org/atomic"
 )
 
 func TestBenchmark(t *testing.T) {
