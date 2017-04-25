@@ -6,7 +6,7 @@ import:
 - package: github.com/stretchr/testify
 - package: go.uber.org/thriftrw
   version: ^1
-- package: github.com/uber-go/atomic
+- package: go.uber.org/atomic
   version: ^1
 - package: github.com/uber/tchannel-go
   version: ^1.3
