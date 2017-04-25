@@ -99,9 +99,10 @@ func TestHTTPCall(t *testing.T) {
 			wantCode: http.StatusOK,
 		},
 		{
-			ctx:    immediateTimeout,
-			r:      &Request{Method: "method", Body: []byte{1, 2, 3}},
-			errMsg: "request canceled",
+			ctx: immediateTimeout,
+			r:   &Request{Method: "method", Body: []byte{1, 2, 3}},
+			// "context deadline exceeded" after 1.7 support is dropped
+			errMsg: "Post ",
 		},
 		{
 			ctx:  context.Background(),
