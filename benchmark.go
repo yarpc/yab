@@ -33,24 +33,12 @@ import (
 	"github.com/yarpc/yab/transport"
 
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 var (
 	errNegativeDuration = errors.New("duration cannot be negative")
 	errNegativeMaxReqs  = errors.New("max requests cannot be negative")
 )
-
-// MarshalLogObject defines how to log the BenchMarking options with zap
-func (o BenchmarkOptions) MarshalLogObject(om zapcore.ObjectEncoder) error {
-	om.AddDuration("max_duration", o.MaxDuration)
-	om.AddInt("concurrency", o.Concurrency)
-	om.AddInt("max_requests", o.MaxRequests)
-	om.AddInt("connections", o.Connections)
-	om.AddInt("cpus", o.NumCPUs)
-	om.AddInt("rps", o.RPS)
-	return nil
-}
 
 // setGoMaxProcs sets runtime.GOMAXPROCS if the option is set
 // and returns the number of GOMAXPROCS configured.
@@ -156,7 +144,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, m benchmarkMe
 	run := limiter.New(opts.MaxRequests, opts.RPS, opts.MaxDuration)
 	stopOnInterrupt(out, run)
 
-	logger.Info("starting benchmark", zap.Object("options", opts))
+	logger.Info("starting benchmark", zap.Any("options", opts))
 	start := time.Now()
 	for i, c := range connections {
 		for j := 0; j < opts.Concurrency; j++ {
