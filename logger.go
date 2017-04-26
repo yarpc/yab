@@ -17,8 +17,8 @@ const (
 	VerbosityLevelDebug
 )
 
-// GetLoggerVerbosity takes a VerbosityLevel and returns an appropriate logging level
-func GetLoggerVerbosity(lvl VerbosityLevel) zapcore.Level {
+// getLoggerVerbosity takes a VerbosityLevel and returns an appropriate logging level
+func getLoggerVerbosity(lvl VerbosityLevel) zapcore.Level {
 	zlvl := zap.DebugLevel
 	switch lvl {
 	case VerbosityLevelOff:
@@ -44,7 +44,7 @@ func configureLoggerConfig(opts *Options) zap.Config {
 		EncodeDuration: zapcore.StringDurationEncoder,
 	}
 	// Set the logger level based on the command line parsed options.
-	loggerConfig.Level.SetLevel(GetLoggerVerbosity(VerbosityLevel(len(opts.Verbosity))))
+	loggerConfig.Level.SetLevel(getLoggerVerbosity(VerbosityLevel(len(opts.Verbosity))))
 
 	return loggerConfig
 }

@@ -26,13 +26,12 @@ import (
 	"testing"
 	"time"
 
-	"go.uber.org/zap/zapcore"
-
 	"github.com/yarpc/yab/transport"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/uber/tchannel-go/testutils"
 	"go.uber.org/atomic"
+	"go.uber.org/zap/zapcore"
 )
 
 func TestBenchmark(t *testing.T) {

@@ -28,12 +28,12 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
-
 	"github.com/yarpc/yab/limiter"
 	"github.com/yarpc/yab/statsd"
 	"github.com/yarpc/yab/transport"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var (
