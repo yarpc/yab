@@ -1,12 +1,12 @@
-hash: da28cdd6cc388e155bde58369bf3f1d979954e11446888c23f3bb51187d1806a
-updated: 2017-04-25T15:16:31.435502477-07:00
+hash: 4a80b85a77be3503344eb2842cf180617e42f0390017361791befc51d1e993b9
+updated: 2017-04-27T16:49:12.825874596-07:00
 imports:
 - name: github.com/apache/thrift
-  version: 3311a9b2375276441234218f4351c6a8f66a6bc2
+  version: 2d65c2365f19f637bc732222e71d78727bf0b709
   subpackages:
   - lib/go/thrift
 - name: github.com/cactus/go-statsd-client
-  version: d8eabe07bc70ff9ba6a56836cde99d1ea3d005f7
+  version: 95cb85a8d6b2d1ccfce95fa58d1ca3445779d8af
   subpackages:
   - statsd
 - name: github.com/casimir/xdg-go
@@ -32,7 +32,7 @@ imports:
   - assert
   - require
 - name: github.com/uber-go/atomic
-  version: 4e336646b2ef9fc6e47be8e21594178f98e5ebcf
+  version: 0c9e689d64f004564b79d9a663634756df322902
 - name: github.com/uber/jaeger-client-go
   version: e39d0f1b622558cae3d9db0062a739cc6ffa700f
   subpackages:
@@ -74,8 +74,10 @@ imports:
   - thriftreflect
   - version
   - wire
+- name: go.uber.org/zap
+  version: 6a4e056f2cc954cfec3581729e758909604b3f76
 - name: golang.org/x/net
-  version: da118f7b8e5954f39d0d2130ab35d4bf0e3cb344
+  version: d1e1b351919c6738fdeb9893d5c998b161464f0c
   subpackages:
   - context
 - name: gopkg.in/yaml.v2
