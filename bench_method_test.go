@@ -32,8 +32,8 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/uber-go/atomic"
 	"github.com/uber/tchannel-go/testutils"
+	"go.uber.org/atomic"
 )
 
 func benchmarkMethodForTest(t *testing.T, procedure string, p transport.Protocol) benchmarkMethod {

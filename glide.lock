@@ -1,8 +1,8 @@
-hash: ebc2a48d963a32e862e8d5623f32c26de4541be49822748feb0706d968f170fa
-updated: 2017-02-13T13:31:24.291355436-08:00
+hash: da28cdd6cc388e155bde58369bf3f1d979954e11446888c23f3bb51187d1806a
+updated: 2017-04-25T15:16:31.435502477-07:00
 imports:
 - name: github.com/apache/thrift
-  version: 36628a28e975e4d680fff66eec3e66c06ca86bf2
+  version: 3311a9b2375276441234218f4351c6a8f66a6bc2
   subpackages:
   - lib/go/thrift
 - name: github.com/cactus/go-statsd-client
@@ -32,7 +32,7 @@ imports:
   - assert
   - require
 - name: github.com/uber-go/atomic
-  version: 0c9e689d64f004564b79d9a663634756df322902
+  version: 4e336646b2ef9fc6e47be8e21594178f98e5ebcf
 - name: github.com/uber/jaeger-client-go
   version: e39d0f1b622558cae3d9db0062a739cc6ffa700f
   subpackages:
@@ -43,7 +43,7 @@ imports:
   - transport
   - utils
 - name: github.com/uber/tchannel-go
-  version: 79387824978f91318be3bfb43ae12e04c38cfe97
+  version: 0b7f160817553b0bacb5b108dd84a5022dbdd1c4
   subpackages:
   - internal/argreader
   - json
@@ -57,8 +57,10 @@ imports:
   - tnet
   - trand
   - typed
+- name: go.uber.org/atomic
+  version: 4e336646b2ef9fc6e47be8e21594178f98e5ebcf
 - name: go.uber.org/thriftrw
-  version: c98a13058faa5dd41584a77221a268d2c72d832d
+  version: dde90c2a40f45fb2b6361d13c1b4bf09465401c0
   subpackages:
   - ast
   - compile
@@ -69,19 +71,18 @@ imports:
   - internal/semver
   - protocol
   - protocol/binary
+  - thriftreflect
   - version
   - wire
 - name: golang.org/x/net
-  version: 61557ac0112b576429a0df080e1c2cef5dfbb642
+  version: da118f7b8e5954f39d0d2130ab35d4bf0e3cb344
   subpackages:
   - context
 - name: gopkg.in/yaml.v2
-  version: a3f3340b5840cee44f372bddb5880fcbc419b46a
+  version: a83829b6f1293c91addabc89d0571c246397bbf4
 testImports:
-- name: go.uber.org/atomic
-  version: 0c9e689d64f004564b79d9a663634756df322902
 - name: go.uber.org/yarpc
-  version: e4ae12793c38b4aea58721458670ded8bb4709a0
+  version: 6ae533f0810337028ef055b690360e050aa13219
   subpackages:
   - api/encoding
   - api/middleware
@@ -95,6 +96,7 @@ testImports:
   - internal/errors
   - internal/inboundmiddleware
   - internal/introspection
+  - internal/iopool
   - internal/net
   - internal/outboundmiddleware
   - internal/request

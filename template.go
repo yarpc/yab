@@ -96,7 +96,7 @@ func readYAMLFile(yamlTemplate string, templateArgs map[string]string, opts *Opt
 }
 
 func readYAMLRequest(base string, contents []byte, templateArgs map[string]string, opts *Options) error {
-	t, err := UnmarshalTemplate(contents)
+	t, err := unmarshalTemplate(contents)
 	if err != nil {
 		return err
 	}
@@ -166,7 +166,7 @@ func overrideParam(s *string, newS string) {
 	}
 }
 
-func UnmarshalTemplate(bytes []byte) (*template, error) {
+func unmarshalTemplate(bytes []byte) (*template, error) {
 	t := &template{}
 
 	t.Method.dest = &t.Procedure

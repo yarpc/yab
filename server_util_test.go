@@ -25,11 +25,11 @@ import (
 	"testing"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/uber-go/atomic"
 	"github.com/uber/jaeger-client-go"
 	"github.com/uber/tchannel-go"
 	"github.com/uber/tchannel-go/raw"
 	"github.com/uber/tchannel-go/testutils"
+	"go.uber.org/atomic"
 	"golang.org/x/net/context"
 )
 
@@ -64,7 +64,7 @@ func (s *server) transportOpts() TransportOptions {
 	return TransportOptions{
 		CallerName:  "bar",
 		ServiceName: "foo",
-		Peers:   []string{s.hostPort()},
+		Peers:       []string{s.hostPort()},
 	}
 }
 
