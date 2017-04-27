@@ -31,7 +31,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/uber/tchannel-go/testutils"
 	"go.uber.org/atomic"
-	"go.uber.org/zap/zapcore"
 )
 
 func TestBenchmark(t *testing.T) {
