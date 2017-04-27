@@ -62,7 +62,7 @@ func TestLoggerGetLoggerVerbosity(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("get_logger_verbocity: %v", tt.verbocityLevel), func(t *testing.T) {
-			lvl := GetLoggerVerbosity(tt.verbocityLevel)
+			lvl := getLoggerVerbosity(tt.verbocityLevel)
 			assert.Equal(t, lvl, tt.wantLoggerLevel)
 		})
 	}

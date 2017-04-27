@@ -33,7 +33,7 @@ type Options struct {
 	ROpts          RequestOptions   `group:"request"`
 	TOpts          TransportOptions `group:"transport"`
 	BOpts          BenchmarkOptions `group:"benchmark"`
-	Verbosity      []bool           `short:"v" long:"verbose" decription:"Enable more detailed logging."`
+	Verbosity      []bool           `short:"v" description:"Enable more detailed logging. Repeats increase the verbosity, ie. -vvv"`
 	DisplayVersion bool             `long:"version" description:"Displays the application version"`
 	ManPage        bool             `long:"man-page" hidden:"yes" description:"Print yab's man page to stdout"`
 }
