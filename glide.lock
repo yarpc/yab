@@ -1,8 +1,8 @@
-hash: da28cdd6cc388e155bde58369bf3f1d979954e11446888c23f3bb51187d1806a
-updated: 2017-04-25T15:16:31.435502477-07:00
+hash: 6a51f6735c878e11cbb14bf438625c6fd383bcc6f1eb21426fb37be1f6a2763e
+updated: 2017-04-29T15:21:47.342046953-07:00
 imports:
 - name: github.com/apache/thrift
-  version: 3311a9b2375276441234218f4351c6a8f66a6bc2
+  version: 19baeefd8c38d62085891d7956349601f79448b3
   subpackages:
   - lib/go/thrift
 - name: github.com/cactus/go-statsd-client
@@ -17,6 +17,8 @@ imports:
   - spew
 - name: github.com/jessevdk/go-flags
   version: 460c7bb0abd6e927f2767cadc91aa6ef776a98b4
+- name: github.com/mattn/go-runewidth
+  version: 14207d285c6c197daabb5c9793d63e7af9ab2d50
 - name: github.com/opentracing/opentracing-go
   version: 6edb48674bd9467b8e91fda004f2bd7202d60ce4
   subpackages:
@@ -32,7 +34,7 @@ imports:
   - assert
   - require
 - name: github.com/uber-go/atomic
-  version: 4e336646b2ef9fc6e47be8e21594178f98e5ebcf
+  version: 3b8db5e93c4c02efbc313e17b2e796b0914a01fb
 - name: github.com/uber/jaeger-client-go
   version: e39d0f1b622558cae3d9db0062a739cc6ffa700f
   subpackages:
@@ -78,8 +80,10 @@ imports:
   version: da118f7b8e5954f39d0d2130ab35d4bf0e3cb344
   subpackages:
   - context
+- name: gopkg.in/cheggaaa/pb.v1
+  version: b6229822fa186496fcbf34111237e7a9693c6971
 - name: gopkg.in/yaml.v2
-  version: a83829b6f1293c91addabc89d0571c246397bbf4
+  version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
 testImports:
 - name: go.uber.org/yarpc
   version: 6ae533f0810337028ef055b690360e050aa13219
