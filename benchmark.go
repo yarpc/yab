@@ -158,7 +158,7 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 	// Wait for all the worker goroutines to end.
 	wg.Wait()
 	total := time.Since(start)
-	progressBar.FinishPrint("Benchmark finished.")
+	progressBar.FinishPrint("Benchmark finished")
 
 	// Merge all the states into 0
 	overall := states[0]
