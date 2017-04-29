@@ -90,7 +90,7 @@ func TestBenchmark(t *testing.T) {
 
 		bufStr := buf.String()
 		assert.Contains(t, bufStr, "Max RPS")
-		assert.Contains(t, bufStr, "Finished Benchmark")
+		assert.Contains(t, bufStr, "Benchmark finished")
 		assert.NotContains(t, bufStr, "Errors")
 
 		if tt.want != 0 {

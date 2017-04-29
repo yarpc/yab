@@ -79,12 +79,13 @@ func (o BenchmarkOptions) enabled() bool {
 
 func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run *limiter.Run, pb *pb.ProgressBar) {
 	for cur := run; cur.More(); {
+		pb.Increment()
+
 		latency, err := m.call(t)
 		if err != nil {
 			s.recordError(err)
 			continue
 		}
-		pb.Increment()
 
 		s.recordLatency(latency)
 	}
@@ -103,6 +104,7 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 	if opts.RPS > 0 && opts.MaxDuration > 0 {
 		// The RPS * duration in seconds may cap opts.MaxRequests.
 		rpsMax := int(float64(opts.RPS) * opts.MaxDuration.Seconds())
+		// FIXME: if we are using small time like 500ms the calculation is still 0
 		if rpsMax < opts.MaxRequests || opts.MaxRequests == 0 {
 			opts.MaxRequests = rpsMax
 		}
@@ -136,6 +138,7 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 	}
 
 	progressBar := pb.StartNew(opts.MaxRequests)
+	progressBar.Output = out
 
 	run := limiter.New(opts.MaxRequests, opts.RPS, opts.MaxDuration)
 	stopOnInterrupt(out, run)
@@ -158,6 +161,7 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 	// Wait for all the worker goroutines to end.
 	wg.Wait()
 	total := time.Since(start)
+	progressBar.Finish()
 	progressBar.FinishPrint("Benchmark finished")
 
 	// Merge all the states into 0
