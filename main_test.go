@@ -145,6 +145,18 @@ func TestRunWithOptions(t *testing.T) {
 				`"trace": "`,
 			},
 		},
+		{
+			desc: "Fail to allow caller names from a map",
+			opts: Options{
+				ROpts: validRequestOpts,
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+					Peers:       []string{echoServer(t, fooMethod, nil)},
+					CallerName:  "tcurl",
+				},
+			},
+			errMsg: "Disallowed caller",
+		},
 	}
 
 	var errBuf bytes.Buffer

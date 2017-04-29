@@ -43,7 +43,11 @@ import (
 	"github.com/uber/tchannel-go"
 )
 
-var errHealthAndProcedure = errors.New("cannot specify procedure and use --health")
+var (
+	errHealthAndProcedure = errors.New("cannot specify procedure and use --health")
+	// map of caller names we do not want to be used.
+	disallowedCallerNames = map[string]bool{"tcurl": true}
+)
 
 func findGroup(parser *flags.Parser, group string) *flags.Group {
 	if g := parser.Group.Find(group); g != nil {
@@ -278,6 +282,9 @@ func runWithOptions(opts Options, out output) {
 	}
 
 	if opts.TOpts.CallerName != "" {
+		if val, ok := disallowedCallerNames[opts.TOpts.CallerName]; ok {
+			out.Fatalf("Disallowed caller name: %v", val)
+		}
 		if opts.BOpts.enabled() {
 			out.Fatalf("Cannot override caller name when running benchmarks\n")
 		}
