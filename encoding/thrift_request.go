@@ -35,7 +35,12 @@ import (
 
 const _multiplexedSeparator = ":"
 
-var defaultOpts = thrift.Options{UseEnvelopes: true}
+var (
+	defaultOpts = thrift.Options{UseEnvelopes: true}
+
+	// ErrSpecifyThriftFile when no thrift is specified when thift encoding is detected
+	ErrSpecifyThriftFile = errors.New("specify a Thrift file using --thrift")
+)
 
 type thriftSerializer struct {
 	methodName string
@@ -46,7 +51,7 @@ type thriftSerializer struct {
 // NewThrift returns a Thrift serializer.
 func NewThrift(thriftFile, methodName string, multiplexed bool) (Serializer, error) {
 	if thriftFile == "" {
-		return nil, errors.New("specify a Thrift file using --thrift")
+		return nil, ErrSpecifyThriftFile
 	}
 	if isFileMissing(thriftFile) {
 		return nil, fmt.Errorf("cannot find Thrift file: %q", thriftFile)
@@ -115,7 +120,7 @@ func findService(parsed *compile.Module, svcName string) (*compile.ServiceSpec, 
 	if svcName != "" {
 		errMsg = fmt.Sprintf("could not find service %q", svcName)
 	}
-	return nil, notFoundError{errMsg + ", available services:", available}
+	return nil, NotFoundError{errMsg + ", available services:", available}
 }
 
 func (e thriftSerializer) CheckSuccess(res *transport.Response) error {
@@ -150,7 +155,7 @@ func findMethod(service *compile.ServiceSpec, methodName string) (*compile.Funct
 	if methodName != "" {
 		errMsg = fmt.Sprintf("could not find method %q in %q", methodName, service.Name)
 	}
-	return nil, notFoundError{errMsg + ", available methods:", available}
+	return nil, NotFoundError{errMsg + ", available methods:", available}
 }
 
 func isFileMissing(f string) bool {

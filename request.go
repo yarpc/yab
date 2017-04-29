@@ -91,16 +91,18 @@ func NewSerializer(opts RequestOptions) (encoding.Serializer, error) {
 		return opts.Encoding.GetHealth()
 	}
 
-	if opts.Procedure == "" {
-		return nil, errMissingProcedure
-	}
-
 	switch e := detectEncoding(opts); e {
 	case encoding.Thrift:
 		return encoding.NewThrift(opts.ThriftFile, opts.Procedure, opts.ThriftMultiplexed)
 	case encoding.JSON:
+		if opts.Procedure == "" {
+			return nil, errMissingProcedure
+		}
 		return encoding.NewJSON(opts.Procedure), nil
 	case encoding.Raw:
+		if opts.Procedure == "" {
+			return nil, errMissingProcedure
+		}
 		return encoding.NewRaw(opts.Procedure), nil
 	}
 

@@ -241,6 +241,24 @@ func TestNewSerializer(t *testing.T) {
 		},
 		{
 			encoding: encoding.Thrift,
+			wantErr:  encoding.ErrSpecifyThriftFile,
+		},
+		{
+			encoding: encoding.Thrift,
+			opts:     RequestOptions{ThriftFile: validThrift},
+			wantErr: encoding.NotFoundError{
+				Msg:       "no Thrift service specified, specify --method Service::Method, available services:",
+				Available: []string{"Simple"},
+			},
+		},
+		{
+			encoding: encoding.JSON,
+			opts:     RequestOptions{ThriftFile: validThrift},
+			wantErr:  errMissingProcedure,
+		},
+		{
+			encoding: encoding.Raw,
+			opts:     RequestOptions{ThriftFile: validThrift},
 			wantErr:  errMissingProcedure,
 		},
 		{

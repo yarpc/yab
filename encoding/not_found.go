@@ -25,11 +25,12 @@ import (
 	"strings"
 )
 
-type notFoundError struct {
-	msg       string
-	available []string
+// NotFoundError is a helpful responce error give better thrift encoding feeback
+type NotFoundError struct {
+	Msg       string
+	Available []string
 }
 
-func (e notFoundError) Error() string {
-	return fmt.Sprintf("%v\n\t%v", e.msg, strings.Join(e.available, "\n\t"))
+func (e NotFoundError) Error() string {
+	return fmt.Sprintf("%v\n\t%v", e.Msg, strings.Join(e.Available, "\n\t"))
 }
