@@ -31,6 +31,8 @@ import (
 	"github.com/yarpc/yab/limiter"
 	"github.com/yarpc/yab/statsd"
 	"github.com/yarpc/yab/transport"
+
+	pb "gopkg.in/cheggaaa/pb.v1"
 )
 
 var (
@@ -75,13 +77,14 @@ func (o BenchmarkOptions) enabled() bool {
 	return o.MaxDuration != 0 || o.MaxRequests != 0
 }
 
-func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run *limiter.Run) {
+func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run *limiter.Run, pb *pb.ProgressBar) {
 	for cur := run; cur.More(); {
 		latency, err := m.call(t)
 		if err != nil {
 			s.recordError(err)
 			continue
 		}
+		pb.Increment()
 
 		s.recordLatency(latency)
 	}
@@ -132,6 +135,8 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 		states[i] = newBenchmarkState(statter)
 	}
 
+	progressBar := pb.StartNew(opts.MaxRequests)
+
 	run := limiter.New(opts.MaxRequests, opts.RPS, opts.MaxDuration)
 	stopOnInterrupt(out, run)
 
@@ -143,7 +148,7 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 			wg.Add(1)
 			go func(c transport.Transport) {
 				defer wg.Done()
-				runWorker(c, m, state, run)
+				runWorker(c, m, state, run, progressBar)
 			}(c)
 		}
 	}
@@ -153,6 +158,7 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 	// Wait for all the worker goroutines to end.
 	wg.Wait()
 	total := time.Since(start)
+	progressBar.FinishPrint("Benchmark finished.")
 
 	// Merge all the states into 0
 	overall := states[0]
