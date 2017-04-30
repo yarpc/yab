@@ -87,7 +87,6 @@ func NewSerializer(opts RequestOptions) (encoding.Serializer, error) {
 		if opts.Procedure != "" {
 			return nil, errHealthAndProcedure
 		}
-
 		return opts.Encoding.GetHealth()
 	}
 
@@ -95,18 +94,29 @@ func NewSerializer(opts RequestOptions) (encoding.Serializer, error) {
 	case encoding.Thrift:
 		return encoding.NewThrift(opts.ThriftFile, opts.Procedure, opts.ThriftMultiplexed)
 	case encoding.JSON:
-		if opts.Procedure == "" {
-			return nil, errMissingProcedure
+		if err := procedureCheckWithThriftFile(opts); err != nil {
+			return nil, err
 		}
 		return encoding.NewJSON(opts.Procedure), nil
 	case encoding.Raw:
-		if opts.Procedure == "" {
-			return nil, errMissingProcedure
+		if err := procedureCheckWithThriftFile(opts); err != nil {
+			return nil, err
 		}
 		return encoding.NewRaw(opts.Procedure), nil
 	}
 
 	return nil, errUnrecognizedEncoding
+}
+
+func procedureCheckWithThriftFile(opts RequestOptions) error {
+	if opts.ThriftFile != "" {
+		_, err := encoding.NewThrift(opts.ThriftFile, opts.Procedure, opts.ThriftMultiplexed)
+		return err
+	}
+	if opts.Procedure == "" {
+		return errMissingProcedure
+	}
+	return nil
 }
 
 func detectEncoding(opts RequestOptions) encoding.Encoding {

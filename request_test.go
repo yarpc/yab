@@ -178,6 +178,7 @@ func TestGetHeaders(t *testing.T) {
 
 func TestNewSerializer(t *testing.T) {
 	tests := []struct {
+		desc     string
 		encoding encoding.Encoding
 		opts     RequestOptions
 		want     encoding.Encoding
@@ -233,36 +234,6 @@ func TestNewSerializer(t *testing.T) {
 		},
 		{
 			encoding: encoding.JSON,
-			wantErr:  errMissingProcedure,
-		},
-		{
-			encoding: encoding.Raw,
-			wantErr:  errMissingProcedure,
-		},
-		{
-			encoding: encoding.Thrift,
-			wantErr:  encoding.ErrSpecifyThriftFile,
-		},
-		{
-			encoding: encoding.Thrift,
-			opts:     RequestOptions{ThriftFile: validThrift},
-			wantErr: encoding.NotFoundError{
-				Msg:       "no Thrift service specified, specify --method Service::Method, available services:",
-				Available: []string{"Simple"},
-			},
-		},
-		{
-			encoding: encoding.JSON,
-			opts:     RequestOptions{ThriftFile: validThrift},
-			wantErr:  errMissingProcedure,
-		},
-		{
-			encoding: encoding.Raw,
-			opts:     RequestOptions{ThriftFile: validThrift},
-			wantErr:  errMissingProcedure,
-		},
-		{
-			encoding: encoding.JSON,
 			opts:     RequestOptions{Procedure: "procedure"},
 			want:     encoding.JSON,
 		},
@@ -271,19 +242,86 @@ func TestNewSerializer(t *testing.T) {
 			opts:     RequestOptions{Procedure: "procedure"},
 			want:     encoding.Raw,
 		},
+		{
+			encoding: encoding.JSON,
+			wantErr:  errMissingProcedure,
+		},
+		{
+			encoding: encoding.Raw,
+			wantErr:  errMissingProcedure,
+		},
+		{
+			desc:     "Thrift auto detect shouldnt fail to call out procedure",
+			encoding: encoding.Thrift,
+			wantErr:  encoding.ErrSpecifyThriftFile,
+		},
+		{
+			desc:     "Thrift encoder with a thrift file and no service",
+			encoding: encoding.Thrift,
+			opts:     RequestOptions{ThriftFile: validThrift},
+			wantErr: encoding.NotFoundError{
+				Msg:       "no Thrift service specified, specify --method Service::Method, available services:",
+				Available: []string{"Simple"},
+			},
+		},
+		{
+			desc:     "JSON encoder with a thrift file and no service",
+			encoding: encoding.JSON,
+			opts:     RequestOptions{ThriftFile: validThrift},
+			wantErr: encoding.NotFoundError{
+				Msg:       "no Thrift service specified, specify --method Service::Method, available services:",
+				Available: []string{"Simple"},
+			},
+		},
+		{
+			desc:     "Raw encoder with a thrift file and no service",
+			encoding: encoding.Raw,
+			opts:     RequestOptions{ThriftFile: validThrift},
+			wantErr: encoding.NotFoundError{
+				Msg:       "no Thrift service specified, specify --method Service::Method, available services:",
+				Available: []string{"Simple"},
+			},
+		},
+		{
+			desc:     "Thrift encoder with a thrift file and no method",
+			encoding: encoding.Thrift,
+			opts:     RequestOptions{ThriftFile: validThrift, Procedure: "Simple"},
+			wantErr: encoding.NotFoundError{
+				Msg:       "no Thrift method specified, specify --method Service::Method, available methods:",
+				Available: []string{"bar", "foo", "thriftEx", "withDefault"},
+			},
+		},
+		{
+			desc:     "JSON encoder with a thrift file and no method",
+			encoding: encoding.JSON,
+			opts:     RequestOptions{ThriftFile: validThrift, Procedure: "Simple"},
+			wantErr: encoding.NotFoundError{
+				Msg:       "no Thrift method specified, specify --method Service::Method, available methods:",
+				Available: []string{"bar", "foo", "thriftEx", "withDefault"},
+			},
+		},
+		{
+			desc:     "Raw encoder with a thrift file and no method",
+			encoding: encoding.Raw,
+			opts:     RequestOptions{ThriftFile: validThrift, Procedure: "Simple"},
+			wantErr: encoding.NotFoundError{
+				Msg:       "no Thrift method specified, specify --method Service::Method, available methods:",
+				Available: []string{"bar", "foo", "thriftEx", "withDefault"},
+			},
+		},
 	}
 
 	for _, tt := range tests {
-		tt.opts.Encoding = tt.encoding
-		got, err := NewSerializer(tt.opts)
-		assert.Equal(t, tt.wantErr, err, "NewSerializer(%+v) error", tt.opts)
-		if err != nil {
-			continue
-		}
-
-		if assert.NotNil(t, got, "NewSerializer(%+v) missing serializer", tt.opts) {
-			assert.Equal(t, tt.want, got.Encoding(), "NewSerializer(%+v) wrong encoding", tt.opts)
-		}
+		t.Run(tt.desc, func(t *testing.T) {
+			tt.opts.Encoding = tt.encoding
+			got, err := NewSerializer(tt.opts)
+			assert.Equal(t, tt.wantErr, err, "NewSerializer(%+v) error", tt.opts)
+			if tt.wantErr == nil {
+				if assert.NotNil(t, got, "NewSerializer(%+v) missing serializer", tt.opts) {
+					assert.Equal(t, tt.want, got.Encoding(), "NewSerializer(%+v) wrong encoding", tt.opts)
+				}
+			}
+		})
 	}
 }
 
