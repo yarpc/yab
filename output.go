@@ -32,16 +32,22 @@ type output interface {
 
 	Fatalf(format string, args ...interface{})
 	Printf(format string, args ...interface{})
+	Warnf(format string, args ...interface{})
 }
 
 type consoleOutput struct {
 	*os.File
+	errFile *os.File
 }
 
-func (consoleOutput) Fatalf(format string, args ...interface{}) {
+func (c consoleOutput) Fatalf(format string, args ...interface{}) {
 	log.Fatalf(format, args...)
 }
 
-func (consoleOutput) Printf(format string, args ...interface{}) {
+func (c consoleOutput) Printf(format string, args ...interface{}) {
 	fmt.Printf(format, args...)
+}
+
+func (c consoleOutput) Warnf(format string, args ...interface{}) {
+	fmt.Fprintf(c.errFile, format, args...)
 }

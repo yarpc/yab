@@ -42,7 +42,8 @@ const (
 
 type testOutput struct {
 	*bytes.Buffer
-	fatalf func(string, ...interface{})
+	warnBuf *bytes.Buffer
+	fatalf  func(string, ...interface{})
 }
 
 func (t testOutput) Fatalf(format string, args ...interface{}) {
@@ -54,13 +55,19 @@ func (t testOutput) Printf(format string, args ...interface{}) {
 	t.WriteString(fmt.Sprintf(format, args...))
 }
 
-func getOutput(t *testing.T) (*bytes.Buffer, output) {
-	buf := &bytes.Buffer{}
+func (t testOutput) Warnf(format string, args ...interface{}) {
+	t.warnBuf.WriteString(fmt.Sprintf(format, args...))
+}
+
+func getOutput(t *testing.T) (*bytes.Buffer, *bytes.Buffer, output) {
+	outBuf := &bytes.Buffer{}
+	warnBuf := &bytes.Buffer{}
 	out := testOutput{
-		Buffer: buf,
-		fatalf: t.Errorf,
+		Buffer:  outBuf,
+		warnBuf: warnBuf,
+		fatalf:  t.Errorf,
 	}
-	return buf, out
+	return outBuf, warnBuf, out
 }
 
 func writeFile(t *testing.T, prefix, contents string) string {

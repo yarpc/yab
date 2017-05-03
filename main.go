@@ -45,8 +45,10 @@ import (
 
 var (
 	errHealthAndProcedure = errors.New("cannot specify procedure and use --health")
+
 	// map of caller names we do not want to be used.
-	disallowedCallerNames = map[string]bool{"tcurl": true}
+	warningCallerNames = map[string]struct{}{"tcurl": struct{}{}}
+	blockedCallerNames = map[string]struct{}{}
 )
 
 func findGroup(parser *flags.Parser, group string) *flags.Group {
@@ -77,7 +79,7 @@ func fromPositional(args []string, index int, s *string) bool {
 
 func main() {
 	log.SetFlags(0)
-	parseAndRun(consoleOutput{os.Stdout})
+	parseAndRun(consoleOutput{os.Stdout, os.Stderr})
 }
 
 var errExit = errors.New("sentinel error used to exit cleanly")
@@ -282,8 +284,12 @@ func runWithOptions(opts Options, out output) {
 	}
 
 	if opts.TOpts.CallerName != "" {
-		if val, ok := disallowedCallerNames[opts.TOpts.CallerName]; ok {
-			out.Fatalf("Disallowed caller name: %v", val)
+		if _, ok := warningCallerNames[opts.TOpts.CallerName]; ok {
+			// TODO: when logger is hooked up this should use the WARN level message
+			out.Warnf("WARNING: Deprecated caller name: %v", opts.TOpts.CallerName)
+		}
+		if _, ok := blockedCallerNames[opts.TOpts.CallerName]; ok {
+			out.Fatalf("Disallowed caller name: %v", opts.TOpts.CallerName)
 		}
 		if opts.BOpts.enabled() {
 			out.Fatalf("Cannot override caller name when running benchmarks\n")
