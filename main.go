@@ -286,7 +286,7 @@ func runWithOptions(opts Options, out output) {
 	if opts.TOpts.CallerName != "" {
 		if _, ok := warningCallerNames[opts.TOpts.CallerName]; ok {
 			// TODO: when logger is hooked up this should use the WARN level message
-			out.Warnf("WARNING: Deprecated caller name: %v", opts.TOpts.CallerName)
+			out.Warnf("WARNING: Deprecated caller name: [%v]\nPlease change the caller name as it will be blocked in the next release.", opts.TOpts.CallerName)
 		}
 		if _, ok := blockedCallerNames[opts.TOpts.CallerName]; ok {
 			out.Fatalf("Disallowed caller name: %v", opts.TOpts.CallerName)

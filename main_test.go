@@ -160,7 +160,7 @@ func TestRunWithOptions(t *testing.T) {
 					CallerName:  "tcurl",
 				},
 			},
-			warnMsg: "WARNING: Deprecated caller name: tcurl",
+			warnMsg: "WARNING: Deprecated caller name: [tcurl]\nPlease change the caller name as it will be blocked in the next release.",
 			wants: []string{
 				"{}",
 				`"ok": true`,
