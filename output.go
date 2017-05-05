@@ -32,6 +32,7 @@ type output interface {
 
 	Fatalf(format string, args ...interface{})
 	Printf(format string, args ...interface{})
+	Warnf(format string, args ...interface{})
 }
 
 type consoleOutput struct {
@@ -44,4 +45,8 @@ func (consoleOutput) Fatalf(format string, args ...interface{}) {
 
 func (consoleOutput) Printf(format string, args ...interface{}) {
 	fmt.Printf(format, args...)
+}
+
+func (consoleOutput) Warnf(format string, args ...interface{}) {
+	fmt.Fprintf(os.Stderr, format, args...)
 }
