@@ -154,6 +154,22 @@ func TestRunWithOptions(t *testing.T) {
 			},
 		},
 		{
+			desc: "No errors or warnings with a valid callername",
+			opts: Options{
+				ROpts: validRequestOpts,
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+					Peers:       []string{echoServer(t, fooMethod, nil)},
+					CallerName:  "valid-caller-name",
+				},
+			},
+			wants: []string{
+				"{}",
+				`"ok": true`,
+				`"trace": "`,
+			},
+		},
+		{
 			desc: "Warn on caller names from the warning map",
 			opts: Options{
 				ROpts: validRequestOpts,
