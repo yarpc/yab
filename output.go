@@ -37,17 +37,16 @@ type output interface {
 
 type consoleOutput struct {
 	*os.File
-	errFile *os.File
 }
 
-func (c consoleOutput) Fatalf(format string, args ...interface{}) {
+func (consoleOutput) Fatalf(format string, args ...interface{}) {
 	log.Fatalf(format, args...)
 }
 
-func (c consoleOutput) Printf(format string, args ...interface{}) {
+func (consoleOutput) Printf(format string, args ...interface{}) {
 	fmt.Printf(format, args...)
 }
 
-func (c consoleOutput) Warnf(format string, args ...interface{}) {
-	fmt.Fprintf(c.errFile, format, args...)
+func (consoleOutput) Warnf(format string, args ...interface{}) {
+	fmt.Fprintf(os.Stderr, format, args...)
 }

@@ -79,7 +79,7 @@ func fromPositional(args []string, index int, s *string) bool {
 
 func main() {
 	log.SetFlags(0)
-	parseAndRun(consoleOutput{os.Stdout, os.Stderr})
+	parseAndRun(consoleOutput{os.Stdout})
 }
 
 var errExit = errors.New("sentinel error used to exit cleanly")
@@ -286,7 +286,7 @@ func runWithOptions(opts Options, out output) {
 	if opts.TOpts.CallerName != "" {
 		if _, ok := warningCallerNames[opts.TOpts.CallerName]; ok {
 			// TODO: when logger is hooked up this should use the WARN level message
-			out.Warnf("WARNING: Deprecated caller name: [%v]\nPlease change the caller name as it will be blocked in the next release.", opts.TOpts.CallerName)
+			out.Warnf("WARNING: Deprecated caller name: %q Please change the caller name as it will be blocked in the next release.\n", opts.TOpts.CallerName)
 		}
 		if _, ok := blockedCallerNames[opts.TOpts.CallerName]; ok {
 			out.Fatalf("Disallowed caller name: %v", opts.TOpts.CallerName)

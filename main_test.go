@@ -52,16 +52,19 @@ func init() {
 	// Set the config home so that tests don't inherit settings from the
 	// running user's config directories.
 	os.Setenv(_configHomeEnv, "./testdata/init/notfound")
+	// Setting up some test lists we have to warn and blocker caller names
+	warningCallerNames = map[string]struct{}{
+		"testWarningCallerName": struct{}{},
+	}
+	blockedCallerNames = map[string]struct{}{
+		"testBlockedCallerName": struct{}{},
+	}
 }
 
 func TestRunWithOptions(t *testing.T) {
 	validRequestOpts := RequestOptions{
 		ThriftFile: validThrift,
 		Procedure:  fooMethod,
-	}
-
-	blockedCallerNames = map[string]struct{}{
-		"testBlockedCallerName": struct{}{},
 	}
 
 	closedHP := testutils.GetClosedHostPort(t)
@@ -157,10 +160,10 @@ func TestRunWithOptions(t *testing.T) {
 				TOpts: TransportOptions{
 					ServiceName: "foo",
 					Peers:       []string{echoServer(t, fooMethod, nil)},
-					CallerName:  "tcurl",
+					CallerName:  "testWarningCallerName",
 				},
 			},
-			warnMsg: "WARNING: Deprecated caller name: [tcurl]\nPlease change the caller name as it will be blocked in the next release.",
+			warnMsg: "WARNING: Deprecated caller name: \"testWarningCallerName\" Please change the caller name",
 			wants: []string{
 				"{}",
 				`"ok": true`,
@@ -185,8 +188,10 @@ func TestRunWithOptions(t *testing.T) {
 	var warnBuf bytes.Buffer
 	var outBuf bytes.Buffer
 	out := testOutput{
-		Buffer:  &outBuf,
-		warnBuf: &warnBuf,
+		Buffer: &outBuf,
+		warnf: func(format string, args ...interface{}) {
+			warnBuf.WriteString(fmt.Sprintf(format, args...))
+		},
 		fatalf: func(format string, args ...interface{}) {
 			errBuf.WriteString(fmt.Sprintf(format, args...))
 		},
@@ -215,6 +220,8 @@ func TestRunWithOptions(t *testing.T) {
 
 		if tt.warnMsg != "" {
 			assert.Contains(t, warnBuf.String(), tt.warnMsg)
+		} else {
+			assert.Empty(t, warnBuf.String(), "%v: should have no warnings", tt.desc)
 		}
 
 		assert.Empty(t, errBuf.String(), "%v: should not error", tt.desc)
