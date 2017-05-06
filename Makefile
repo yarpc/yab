@@ -18,7 +18,7 @@ install:
 
 .PHONY: test
 test:
-	go test -cover -race $(PACKAGES)
+	go test -cover -race -count 100 $(PACKAGES)
 
 
 .PHONY: install_ci
