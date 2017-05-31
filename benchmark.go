@@ -22,6 +22,7 @@ package main
 
 import (
 	"errors"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"runtime"
@@ -144,7 +145,10 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 	progressMarker, progressUnit = progressBarSetup(&opts)
 	progressBar := pb.New(progressMarker)
 	progressBar.SetUnits(progressUnit)
-	progressBar.Output = out
+	progressBar.Output = ioutil.Discard
+	if opts.ProgressBar {
+		progressBar.Output = out
+	}
 	progressBar.Start()
 
 	run := limiter.New(opts.MaxRequests, opts.RPS, opts.MaxDuration)
@@ -168,8 +172,6 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 	// Wait for all the worker goroutines to end.
 	wg.Wait()
 	total := time.Since(start)
-	progressBar.Finish()
-	progressBar.Finish()
 	progressBar.Finish()
 
 	// progressBar.FinishPrint("Benchmark finished")
@@ -205,5 +207,5 @@ func progressBarSetup(opts *BenchmarkOptions) (int, pb.Units) {
 	if opts.MaxRequests > 0 {
 		return opts.MaxRequests, pb.U_NO
 	}
-	return int(opts.MaxDuration), pb.U_NO
+	return int(opts.MaxDuration), pb.U_DURATION
 }

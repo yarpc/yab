@@ -42,8 +42,9 @@ func TestBenchmark(t *testing.T) {
 		rps          int
 		want         int
 		wantDuration time.Duration
-		wantMarker   int
-		wantUnit     pb.Units
+
+		wantMarker int
+		wantUnit   pb.Units
 	}{
 		{
 			msg:        "Capped by max requests",
@@ -101,7 +102,6 @@ func TestBenchmark(t *testing.T) {
 
 		bufStr := buf.String()
 		assert.Contains(t, bufStr, "Max RPS")
-		// assert.Contains(t, bufStr, "Benchmark finished")
 		assert.NotContains(t, bufStr, "Errors")
 
 		if tt.want != 0 {
@@ -164,67 +164,76 @@ func TestRunBenchmarkErrors(t *testing.T) {
 	}
 }
 
-// func TestBenchmarkProgressBar(t *testing.T) {
-// 	tests := []struct {
-// 		msg         string
-// 		maxRequests int
-// 		d           time.Duration
-// 		rps         int
+func TestBenchmarkProgressBar(t *testing.T) {
+	tests := []struct {
+		msg         string
+		maxRequests int
+		d           time.Duration
+		rps         int
 
-// 		wantMarker int
-// 		wantUnit   pb.Units
-// 	}{
-// 		{
-// 			msg:         "RPS simple progrss bar",
-// 			maxRequests: 100,
-// 			wantMarker:  100,
-// 			wantUnit:    pb.U_NO,
-// 		},
-// 		{
-// 			msg: "Duration progress bar",
-// 			d:   1 * time.Second,
-// 		},
-// 		{
-// 			msg:        "RPS times duration in seconds 1 second",
-// 			d:          1 * time.Second,
-// 			rps:        100,
-// 			wantMarker: 100,
-// 			wantUnit:   pb.U_NO,
-// 		},
-// 		{
-// 			msg:        "RPS times duration in seconds",
-// 			d:          500 * time.Millisecond,
-// 			rps:        100,
-// 			wantMarker: 50,
-// 			wantUnit:   pb.U_NO,
-// 		},
-// 	}
-// 	var requests atomic.Int32
-// 	s := newServer(t)
-// 	defer s.shutdown()
-// 	s.register(fooMethod, methods.errorIf(func() bool {
-// 		requests.Inc()
-// 		return false
-// 	}))
+		wantOut    string
+		wantMarker int
+		wantUnit   pb.Units
+	}{
+		{
+			msg:         "RPS simple progrss bar",
+			maxRequests: 100,
+			wantMarker:  100,
+			wantUnit:    pb.U_NO,
+			wantOut:     "100 / 100  100.00%",
+		},
+		{
+			msg:        "Duration progress bar",
+			d:          1 * time.Second,
+			wantMarker: 1,
+			wantUnit:   pb.U_DURATION,
+			wantOut:    "1s",
+		},
+		{
+			msg:        "RPS times duration in seconds 1 second",
+			d:          1 * time.Second,
+			rps:        177,
+			wantMarker: 177,
+			wantUnit:   pb.U_NO,
+			wantOut:    "177 / 177  100.00%",
+		},
+		{
+			msg:        "RPS times duration in seconds",
+			d:          500 * time.Millisecond,
+			rps:        100,
+			wantMarker: 50,
+			wantUnit:   pb.U_NO,
+			wantOut:    "50 / 50  100.00%",
+		},
+	}
+	var requests atomic.Int32
+	s := newServer(t)
+	defer s.shutdown()
+	s.register(fooMethod, methods.errorIf(func() bool {
+		requests.Inc()
+		return false
+	}))
 
-// 	m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
+	m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
 
-// 	buf, _, out := getOutput(t)
-// 	for _, tt := range tests {
-// 		buf.Reset()
-// 		requests.Store(0)
+	buf, _, out := getOutput(t)
+	for _, tt := range tests {
+		buf.Reset()
+		requests.Store(0)
 
-// 		t.Run(fmt.Sprintf(tt.msg), func(t *testing.T) {
-// 			runBenchmark(out, Options{
-// 				BOpts: BenchmarkOptions{
-// 					MaxRequests: tt.maxRequests,
-// 					MaxDuration: tt.d,
-// 					RPS:         tt.rps,
-// 					Connections: 50,
-// 					Concurrency: 2,
-// 				},
-// 				TOpts: s.transportOpts(),
-// 			}, m)
-// 		})
-// 	}
-// }
+		t.Run(fmt.Sprintf(tt.msg), func(t *testing.T) {
+			runBenchmark(out, Options{
+				BOpts: BenchmarkOptions{
+					MaxRequests: tt.maxRequests,
+					MaxDuration: tt.d,
+					RPS:         tt.rps,
+					Connections: 50,
+					Concurrency: 2,
+					ProgressBar: true,
+				},
+				TOpts: s.transportOpts(),
+			}, m)
+			assert.Contains(t, buf.String(), tt.wantOut)
+		})
+	}
+}

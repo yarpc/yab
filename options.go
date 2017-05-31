@@ -105,6 +105,9 @@ type BenchmarkOptions struct {
 
 	// Benchmark metrics can optionally be reported via statsd.
 	StatsdHostPort string `long:"statsd" description:"Optional host:port of a StatsD server to report metrics"`
+
+	// Output options
+	ProgressBar bool `long:"progress-bar" description:"show a progress bar for the benchmark."`
 }
 
 func newOptions() *Options {
