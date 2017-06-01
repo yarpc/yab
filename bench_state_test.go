@@ -48,7 +48,7 @@ func TestBenchmarkStateErrors(t *testing.T) {
 		state1.recordError(nil)
 	})
 
-	buf, out := getOutput(t)
+	buf, _, out := getOutput(t)
 
 	// before merge
 	assert.Equal(t, state1.totalErrors, 4, "Error count mismatch")
@@ -83,7 +83,7 @@ func TestBenchmarkStateErrors(t *testing.T) {
 
 func TestBenchmarkStateNoError(t *testing.T) {
 	state := newBenchmarkState(statsd.Noop)
-	buf, out := getOutput(t)
+	buf, _, out := getOutput(t)
 	state.printErrors(out)
 	assert.Equal(t, 0, buf.Len(), "Expected no output with no errors, got: %s", buf.String())
 }
@@ -99,7 +99,7 @@ func TestBenchmarkStateLatencies(t *testing.T) {
 		latencies = append(latencies, latency)
 	}
 
-	buf, out := getOutput(t)
+	buf, _, out := getOutput(t)
 
 	assert.Equal(t, state.totalErrors, 0, "Error count mismatch")
 	assert.Equal(t, state.totalSuccess, 10001, "Success count mismatch")
@@ -149,7 +149,7 @@ func TestBenchmarkStateMergeLatencies(t *testing.T) {
 	assert.Equal(t, state1.totalSuccess, 10001, "Success count mismatch")
 	assert.Equal(t, state1.totalRequests, 10001, "Request count mismatch")
 
-	buf, out := getOutput(t)
+	buf, _, out := getOutput(t)
 	state1.printLatencies(out)
 
 	expected := []string{

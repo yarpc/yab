@@ -77,7 +77,7 @@ func TestBenchmark(t *testing.T) {
 		requests.Store(0)
 
 		start := time.Now()
-		buf, out := getOutput(t)
+		buf, _, out := getOutput(t)
 		runBenchmark(out, logger, Options{
 			BOpts: BenchmarkOptions{
 				MaxRequests: tt.n,
