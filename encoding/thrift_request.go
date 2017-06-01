@@ -35,7 +35,13 @@ import (
 
 const _multiplexedSeparator = ":"
 
-var defaultOpts = thrift.Options{UseEnvelopes: true}
+var (
+	// ErrSpecifyThriftFile is returned if no Thrift file is specified
+	// for a Thrift request.
+	ErrSpecifyThriftFile = errors.New("specify a Thrift file using --thrift")
+
+	defaultOpts = thrift.Options{UseEnvelopes: true}
+)
 
 type thriftSerializer struct {
 	methodName string
@@ -46,7 +52,7 @@ type thriftSerializer struct {
 // NewThrift returns a Thrift serializer.
 func NewThrift(thriftFile, methodName string, multiplexed bool) (Serializer, error) {
 	if thriftFile == "" {
-		return nil, errors.New("specify a Thrift file using --thrift")
+		return nil, ErrSpecifyThriftFile
 	}
 	if isFileMissing(thriftFile) {
 		return nil, fmt.Errorf("cannot find Thrift file: %q", thriftFile)
