@@ -91,13 +91,19 @@ func NewSerializer(opts RequestOptions) (encoding.Serializer, error) {
 		return opts.Encoding.GetHealth()
 	}
 
+	// Thrift returns available methods if one is not specified, while the other
+	// encodings will just return an error, so only do the empty procedure check
+	// for non-Thrift encodings.
+	e := detectEncoding(opts)
+	if e == encoding.Thrift {
+		return encoding.NewThrift(opts.ThriftFile, opts.Procedure, opts.ThriftMultiplexed)
+	}
+
 	if opts.Procedure == "" {
 		return nil, errMissingProcedure
 	}
 
-	switch e := detectEncoding(opts); e {
-	case encoding.Thrift:
-		return encoding.NewThrift(opts.ThriftFile, opts.Procedure, opts.ThriftMultiplexed)
+	switch e {
 	case encoding.JSON:
 		return encoding.NewJSON(opts.Procedure), nil
 	case encoding.Raw:
