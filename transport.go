@@ -110,6 +110,10 @@ func loadTransportPeers(opts TransportOptions) (TransportOptions, error) {
 		if err != nil {
 			return opts, err
 		}
+
+		if len(peers) == 0 {
+			return opts, fmt.Errorf("specified peer list is empty: %q", opts.PeerList)
+		}
 	}
 
 	if len(peers) == 0 {

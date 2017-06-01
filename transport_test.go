@@ -103,20 +103,6 @@ func TestEnsureSameProtocol(t *testing.T) {
 	}
 }
 
-func TestLoadTransportPeers(t *testing.T) {
-	peerFile := writeFile(t, "peers", "a:1\nb:2\nc:3")
-	defer os.Remove(peerFile)
-
-	opts, err := loadTransportPeers(TransportOptions{
-		PeerList: peerFile,
-	})
-	require.NoError(t, err, "Failed to load transports")
-
-	assert.Equal(t, TransportOptions{
-		Peers: []string{"a:1", "b:2", "c:3"},
-	}, opts, "Unexpected transport options")
-}
-
 func TestGetTransport(t *testing.T) {
 	tests := []struct {
 		opts   TransportOptions
@@ -145,7 +131,7 @@ func TestGetTransport(t *testing.T) {
 		},
 		{
 			opts:   TransportOptions{ServiceName: "svc", PeerList: "testdata/empty.txt"},
-			errMsg: errPeerRequired.Error(),
+			errMsg: "specified peer list is empty",
 		},
 		{
 			opts:   TransportOptions{ServiceName: "svc", Peers: []string{"1.1.1.1:1"}, PeerList: "testdata/valid_peerlist.json"},
