@@ -31,6 +31,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/uber/tchannel-go/testutils"
 	"go.uber.org/atomic"
+	"gopkg.in/cheggaaa/pb.v1"
 )
 
 func TestBenchmark(t *testing.T) {
@@ -41,12 +42,17 @@ func TestBenchmark(t *testing.T) {
 		rps          int
 		want         int
 		wantDuration time.Duration
+
+		wantMarker int
+		wantUnit   pb.Units
 	}{
 		{
-			msg:  "Capped by max requests",
-			n:    100,
-			d:    100 * time.Second,
-			want: 100,
+			msg:        "Capped by max requests",
+			n:          100,
+			d:          100 * time.Second,
+			want:       100,
+			wantMarker: 100,
+			wantUnit:   pb.U_NO,
 		},
 		{
 			msg:          "Capped by RPS * duration",
@@ -54,11 +60,15 @@ func TestBenchmark(t *testing.T) {
 			rps:          120,
 			want:         60,
 			wantDuration: 500 * time.Millisecond,
+			wantMarker:   60,
+			wantUnit:     pb.U_NO,
 		},
 		{
 			msg:          "Capped by duration",
 			d:            500 * time.Millisecond,
 			wantDuration: 500 * time.Millisecond,
+			wantMarker:   int(500 * time.Millisecond),
+			wantUnit:     pb.U_DURATION,
 		},
 	}
 
@@ -71,18 +81,20 @@ func TestBenchmark(t *testing.T) {
 	}))
 
 	m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
+	buf, _, out := getOutput(t)
 
 	for _, tt := range tests {
+		buf.Reset()
 		requests.Store(0)
 
 		start := time.Now()
-		buf, _, out := getOutput(t)
+
 		runBenchmark(out, Options{
 			BOpts: BenchmarkOptions{
 				MaxRequests: tt.n,
 				MaxDuration: tt.d,
 				RPS:         tt.rps,
-				Connections: 50,
+				Connections: 25,
 				Concurrency: 2,
 			},
 			TOpts: s.transportOpts(),
@@ -96,6 +108,8 @@ func TestBenchmark(t *testing.T) {
 			assert.EqualValues(t, tt.want, requests.Load(),
 				"%v: Invalid number of requests", tt.msg)
 		}
+		assert.Equal(t, tt.wantMarker, progressMarker, "progress bar total should be: %v", tt.wantMarker)
+		assert.Equal(t, tt.wantUnit, progressUnit, "progress bar unit should be %v", tt.wantUnit)
 
 		if tt.wantDuration != 0 {
 			// Make sure the total duration is within a delta.
@@ -147,5 +161,79 @@ func TestRunBenchmarkErrors(t *testing.T) {
 
 		wg.Wait()
 		assert.Contains(t, fatalMessage, tt.wantErr, "Missing error for %+v", tt.opts)
+	}
+}
+
+func TestBenchmarkProgressBar(t *testing.T) {
+	tests := []struct {
+		msg         string
+		maxRequests int
+		d           time.Duration
+		rps         int
+
+		wantOut    string
+		wantMarker int
+		wantUnit   pb.Units
+	}{
+		{
+			msg:         "RPS simple progrss bar",
+			maxRequests: 100,
+			wantMarker:  100,
+			wantUnit:    pb.U_NO,
+			wantOut:     "100 / 100  100.00%",
+		},
+		{
+			msg:        "Duration progress bar",
+			d:          1 * time.Second,
+			wantMarker: 1,
+			wantUnit:   pb.U_DURATION,
+			wantOut:    "1s",
+		},
+		{
+			msg:        "RPS times duration in seconds 1 second",
+			d:          1 * time.Second,
+			rps:        177,
+			wantMarker: 177,
+			wantUnit:   pb.U_NO,
+			wantOut:    "177 / 177  100.00%",
+		},
+		{
+			msg:        "RPS times duration in seconds",
+			d:          500 * time.Millisecond,
+			rps:        100,
+			wantMarker: 50,
+			wantUnit:   pb.U_NO,
+			wantOut:    "50 / 50  100.00%",
+		},
+	}
+	var requests atomic.Int32
+	s := newServer(t)
+	defer s.shutdown()
+	s.register(fooMethod, methods.errorIf(func() bool {
+		requests.Inc()
+		return false
+	}))
+
+	m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
+
+	buf, _, out := getOutput(t)
+	for _, tt := range tests {
+		buf.Reset()
+		requests.Store(0)
+
+		t.Run(fmt.Sprintf(tt.msg), func(t *testing.T) {
+			runBenchmark(out, Options{
+				BOpts: BenchmarkOptions{
+					MaxRequests: tt.maxRequests,
+					MaxDuration: tt.d,
+					RPS:         tt.rps,
+					Connections: 50,
+					Concurrency: 2,
+					ProgressBar: true,
+				},
+				TOpts: s.transportOpts(),
+			}, m)
+			assert.Contains(t, buf.String(), tt.wantOut)
+		})
 	}
 }

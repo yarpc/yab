@@ -22,6 +22,7 @@ package main
 
 import (
 	"errors"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"runtime"
@@ -31,9 +32,14 @@ import (
 	"github.com/yarpc/yab/limiter"
 	"github.com/yarpc/yab/statsd"
 	"github.com/yarpc/yab/transport"
+
+	pb "gopkg.in/cheggaaa/pb.v1"
 )
 
 var (
+	progressMarker int
+	progressUnit   pb.Units
+
 	errNegativeDuration = errors.New("duration cannot be negative")
 	errNegativeMaxReqs  = errors.New("max requests cannot be negative")
 )
@@ -75,8 +81,10 @@ func (o BenchmarkOptions) enabled() bool {
 	return o.MaxDuration != 0 || o.MaxRequests != 0
 }
 
-func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run *limiter.Run) {
+func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run *limiter.Run, pb *pb.ProgressBar) {
 	for cur := run; cur.More(); {
+		pb.Increment()
+
 		latency, err := m.call(t)
 		if err != nil {
 			s.recordError(err)
@@ -99,8 +107,10 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 
 	if opts.RPS > 0 && opts.MaxDuration > 0 {
 		// The RPS * duration in seconds may cap opts.MaxRequests.
+		// This int cast rounds down 1.0 * 999ms (0.999) = 0.999 = int(0.999) = 0
 		rpsMax := int(float64(opts.RPS) * opts.MaxDuration.Seconds())
-		if rpsMax < opts.MaxRequests || opts.MaxRequests == 0 {
+
+		if (rpsMax > 0 && rpsMax < opts.MaxRequests) || opts.MaxRequests == 0 {
 			opts.MaxRequests = rpsMax
 		}
 	}
@@ -132,6 +142,15 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 		states[i] = newBenchmarkState(statter)
 	}
 
+	progressMarker, progressUnit = progressBarSetup(&opts)
+	progressBar := pb.New(progressMarker)
+	progressBar.SetUnits(progressUnit)
+	progressBar.Output = ioutil.Discard
+	if opts.ProgressBar {
+		progressBar.Output = out
+	}
+	progressBar.Start()
+
 	run := limiter.New(opts.MaxRequests, opts.RPS, opts.MaxDuration)
 	stopOnInterrupt(out, run)
 
@@ -143,7 +162,7 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 			wg.Add(1)
 			go func(c transport.Transport) {
 				defer wg.Done()
-				runWorker(c, m, state, run)
+				runWorker(c, m, state, run, progressBar)
 			}(c)
 		}
 	}
@@ -153,6 +172,9 @@ func runBenchmark(out output, allOpts Options, m benchmarkMethod) {
 	// Wait for all the worker goroutines to end.
 	wg.Wait()
 	total := time.Since(start)
+	progressBar.Finish()
+
+	// progressBar.FinishPrint("Benchmark finished")
 
 	// Merge all the states into 0
 	overall := states[0]
@@ -179,4 +201,11 @@ func stopOnInterrupt(out output, r *limiter.Run) {
 		out.Printf("\n!!Benchmark interrupted!!\n")
 		r.Stop()
 	}()
+}
+
+func progressBarSetup(opts *BenchmarkOptions) (int, pb.Units) {
+	if opts.MaxRequests > 0 {
+		return opts.MaxRequests, pb.U_NO
+	}
+	return int(opts.MaxDuration), pb.U_DURATION
 }
