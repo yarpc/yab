@@ -34,6 +34,8 @@ import (
 	"golang.org/x/net/context"
 )
 
+const HTTPThriftEnvelopeheader = "RPC-Thrift-Envelope"
+
 type httpTransport struct {
 	opts   HTTPOptions
 	client *http.Client

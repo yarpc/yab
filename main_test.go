@@ -774,9 +774,10 @@ func TestWithTransportSerializer(t *testing.T) {
 	noEnvelopeOpts.ThriftDisableEnvelopes = true
 
 	tests := []struct {
-		protocol transport.Protocol
-		rOpts    RequestOptions
-		want     []byte
+		protocol             transport.Protocol
+		rOpts                RequestOptions
+		want                 []byte
+		wantTransportHeaders map[string]string
 	}{
 		{
 			protocol: transport.HTTP,
@@ -786,11 +787,17 @@ func TestWithTransportSerializer(t *testing.T) {
 				Type:  wire.Call,
 				Value: wire.NewValueStruct(wire.Struct{}),
 			}),
+			wantTransportHeaders: map[string]string{
+				"RPC-Thrift-Envelope": "true",
+			},
 		},
 		{
 			protocol: transport.HTTP,
 			rOpts:    noEnvelopeOpts,
 			want:     []byte{0},
+			wantTransportHeaders: map[string]string{
+				"RPC-Thrift-Envelope": "false",
+			},
 		},
 		{
 			protocol: transport.TChannel,
@@ -808,13 +815,14 @@ func TestWithTransportSerializer(t *testing.T) {
 		serializer, err := NewSerializer(tt.rOpts)
 		require.NoError(t, err, "Failed to create serializer for %+v", tt.rOpts)
 
-		serializer = withTransportSerializer(tt.protocol, serializer, tt.rOpts)
+		tHeaders, serializer := withTransportSerializer(tt.protocol, serializer, tt.rOpts)
 		req, err := serializer.Request(nil)
 		if !assert.NoError(t, err, "Failed to serialize request for %+v", tt.rOpts) {
 			continue
 		}
 
 		assert.Equal(t, tt.want, req.Body, "Body mismatch for %+v", tt.rOpts)
+		assert.Equal(t, tt.wantTransportHeaders, tHeaders, "Transport headers mismatch for %+v", tt.rOpts)
 	}
 }
 

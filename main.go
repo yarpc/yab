@@ -28,10 +28,12 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/yarpc/yab/encoding"
+	"github.com/yarpc/yab/merge"
 	"github.com/yarpc/yab/peerprovider"
 	"github.com/yarpc/yab/transport"
 
@@ -309,7 +311,7 @@ func runWithOptions(opts Options, out output) {
 		out.Fatalf("Failed while parsing options: %v\n", err)
 	}
 
-	serializer = withTransportSerializer(transport.Protocol(), serializer, opts.ROpts)
+	tHeaders, serializer := withTransportSerializer(transport.Protocol(), serializer, opts.ROpts)
 
 	// req is the transport.Request that will be used to make a call.
 	req, err := serializer.Request(reqInput)
@@ -318,7 +320,7 @@ func runWithOptions(opts Options, out output) {
 	}
 
 	req.Headers = headers
-	req.TransportHeaders = opts.TOpts.TransportHeaders
+	req.TransportHeaders = merge.Headers(tHeaders, opts.TOpts.TransportHeaders)
 	req.Timeout = opts.ROpts.Timeout.Duration()
 	if req.Timeout == 0 {
 		req.Timeout = time.Second
@@ -355,13 +357,23 @@ func getTracer(opts Options, out output) (opentracing.Tracer, io.Closer) {
 
 // withTransportSerializer may modify the serializer for the transport used.
 // E.g. Thrift payloads are not enveloped when used with TChannel.
-func withTransportSerializer(p transport.Protocol, s encoding.Serializer, rOpts RequestOptions) encoding.Serializer {
-	switch {
-	case p == transport.TChannel && s.Encoding() == encoding.Thrift,
-		rOpts.ThriftDisableEnvelopes:
+// It also returns any additional transport headers for this protocol/encoding.
+func withTransportSerializer(p transport.Protocol, s encoding.Serializer, rOpts RequestOptions) (tHeaders map[string]string, _ encoding.Serializer) {
+	if s.Encoding() != encoding.Thrift {
+		return
+	}
+
+	disableEnvelope := p == transport.TChannel || rOpts.ThriftDisableEnvelopes
+	if disableEnvelope {
 		s = s.(noEnveloper).WithoutEnvelopes()
 	}
-	return s
+
+	if p == transport.HTTP {
+		tHeaders = map[string]string{
+			transport.HTTPThriftEnvelopeheader: strconv.FormatBool(!disableEnvelope),
+		}
+	}
+	return tHeaders, s
 }
 
 // makeRequest makes a request using the given transport.

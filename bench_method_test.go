@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/yarpc/yab/encoding"
+	"github.com/yarpc/yab/merge"
 	"github.com/yarpc/yab/transport"
 
 	"github.com/opentracing/opentracing-go"
@@ -45,10 +46,11 @@ func benchmarkMethodForTest(t *testing.T, procedure string, p transport.Protocol
 	serializer, err := NewSerializer(rOpts)
 	require.NoError(t, err, "Failed to create Thrift serializer")
 
-	serializer = withTransportSerializer(p, serializer, rOpts)
+	tHeaders, serializer := withTransportSerializer(p, serializer, rOpts)
 
 	req, err := serializer.Request(nil)
 	require.NoError(t, err, "Failed to serialize Thrift body")
+	req.TransportHeaders = merge.Headers(req.TransportHeaders, tHeaders)
 
 	req.Timeout = time.Second
 	return benchmarkMethod{serializer, req}

@@ -34,6 +34,7 @@ import (
 	"github.com/yarpc/yab/testdata/gen-go/integration"
 	yintegration "github.com/yarpc/yab/testdata/yarpc/integration"
 	"github.com/yarpc/yab/testdata/yarpc/integration/fooserver"
+	"github.com/yarpc/yab/transport"
 
 	athrift "github.com/apache/thrift/lib/go/thrift"
 	"github.com/opentracing/opentracing-go"
@@ -260,6 +261,44 @@ func TestIntegrationProtocols(t *testing.T) {
 			assert.Contains(t, gotOut, tt.wantRes, "%v: Unexpected result for %v", c.desc, tt.call)
 			assert.Contains(t, gotErr, tt.wantErr, "%v: Unexpected error for %v", c.desc, tt.call)
 		}
+	}
+}
+
+func TestIntegrationThriftEnvelope(t *testing.T) {
+	tests := []struct {
+		disableEnvelope    bool
+		wantEnvelopeHeader string
+	}{
+		{true, "false"},
+		{false, "true"},
+	}
+
+	for _, tt := range tests {
+
+		var called bool
+		server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+			called = true
+			envelope := r.Header.Get(transport.HTTPThriftEnvelopeheader)
+			assert.Equal(t, tt.wantEnvelopeHeader, envelope)
+		}))
+		defer server.Close()
+
+		opts := Options{
+			ROpts: RequestOptions{
+				ThriftFile:             "testdata/integration.thrift",
+				Procedure:              "Foo::bar",
+				Timeout:                timeMillisFlag(time.Second),
+				ThriftDisableEnvelopes: tt.disableEnvelope,
+			},
+			TOpts: TransportOptions{
+				ServiceName: "foo",
+				Peers:       []string{server.URL},
+				Jaeger:      true,
+			},
+		}
+
+		runTestWithOpts(opts)
+		assert.True(t, called, "Server did not receive any call")
 	}
 }
 
