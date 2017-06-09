@@ -202,7 +202,7 @@ func parseAndRun(out output) {
 		out.Fatalf("failed to setup logger: %v", err)
 		return
 	}
-	logger.Info("Logger initialized.", zap.Stringer("level", loggerConfig.Level))
+	logger.Debug("Logger initialized.", zap.Stringer("level", loggerConfig.Level))
 	runWithOptions(*opts, out, logger)
 }
 
