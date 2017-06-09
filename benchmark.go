@@ -82,7 +82,8 @@ func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run 
 		latency, err := m.call(t)
 		if err != nil {
 			s.recordError(err)
-			logger.Info("error occured", zap.Error(err))
+			// TODO: Add information about which peer specifically failed.
+			logger.Info("Failed while making call.", zap.Error(err))
 			continue
 		}
 
@@ -119,18 +120,13 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, m benchmarkMe
 	out.Printf("  Max RPS:         %v\n", opts.RPS)
 
 	// Warm up number of connections.
-	logger.Debug("warmup connections", zap.Int("num_conns", numConns))
+	logger.Debug("Warming up connections.", zap.Int("numConns", numConns))
 	connections, err := m.WarmTransports(numConns, allOpts.TOpts, opts.WarmupRequests)
 	if err != nil {
 		out.Fatalf("Failed to warmup connections for benchmark: %v", err)
 	}
 
-	logger.Debug("setup statsd client",
-		zap.String("hostPort", opts.StatsdHostPort),
-		zap.String("service_name", allOpts.TOpts.ServiceName),
-		zap.String("procedure", allOpts.ROpts.Procedure),
-	)
-	statter, err := statsd.NewClient(opts.StatsdHostPort, allOpts.TOpts.ServiceName, allOpts.ROpts.Procedure)
+	statter, err := statsd.NewClient(logger, opts.StatsdHostPort, allOpts.TOpts.ServiceName, allOpts.ROpts.Procedure)
 	if err != nil {
 		out.Fatalf("Failed to create statsd client for benchmark: %v", err)
 	}
@@ -144,7 +140,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, m benchmarkMe
 	run := limiter.New(opts.MaxRequests, opts.RPS, opts.MaxDuration)
 	stopOnInterrupt(out, run)
 
-	logger.Info("starting benchmark", zap.Any("options", opts))
+	logger.Info("Benchmark starting.", zap.Any("options", opts))
 	start := time.Now()
 	for i, c := range connections {
 		for j := 0; j < opts.Concurrency; j++ {
@@ -163,13 +159,17 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, m benchmarkMe
 	// Wait for all the worker goroutines to end.
 	wg.Wait()
 	total := time.Since(start)
-
-	logger.Info("ended benchmark", zap.Duration("total_time", total), zap.Time("start_time", start))
 	// Merge all the states into 0
 	overall := states[0]
 	for _, s := range states[1:] {
 		overall.merge(s)
 	}
+
+	logger.Info("Benchmark complete.",
+		zap.Duration("totalDuration", total),
+		zap.Int("totalRequests", overall.totalRequests),
+		zap.Time("startTime", start),
+	)
 
 	overall.printErrors(out)
 	overall.printLatencies(out)
