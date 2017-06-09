@@ -44,25 +44,29 @@ func TestLoggerConfigure(t *testing.T) {
 
 func TestLoggerGetLoggerVerbosity(t *testing.T) {
 	tests := []struct {
-		verbocityLevel  VerbosityLevel
+		verbosity       []bool
 		wantLoggerLevel zapcore.Level
 	}{
 		{
-			verbocityLevel:  VerbosityLevelOff,
+			verbosity:       nil,
 			wantLoggerLevel: zapcore.WarnLevel,
 		},
 		{
-			verbocityLevel:  VerbosityLevelInfo,
+			verbosity:       []bool{true},
 			wantLoggerLevel: zapcore.InfoLevel,
 		},
 		{
-			verbocityLevel:  VerbosityLevelDebug,
+			verbosity:       []bool{true, true},
+			wantLoggerLevel: zapcore.DebugLevel,
+		},
+		{
+			verbosity:       []bool{true, true, true},
 			wantLoggerLevel: zapcore.DebugLevel,
 		},
 	}
 	for _, tt := range tests {
-		t.Run(fmt.Sprintf("get_logger_verbocity: %v", tt.verbocityLevel), func(t *testing.T) {
-			lvl := getLoggerVerbosity(tt.verbocityLevel)
+		t.Run(fmt.Sprintf("getLoggerVerbosity(%v)", tt.verbosity), func(t *testing.T) {
+			lvl := getLoggerVerbosity(tt.verbosity)
 			assert.Equal(t, lvl, tt.wantLoggerLevel)
 		})
 	}

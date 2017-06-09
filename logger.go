@@ -5,28 +5,16 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// VerbosityLevel maps to a level of logs to be enabled on the command
-type VerbosityLevel uint8
-
-const (
-	// VerbosityLevelOff no log messages displayed
-	VerbosityLevelOff VerbosityLevel = iota
-	// VerbosityLevelInfo enables printing up to Info level command log statements
-	VerbosityLevelInfo
-	// VerbosityLevelDebug enables printing up to Debug level command log statements
-	VerbosityLevelDebug
-)
-
-// getLoggerVerbosity takes a VerbosityLevel and returns an appropriate logging level
-func getLoggerVerbosity(lvl VerbosityLevel) zapcore.Level {
-	zlvl := zap.DebugLevel
-	switch lvl {
-	case VerbosityLevelOff:
-		zlvl = zap.WarnLevel
-	case VerbosityLevelInfo:
-		zlvl = zap.InfoLevel
+// getLoggerVerbosity returns an appropriate logging level based on flags.
+func getLoggerVerbosity(verbosity []bool) zapcore.Level {
+	switch len(verbosity) {
+	case 0:
+		return zap.WarnLevel
+	case 1:
+		return zap.InfoLevel
+	default:
+		return zap.DebugLevel
 	}
-	return zlvl
 }
 
 func configureLoggerConfig(opts *Options) zap.Config {
@@ -43,8 +31,9 @@ func configureLoggerConfig(opts *Options) zap.Config {
 		EncodeTime:     zapcore.ISO8601TimeEncoder,
 		EncodeDuration: zapcore.StringDurationEncoder,
 	}
+
 	// Set the logger level based on the command line parsed options.
-	loggerConfig.Level.SetLevel(getLoggerVerbosity(VerbosityLevel(len(opts.Verbosity))))
+	loggerConfig.Level.SetLevel(getLoggerVerbosity(opts.Verbosity))
 
 	return loggerConfig
 }
