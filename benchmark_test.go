@@ -69,7 +69,6 @@ func TestBenchmark(t *testing.T) {
 		requests.Inc()
 		return false
 	}))
-	logger := getTestLogger()
 
 	m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
 
@@ -78,7 +77,7 @@ func TestBenchmark(t *testing.T) {
 
 		start := time.Now()
 		buf, _, out := getOutput(t)
-		runBenchmark(out, logger, Options{
+		runBenchmark(out, _testLogger, Options{
 			BOpts: BenchmarkOptions{
 				MaxRequests: tt.n,
 				MaxDuration: tt.d,
@@ -136,7 +135,6 @@ func TestRunBenchmarkErrors(t *testing.T) {
 		}
 		m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
 		opts := Options{BOpts: tt.opts}
-		logger := getTestLogger()
 
 		var wg sync.WaitGroup
 		wg.Add(1)
@@ -144,7 +142,7 @@ func TestRunBenchmarkErrors(t *testing.T) {
 		// need to run the benchmark in a separate goroutine.
 		go func() {
 			defer wg.Done()
-			runBenchmark(out, logger, opts, m)
+			runBenchmark(out, _testLogger, opts, m)
 		}()
 
 		wg.Wait()

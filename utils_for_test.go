@@ -41,6 +41,8 @@ const (
 	exampleTemplate = "testdata/templates/foo.yaml"
 )
 
+var _testLogger = zap.NewNop()
+
 type testOutput struct {
 	*bytes.Buffer
 	warnf  func(string, ...interface{})
@@ -84,9 +86,4 @@ func writeFile(t *testing.T, prefix, contents string) string {
 
 func getTestTracer(serviceName string) (opentracing.Tracer, io.Closer) {
 	return jaeger.NewTracer(serviceName, jaeger.NewConstSampler(true), jaeger.NewNullReporter())
-}
-
-func getTestLogger() *zap.Logger {
-	logger := zap.NewNop()
-	return logger
 }
