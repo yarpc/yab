@@ -1,5 +1,4 @@
 # yab [![Build Status][ci-img]][ci] [![Coverage Status][cov-img]][cov]
-======
 
 `yab` (Yet Another Benchmarker) is a tool to benchmark YARPC services. It
 currently supports making Thrift requests to both HTTP and TChannel services.
