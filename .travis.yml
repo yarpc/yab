@@ -20,7 +20,9 @@ install:
 
 script:
     - make test_ci
-    - travis_retry goveralls -coverprofile=cover.out -service=travis-ci
+
+after_success:
+    - bash <(curl -s https://codecov.io/bash)
 
 deploy:
     - provider: script

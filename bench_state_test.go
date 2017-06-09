@@ -65,10 +65,7 @@ func TestBenchmarkStateErrors(t *testing.T) {
 	state1.printErrors(out)
 
 	expected := map[string]int{
-		"failed after 9ms":    1,
-		"failed after XXms":   2,
-		"failed after XXXms":  3,
-		"failed after XXXXms": 1,
+		"failed after Xms": 7,
 	}
 
 	bufStr := buf.String()
@@ -173,9 +170,10 @@ func TestErrorToMessage(t *testing.T) {
 		want string
 	}{
 		{errors.New("no digits"), "no digits"},
-		{errors.New("has 1 digit"), "has 1 digit"},
-		{errors.New("has two 22 digits"), "has two XX digits"},
-		{errors.New("has lots 12345 digits"), "has lots XXXXX digits"},
+		{errors.New("has 1 digit"), "has X digit"},
+		{errors.New("has two 22 digits"), "has two X digits"},
+		{errors.New("has lots 12345 digits"), "has lots X digits"},
+		{errors.New("has an ip 10.2.40.5"), "has an ip X.X.X.X"},
 	}
 
 	for _, tt := range tests {

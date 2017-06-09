@@ -136,24 +136,27 @@ func (p byDuration) Less(i, j int) bool { return p[i] < p[j] }
 func (p byDuration) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
 // errorToMessage takes an error and converts it to a message that's stored.
-// It strips out all multi-digit numbers, as the message set should be small.
+// It strips out digits and replaces them with a single X.
 func errorToMessage(err error) string {
-	msg := []byte(err.Error())
+	origMsg := err.Error()
 	consecutiveDigits := 0
-	for i := range msg {
-		if msg[i] < '0' || msg[i] > '9' {
+	buf := make([]byte, 0, len(origMsg))
+	for i := 0; i < len(origMsg); i++ {
+		c := origMsg[i]
+		switch {
+		case c < '0', c > '9':
 			consecutiveDigits = 0
-			continue
+		default:
+			c = 'X'
+			consecutiveDigits++
+			if consecutiveDigits > 1 {
+				// We only append a single X for consecutive digits.
+				continue
+			}
 		}
 
-		consecutiveDigits++
-		if consecutiveDigits > 1 {
-			if consecutiveDigits == 2 {
-				msg[i-1] = 'X'
-			}
-			msg[i] = 'X'
-		}
+		buf = append(buf, c)
 	}
 
-	return string(msg)
+	return string(buf)
 }
