@@ -31,6 +31,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/require"
 	"github.com/uber/jaeger-client-go"
+	"go.uber.org/zap"
 )
 
 // Constants useful for tests
@@ -39,6 +40,8 @@ const (
 	fooMethod       = "Simple::foo"
 	exampleTemplate = "testdata/templates/foo.yaml"
 )
+
+var _testLogger = zap.NewNop()
 
 type testOutput struct {
 	*bytes.Buffer

@@ -26,10 +26,14 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/cactus/go-statsd-client/statsd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var _testLogger = zap.NewNop()
 
 func TestNewClientEmpty(t *testing.T) {
 	origNewStatsD := newStatsD
@@ -40,7 +44,7 @@ func TestNewClientEmpty(t *testing.T) {
 		return nil, nil
 	}
 
-	statsd, err := NewClient("", "svc", "method")
+	statsd, err := NewClient(_testLogger, "", "svc", "method")
 	require.NoError(t, err, "NewClient with empty address should not fail")
 	assert.NotNil(t, statsd, "NewClient with empty address should get client")
 
@@ -105,7 +109,7 @@ func TestNewClientCreate(t *testing.T) {
 			return tt.retStatter, tt.retErr
 		}
 
-		statsd, err := NewClient("1.1.1.1:1", "s?v-c", "m:\"ethod")
+		statsd, err := NewClient(_testLogger, "1.1.1.1:1", "s?v-c", "m:\"ethod")
 		assert.Equal(t, tt.wantErr, err, "Expected failure from newStatsD")
 		if tt.wantErr != nil {
 			assert.Nil(t, statsd, "No client should be returned on error")

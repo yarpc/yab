@@ -41,6 +41,7 @@ import (
 	opentracing_ext "github.com/opentracing/opentracing-go/ext"
 	"github.com/uber/jaeger-client-go"
 	"github.com/uber/tchannel-go"
+	"go.uber.org/zap"
 )
 
 var (
@@ -195,7 +196,14 @@ func parseAndRun(out output) {
 		}
 		out.Fatalf("Failed to parse options: %v", err)
 	}
-	runWithOptions(*opts, out)
+	loggerConfig := configureLoggerConfig(opts)
+	logger, err := loggerConfig.Build()
+	if err != nil {
+		out.Fatalf("failed to setup logger: %v", err)
+		return
+	}
+	logger.Debug("Logger initialized.", zap.Stringer("level", loggerConfig.Level))
+	runWithOptions(*opts, out, logger)
 }
 
 // overrideDefaults clears fields in the default options that may
@@ -260,7 +268,7 @@ func parseDefaultConfigs(parser *flags.Parser) error {
 	return nil
 }
 
-func runWithOptions(opts Options, out output) {
+func runWithOptions(opts Options, out output, logger *zap.Logger) {
 	if opts.TOpts.PeerList == "?" {
 		for _, scheme := range peerprovider.Schemes() {
 			out.Printf("%s\n", scheme)
@@ -330,7 +338,7 @@ func runWithOptions(opts Options, out output) {
 		makeInitialRequest(out, transport, serializer, req)
 	}
 
-	runBenchmark(out, opts, benchmarkMethod{
+	runBenchmark(out, logger, opts, benchmarkMethod{
 		serializer: serializer,
 		req:        req,
 	})

@@ -223,7 +223,7 @@ func TestRunWithOptions(t *testing.T) {
 		// new goroutine and testoutput.Fatalf will only exit the goroutine.
 		go func() {
 			defer close(runComplete)
-			runWithOptions(tt.opts, out)
+			runWithOptions(tt.opts, out, _testLogger)
 		}()
 
 		<-runComplete
@@ -902,7 +902,7 @@ func TestNoWarmupBenchmark(t *testing.T) {
 			Connections:    50,
 			Concurrency:    2,
 		},
-	}, out)
+	}, out, _testLogger)
 	assert.Contains(t, buf.String(), "Total errors: 100")
 	assert.Contains(t, buf.String(), "Error rate: 100")
 }
