@@ -1,6 +1,9 @@
 Changelog
 =========
 
+# 0.10.2 (Unreleased)
+* Fix timeouts specified in tempaltes being ignored.
+
 # 0.10.1 (2017-04-24)
 * Fix for HTTP not respecting context timeout.
 

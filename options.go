@@ -51,7 +51,7 @@ type RequestOptions struct {
 	HeadersFile  string            `long:"headers-file" description:"Path of a file containing the headers in JSON or YAML"`
 	Baggage      map[string]string `short:"B" long:"baggage" description:"Individual context baggage header as a key:value pair per flag"`
 	Health       bool              `long:"health" description:"Hit the health endpoint, Meta::health"`
-	Timeout      timeMillisFlag    `long:"timeout" default:"1s" description:"The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds are assumed."`
+	Timeout      timeMillisFlag    `long:"timeout" default-mask:"1s" description:"The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds are assumed."`
 	YamlTemplate string            `short:"y" long:"yaml-template" description:"Send a tchannel request specified by a YAML template"`
 	TemplateArgs map[string]string `short:"A" long:"arg" description:"A list of key-value template arguments, specified as -A foo:bar -A user:me"`
 
@@ -110,6 +110,11 @@ type BenchmarkOptions struct {
 
 func newOptions() *Options {
 	var opts Options
+
+	// Defaults
+	opts.ROpts.Timeout = timeMillisFlag(time.Second)
+
+	// Set flag aliases
 	opts.ROpts.MethodName.dest = &opts.ROpts.Procedure
 	aliases := &opts.ROpts.Aliases
 	aliases.Arg1.dest = &opts.ROpts.Procedure
@@ -128,6 +133,10 @@ func (t *timeMillisFlag) setDuration(d time.Duration) {
 
 func (t timeMillisFlag) Duration() time.Duration {
 	return time.Duration(t)
+}
+
+func (t timeMillisFlag) String() string {
+	return time.Duration(t).String()
 }
 
 func (t *timeMillisFlag) UnmarshalFlag(value string) error {
