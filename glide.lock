@@ -1,22 +1,28 @@
-hash: 9f98bfbee7c6a0ae7af598643f69db8136d5843e5c98a0db26c571a570655879
-updated: 2017-06-09T16:54:13.793502345-07:00
+hash: 90be37e72b4e67ea34ac1c36382d4f78f3c75826e225fc201864f4b064313ffc
+updated: 2017-08-29T10:46:15.625926737-07:00
 imports:
 - name: github.com/apache/thrift
-  version: b8ee72de5bf9318d50846852082325d0f932682b
+  version: b2a4d4ae21c789b689dd162deb819665567f481c
   subpackages:
   - lib/go/thrift
 - name: github.com/cactus/go-statsd-client
-  version: 95cb85a8d6b2d1ccfce95fa58d1ca3445779d8af
+  version: ad551ee7f9f3465fb1ce1695899c612f7808a06a
   subpackages:
   - statsd
 - name: github.com/casimir/xdg-go
   version: 372ccc2180dab73316615641d5617c5ed3e35529
+- name: github.com/codahale/hdrhistogram
+  version: 3a0bb77429bd3a61596f5e8a3172445844342120
 - name: github.com/davecgh/go-spew
-  version: 346938d642f2ec3594ed81d874461961cd0faa76
+  version: adab96458c51a58dc1783b3335dcce5461522e75
   subpackages:
   - spew
+- name: github.com/gogo/protobuf
+  version: 9319258ff0eab7faf2eaca190ef9dff2b9603ead
+  subpackages:
+  - proto
 - name: github.com/jessevdk/go-flags
-  version: 460c7bb0abd6e927f2767cadc91aa6ef776a98b4
+  version: 6cf8f02b4ae8ba723ddc64dcfd403e530c06d927
 - name: github.com/opentracing/opentracing-go
   version: 1949ddbfd147afd4d964a9f00b24eb291e0e7c38
   subpackages:
@@ -32,18 +38,23 @@ imports:
   - assert
   - require
 - name: github.com/uber-go/atomic
-  version: 0c9e689d64f004564b79d9a663634756df322902
+  version: 70bd1261d36be490ebd22a62b385a3c5d23b6240
 - name: github.com/uber/jaeger-client-go
-  version: e39d0f1b622558cae3d9db0062a739cc6ffa700f
+  version: 3e3870040def0ebdaf65a003863fa64f5cb26139
   subpackages:
   - internal/spanlog
+  - log
   - thrift-gen/agent
+  - thrift-gen/jaeger
   - thrift-gen/sampling
   - thrift-gen/zipkincore
-  - transport
   - utils
+- name: github.com/uber/jaeger-lib
+  version: 575c678b2873b62aaadd0fa5817a2aeb3155dc4d
+  subpackages:
+  - metrics
 - name: github.com/uber/tchannel-go
-  version: b99c1d7cecb0fdc882bed0098e7cae6ec7459059
+  version: a7ad9ecb640b5f10a0395b38d6319175172b3ab2
   subpackages:
   - internal/argreader
   - json
@@ -60,8 +71,10 @@ imports:
   - typed
 - name: go.uber.org/atomic
   version: 4e336646b2ef9fc6e47be8e21594178f98e5ebcf
+- name: go.uber.org/multierr
+  version: 3c4937480c32f4c13a875a1829af76c98ca3d40a
 - name: go.uber.org/thriftrw
-  version: dde90c2a40f45fb2b6361d13c1b4bf09465401c0
+  version: 8bbe12f61b982c30be95f88bfe62cade3d470e08
   subpackages:
   - ast
   - compile
@@ -76,16 +89,15 @@ imports:
   - version
   - wire
 - name: go.uber.org/zap
-  version: 9cabc84638b70e564c3dab2766efcb1ded2aac9f
+  version: 9d9d6135afe89b6fc4a05e9a8552526caba38048
   subpackages:
   - buffer
   - internal/bufferpool
   - internal/color
   - internal/exit
-  - internal/multierror
   - zapcore
 - name: golang.org/x/net
-  version: e78b1e49ae6a141efbf00e840cf59c503308593b
+  version: 66aacef3dd8a676686c7ae3716979581e8b03c47
   subpackages:
   - bpf
   - context
@@ -94,7 +106,7 @@ imports:
   - ipv4
   - ipv6
 - name: gopkg.in/yaml.v2
-  version: a83829b6f1293c91addabc89d0571c246397bbf4
+  version: eb3733d160e74a9c7e442f435eb3bea458e1d19f
 testImports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -102,12 +114,8 @@ testImports:
   - quantile
 - name: github.com/facebookgo/clock
   version: 600d898af40aa09a7a93ecb9265d87b0504b6f03
-- name: github.com/gogo/protobuf
-  version: 100ba4e885062801d56799d78530b73b178a78f3
-  subpackages:
-  - proto
 - name: github.com/golang/protobuf
-  version: 5a0f697c9ed9d68fef0116532c6e05cfeae00e55
+  version: ab9f9a6dab164b7d1246e0e688b0ab7b94d8553e
   subpackages:
   - proto
 - name: github.com/matttproud/golang_protobuf_extensions
@@ -124,13 +132,13 @@ testImports:
   subpackages:
   - go
 - name: github.com/prometheus/common
-  version: 13ba4ddd0caa9c28ca7b7bffe1dfa9ed8d5ef207
+  version: 61f87aac8082fa8c3c5655c7608d7478d46ac2ad
   subpackages:
   - expfmt
   - internal/bitbucket.org/ww/goautoneg
   - model
 - name: github.com/prometheus/procfs
-  version: 65c1f6f8f0fc1e2185eb9863a3bc751496404259
+  version: e645f4e5aaa8506fc71d6edbc5c4ff02c04c46f2
   subpackages:
   - xfs
 - name: github.com/uber-go/mapdecode
@@ -138,12 +146,11 @@ testImports:
   subpackages:
   - internal/mapstructure
 - name: github.com/uber-go/tally
-  version: e9b601813b0be4771b1b3995390567b67ab2b3fc
-- name: go.uber.org/multierr
-  version: ef109dc7f883f3a99db2d89edc701c25cac40571
+  version: 2605c407d7d219644d03a3680ad7df4779017782
 - name: go.uber.org/yarpc
-  version: 25be6398200bcad9f7194ae09ba79d9f20289412
+  version: df6f636a8ec8a0f7e90ab431ede56b9371159a9e
   subpackages:
+  - api/backoff
   - api/encoding
   - api/middleware
   - api/peer
@@ -151,10 +158,11 @@ testImports:
   - encoding/thrift
   - encoding/thrift/internal
   - internal
-  - internal/buffer
+  - internal/backoff
+  - internal/bufferpool
   - internal/clientconfig
-  - internal/encoding
-  - internal/errors
+  - internal/config
+  - internal/errorsync
   - internal/humanize
   - internal/inboundmiddleware
   - internal/interpolate
@@ -164,12 +172,15 @@ testImports:
   - internal/observability
   - internal/outboundmiddleware
   - internal/pally
-  - internal/procedure
   - internal/request
-  - internal/sync
   - peer
   - peer/hostport
+  - pkg/encoding
+  - pkg/errors
+  - pkg/lifecycle
+  - pkg/procedure
   - transport/http
   - transport/tchannel
   - transport/tchannel/internal
-  - x/config
+  - yarpcconfig
+  - yarpcerrors
