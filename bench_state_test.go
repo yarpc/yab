@@ -48,7 +48,7 @@ func TestBenchmarkStateErrors(t *testing.T) {
 		state1.recordError(nil)
 	})
 
-	buf, out := getOutput(t)
+	buf, _, out := getOutput(t)
 
 	// before merge
 	assert.Equal(t, state1.totalErrors, 4, "Error count mismatch")
@@ -65,10 +65,7 @@ func TestBenchmarkStateErrors(t *testing.T) {
 	state1.printErrors(out)
 
 	expected := map[string]int{
-		"failed after 9ms":    1,
-		"failed after XXms":   2,
-		"failed after XXXms":  3,
-		"failed after XXXXms": 1,
+		"failed after Xms": 7,
 	}
 
 	bufStr := buf.String()
@@ -83,7 +80,7 @@ func TestBenchmarkStateErrors(t *testing.T) {
 
 func TestBenchmarkStateNoError(t *testing.T) {
 	state := newBenchmarkState(statsd.Noop)
-	buf, out := getOutput(t)
+	buf, _, out := getOutput(t)
 	state.printErrors(out)
 	assert.Equal(t, 0, buf.Len(), "Expected no output with no errors, got: %s", buf.String())
 }
@@ -99,7 +96,7 @@ func TestBenchmarkStateLatencies(t *testing.T) {
 		latencies = append(latencies, latency)
 	}
 
-	buf, out := getOutput(t)
+	buf, _, out := getOutput(t)
 
 	assert.Equal(t, state.totalErrors, 0, "Error count mismatch")
 	assert.Equal(t, state.totalSuccess, 10001, "Success count mismatch")
@@ -149,7 +146,7 @@ func TestBenchmarkStateMergeLatencies(t *testing.T) {
 	assert.Equal(t, state1.totalSuccess, 10001, "Success count mismatch")
 	assert.Equal(t, state1.totalRequests, 10001, "Request count mismatch")
 
-	buf, out := getOutput(t)
+	buf, _, out := getOutput(t)
 	state1.printLatencies(out)
 
 	expected := []string{
@@ -173,9 +170,10 @@ func TestErrorToMessage(t *testing.T) {
 		want string
 	}{
 		{errors.New("no digits"), "no digits"},
-		{errors.New("has 1 digit"), "has 1 digit"},
-		{errors.New("has two 22 digits"), "has two XX digits"},
-		{errors.New("has lots 12345 digits"), "has lots XXXXX digits"},
+		{errors.New("has 1 digit"), "has X digit"},
+		{errors.New("has two 22 digits"), "has two X digits"},
+		{errors.New("has lots 12345 digits"), "has lots X digits"},
+		{errors.New("has an ip 10.2.40.5"), "has an ip X.X.X.X"},
 	}
 
 	for _, tt := range tests {

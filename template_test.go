@@ -294,7 +294,7 @@ func TestTemplateAlias(t *testing.T) {
 	for _, tt := range tests {
 		for _, template := range tt.templates {
 			t.Run(template, func(t *testing.T) {
-				templ, err := UnmarshalTemplate([]byte(template))
+				templ, err := unmarshalTemplate([]byte(template))
 				require.NoError(t, err)
 				assert.Equal(t, tt.wantShardKey, templ.ShardKey, "shard key aliases expanded")
 				assert.Equal(t, tt.wantRoutingKey, templ.RoutingKey, "routing key aliases expanded")

@@ -3,8 +3,9 @@ package limiter
 import (
 	"time"
 
-	"github.com/uber-go/atomic"
 	"github.com/yarpc/yab/ratelimit"
+
+	"go.uber.org/atomic"
 )
 
 // Run represents a single run that is limited by either

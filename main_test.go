@@ -52,6 +52,13 @@ func init() {
 	// Set the config home so that tests don't inherit settings from the
 	// running user's config directories.
 	os.Setenv(_configHomeEnv, "./testdata/init/notfound")
+	// Setting up some test lists we have to warn and blocker caller names
+	warningCallerNames = map[string]struct{}{
+		"testWarningCallerName": struct{}{},
+	}
+	blockedCallerNames = map[string]struct{}{
+		"testBlockedCallerName": struct{}{},
+	}
 }
 
 func TestRunWithOptions(t *testing.T) {
@@ -62,10 +69,11 @@ func TestRunWithOptions(t *testing.T) {
 
 	closedHP := testutils.GetClosedHostPort(t)
 	tests := []struct {
-		desc   string
-		opts   Options
-		errMsg string
-		wants  []string
+		desc    string
+		opts    Options
+		errMsg  string
+		warnMsg string
+		wants   []string
 	}{
 		{
 			desc:   "No thrift file, fail to get method spec",
@@ -145,12 +153,61 @@ func TestRunWithOptions(t *testing.T) {
 				`"trace": "`,
 			},
 		},
+		{
+			desc: "No errors or warnings with a valid callername",
+			opts: Options{
+				ROpts: validRequestOpts,
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+					Peers:       []string{echoServer(t, fooMethod, nil)},
+					CallerName:  "valid-caller-name",
+				},
+			},
+			wants: []string{
+				"{}",
+				`"ok": true`,
+				`"trace": "`,
+			},
+		},
+		{
+			desc: "Warn on caller names from the warning map",
+			opts: Options{
+				ROpts: validRequestOpts,
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+					Peers:       []string{echoServer(t, fooMethod, nil)},
+					CallerName:  "testWarningCallerName",
+				},
+			},
+			warnMsg: "WARNING: Deprecated caller name: \"testWarningCallerName\" Please change the caller name",
+			wants: []string{
+				"{}",
+				`"ok": true`,
+				`"trace": "`,
+			},
+		},
+		{
+			desc: "Fail on caller names from the blocking map",
+			opts: Options{
+				ROpts: validRequestOpts,
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+					Peers:       []string{echoServer(t, fooMethod, nil)},
+					CallerName:  "testBlockedCallerName",
+				},
+			},
+			errMsg: "Disallowed caller name: testBlockedCallerName",
+		},
 	}
 
 	var errBuf bytes.Buffer
+	var warnBuf bytes.Buffer
 	var outBuf bytes.Buffer
 	out := testOutput{
 		Buffer: &outBuf,
+		warnf: func(format string, args ...interface{}) {
+			warnBuf.WriteString(fmt.Sprintf(format, args...))
+		},
 		fatalf: func(format string, args ...interface{}) {
 			errBuf.WriteString(fmt.Sprintf(format, args...))
 		},
@@ -158,6 +215,7 @@ func TestRunWithOptions(t *testing.T) {
 
 	for _, tt := range tests {
 		errBuf.Reset()
+		warnBuf.Reset()
 		outBuf.Reset()
 
 		runComplete := make(chan struct{})
@@ -165,7 +223,7 @@ func TestRunWithOptions(t *testing.T) {
 		// new goroutine and testoutput.Fatalf will only exit the goroutine.
 		go func() {
 			defer close(runComplete)
-			runWithOptions(tt.opts, out)
+			runWithOptions(tt.opts, out, _testLogger)
 		}()
 
 		<-runComplete
@@ -174,6 +232,12 @@ func TestRunWithOptions(t *testing.T) {
 			assert.Empty(t, outBuf.String(), "%v: should have no output", tt.desc)
 			assert.Contains(t, errBuf.String(), tt.errMsg, "%v: Invalid error", tt.desc)
 			continue
+		}
+
+		if tt.warnMsg != "" {
+			assert.Contains(t, warnBuf.String(), tt.warnMsg)
+		} else {
+			assert.Empty(t, warnBuf.String(), "%v: should have no warnings", tt.desc)
 		}
 
 		assert.Empty(t, errBuf.String(), "%v: should not error", tt.desc)
@@ -300,7 +364,7 @@ func TestHelpOutput(t *testing.T) {
 	for _, args := range tests {
 		os.Args = append([]string{"yab"}, args...)
 
-		buf, out := getOutput(t)
+		buf, _, out := getOutput(t)
 		parseAndRun(out)
 		assert.Contains(t, buf.String(), "Usage:", "Expected help output")
 
@@ -316,7 +380,7 @@ func TestManPage(t *testing.T) {
 
 	os.Args = []string{"yab", "--man-page"}
 
-	buf, out := getOutput(t)
+	buf, _, out := getOutput(t)
 	parseAndRun(out)
 	assert.Contains(t, buf.String(), "SYNOPSIS")
 	assert.Contains(t, buf.String(), "~/.config/yab/defaults.ini")
@@ -331,7 +395,7 @@ func TestVersion(t *testing.T) {
 		"--version",
 	}
 
-	buf, out := getOutput(t)
+	buf, _, out := getOutput(t)
 	parseAndRun(out)
 	assert.Equal(t, "yab version "+versionString+"\n", buf.String(), "Version output mismatch")
 }
@@ -353,7 +417,7 @@ func TestGetOptionsAlias(t *testing.T) {
 	}
 
 	var flags []string
-	_, out := getOutput(t)
+	_, _, out := getOutput(t)
 	for _, tt := range tests {
 		flags = append(flags, tt.flagName, tt.flagValue)
 
@@ -444,7 +508,7 @@ func TestAlises(t *testing.T) {
 		},
 	}
 
-	_, out := getOutput(t)
+	_, _, out := getOutput(t)
 	for _, tt := range tests {
 		for _, args := range tt.args {
 			opts, err := getOptions([]string(args), out)
@@ -483,7 +547,7 @@ func TestGetOptionsQuotes(t *testing.T) {
 		},
 	}
 
-	_, out := getOutput(t)
+	_, _, out := getOutput(t)
 	for _, tt := range tests {
 		opts, err := getOptions(tt.args, out)
 		if assert.NoError(t, err, "Args: %v", tt.args) {
@@ -521,7 +585,7 @@ func TestParseIniFile(t *testing.T) {
 	for _, tt := range tests {
 		os.Setenv(_configHomeEnv, path.Join("testdata", "ini", tt.configPath))
 
-		_, out := getOutput(t)
+		_, _, out := getOutput(t)
 		_, err := getOptions(nil, out)
 		if tt.expectedError == "" {
 			// Since we pass no args, getOptions will print the help and return errExit.
@@ -617,7 +681,7 @@ func TestConfigOverride(t *testing.T) {
 		err := ioutil.WriteFile(configPath, []byte(tt.configContents), 0777)
 		require.NoError(t, err, "Failed to write out defaults file")
 
-		_, out := getOutput(t)
+		_, _, out := getOutput(t)
 		opts, err := getOptions(tt.args, out)
 		if err == errExit {
 			err = nil
@@ -828,7 +892,7 @@ func TestNoWarmupBenchmark(t *testing.T) {
 	}
 	transportOpts := s.transportOpts()
 	transportOpts.CallerName = ""
-	buf, out := getOutput(t)
+	buf, _, out := getOutput(t)
 	runWithOptions(Options{
 		ROpts: validRequestOpts,
 		TOpts: transportOpts,
@@ -838,7 +902,7 @@ func TestNoWarmupBenchmark(t *testing.T) {
 			Connections:    50,
 			Concurrency:    2,
 		},
-	}, out)
+	}, out, _testLogger)
 	assert.Contains(t, buf.String(), "Total errors: 100")
 	assert.Contains(t, buf.String(), "Error rate: 100")
 }
@@ -930,7 +994,7 @@ func TestMainSupportedPeerProviderSchemes(t *testing.T) {
 
 	os.Args = []string{"yab", "-P?"}
 
-	buf, out := getOutput(t)
+	buf, _, out := getOutput(t)
 	parseAndRun(out)
 	contents := buf.String()
 	assert.Contains(t, contents, "file\n", "Expected file protocol support")
@@ -938,7 +1002,7 @@ func TestMainSupportedPeerProviderSchemes(t *testing.T) {
 }
 
 func TestOverrideDefaultsFails(t *testing.T) {
-	_, out := getOutput(t)
+	_, _, out := getOutput(t)
 	_, err := getOptions([]string{"-y", "testdata/templates/invalid.yaml"}, out)
 	require.Error(t, err, "Invalid YAML template should fail to parse")
 	assert.Contains(t, err.Error(), "failed to read yaml template")
@@ -1034,7 +1098,7 @@ func TestOptionsInheritance(t *testing.T) {
 		err := ioutil.WriteFile(xdgFile, []byte(tt.defaults), 0666)
 		require.NoError(t, err, "Failed to write out defaults.ini")
 
-		_, out := getOutput(t)
+		_, _, out := getOutput(t)
 
 		tt.args = append(tt.args, "-y", writeFile(t, "yaml", tt.yaml))
 		opts, err := getOptions(tt.args, out)

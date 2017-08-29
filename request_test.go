@@ -21,6 +21,7 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -181,17 +182,17 @@ func TestNewSerializer(t *testing.T) {
 		encoding encoding.Encoding
 		opts     RequestOptions
 		want     encoding.Encoding
-		wantErr  error
+		wantErr  string
 	}{
 		{
 			encoding: encoding.JSON,
 			opts:     RequestOptions{Health: true},
-			wantErr:  encoding.ErrHealthThriftOnly,
+			wantErr:  encoding.ErrHealthThriftOnly.Error(),
 		},
 		{
 			encoding: encoding.Raw,
 			opts:     RequestOptions{Health: true},
-			wantErr:  encoding.ErrHealthThriftOnly,
+			wantErr:  encoding.ErrHealthThriftOnly.Error(),
 		},
 		{
 			encoding: encoding.Thrift,
@@ -204,12 +205,12 @@ func TestNewSerializer(t *testing.T) {
 				Health:    true,
 				Procedure: "procedure",
 			},
-			wantErr: errHealthAndProcedure,
+			wantErr: errHealthAndProcedure.Error(),
 		},
 		{
 			encoding: encoding.Encoding("asd"),
 			opts:     RequestOptions{Procedure: "procedure"},
-			wantErr:  errUnrecognizedEncoding,
+			wantErr:  errUnrecognizedEncoding.Error(),
 		},
 		{
 			encoding: encoding.UnspecifiedEncoding,
@@ -233,15 +234,20 @@ func TestNewSerializer(t *testing.T) {
 		},
 		{
 			encoding: encoding.JSON,
-			wantErr:  errMissingProcedure,
+			wantErr:  errMissingProcedure.Error(),
 		},
 		{
 			encoding: encoding.Raw,
-			wantErr:  errMissingProcedure,
+			wantErr:  errMissingProcedure.Error(),
 		},
 		{
 			encoding: encoding.Thrift,
-			wantErr:  errMissingProcedure,
+			wantErr:  encoding.ErrSpecifyThriftFile.Error(),
+		},
+		{
+			encoding: encoding.Thrift,
+			opts:     RequestOptions{ThriftFile: validThrift},
+			wantErr:  "available services",
 		},
 		{
 			encoding: encoding.JSON,
@@ -257,15 +263,18 @@ func TestNewSerializer(t *testing.T) {
 
 	for _, tt := range tests {
 		tt.opts.Encoding = tt.encoding
-		got, err := NewSerializer(tt.opts)
-		assert.Equal(t, tt.wantErr, err, "NewSerializer(%+v) error", tt.opts)
-		if err != nil {
-			continue
-		}
+		t.Run(fmt.Sprintf("%+v", tt.opts), func(t *testing.T) {
+			got, err := NewSerializer(tt.opts)
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErr, "unexpected error")
+				return
+			}
 
-		if assert.NotNil(t, got, "NewSerializer(%+v) missing serializer", tt.opts) {
+			require.NoError(t, err)
+			require.NotNil(t, got, "missing serializer")
 			assert.Equal(t, tt.want, got.Encoding(), "NewSerializer(%+v) wrong encoding", tt.opts)
-		}
+		})
 	}
 }
 

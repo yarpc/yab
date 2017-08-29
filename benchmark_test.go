@@ -29,8 +29,8 @@ import (
 	"github.com/yarpc/yab/transport"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/uber-go/atomic"
 	"github.com/uber/tchannel-go/testutils"
+	"go.uber.org/atomic"
 )
 
 func TestBenchmark(t *testing.T) {
@@ -76,8 +76,8 @@ func TestBenchmark(t *testing.T) {
 		requests.Store(0)
 
 		start := time.Now()
-		buf, out := getOutput(t)
-		runBenchmark(out, Options{
+		buf, _, out := getOutput(t)
+		runBenchmark(out, _testLogger, Options{
 			BOpts: BenchmarkOptions{
 				MaxRequests: tt.n,
 				MaxDuration: tt.d,
@@ -142,7 +142,7 @@ func TestRunBenchmarkErrors(t *testing.T) {
 		// need to run the benchmark in a separate goroutine.
 		go func() {
 			defer wg.Done()
-			runBenchmark(out, opts, m)
+			runBenchmark(out, _testLogger, opts, m)
 		}()
 
 		wg.Wait()

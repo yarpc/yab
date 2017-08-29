@@ -41,9 +41,16 @@ import (
 	opentracing_ext "github.com/opentracing/opentracing-go/ext"
 	"github.com/uber/jaeger-client-go"
 	"github.com/uber/tchannel-go"
+	"go.uber.org/zap"
 )
 
-var errHealthAndProcedure = errors.New("cannot specify procedure and use --health")
+var (
+	errHealthAndProcedure = errors.New("cannot specify procedure and use --health")
+
+	// map of caller names we do not want to be used.
+	warningCallerNames = map[string]struct{}{"tcurl": struct{}{}}
+	blockedCallerNames = map[string]struct{}{}
+)
 
 func findGroup(parser *flags.Parser, group string) *flags.Group {
 	if g := parser.Group.Find(group); g != nil {
@@ -189,7 +196,14 @@ func parseAndRun(out output) {
 		}
 		out.Fatalf("Failed to parse options: %v", err)
 	}
-	runWithOptions(*opts, out)
+	loggerConfig := configureLoggerConfig(opts)
+	logger, err := loggerConfig.Build()
+	if err != nil {
+		out.Fatalf("failed to setup logger: %v", err)
+		return
+	}
+	logger.Debug("Logger initialized.", zap.Stringer("level", loggerConfig.Level))
+	runWithOptions(*opts, out, logger)
 }
 
 // overrideDefaults clears fields in the default options that may
@@ -254,7 +268,7 @@ func parseDefaultConfigs(parser *flags.Parser) error {
 	return nil
 }
 
-func runWithOptions(opts Options, out output) {
+func runWithOptions(opts Options, out output, logger *zap.Logger) {
 	if opts.TOpts.PeerList == "?" {
 		for _, scheme := range peerprovider.Schemes() {
 			out.Printf("%s\n", scheme)
@@ -278,6 +292,13 @@ func runWithOptions(opts Options, out output) {
 	}
 
 	if opts.TOpts.CallerName != "" {
+		if _, ok := warningCallerNames[opts.TOpts.CallerName]; ok {
+			// TODO: when logger is hooked up this should use the WARN level message
+			out.Warnf("WARNING: Deprecated caller name: %q Please change the caller name as it will be blocked in the next release.\n", opts.TOpts.CallerName)
+		}
+		if _, ok := blockedCallerNames[opts.TOpts.CallerName]; ok {
+			out.Fatalf("Disallowed caller name: %v", opts.TOpts.CallerName)
+		}
 		if opts.BOpts.enabled() {
 			out.Fatalf("Cannot override caller name when running benchmarks\n")
 		}
@@ -317,7 +338,7 @@ func runWithOptions(opts Options, out output) {
 		makeInitialRequest(out, transport, serializer, req)
 	}
 
-	runBenchmark(out, opts, benchmarkMethod{
+	runBenchmark(out, logger, opts, benchmarkMethod{
 		serializer: serializer,
 		req:        req,
 	})

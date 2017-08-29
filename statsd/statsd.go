@@ -26,6 +26,8 @@ import (
 	"regexp"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/cactus/go-statsd-client/statsd"
 )
 
@@ -71,11 +73,16 @@ func createStatsd(statsdHostPort, service, method string) (statsd.Statter, error
 }
 
 // NewClient returns a Client that sends metrics to statsd.
-func NewClient(statsdHostPort, service, method string) (Client, error) {
+func NewClient(logger *zap.Logger, statsdHostPort, service, method string) (Client, error) {
 	if statsdHostPort == "" {
 		return Noop, nil
 	}
 
+	logger.Debug("Create statsd client.",
+		zap.String("hostPort", statsdHostPort),
+		zap.String("serviceName", service),
+		zap.String("procedure", method),
+	)
 	statsd, err := createStatsd(statsdHostPort, service, method)
 	if err != nil {
 		return nil, err

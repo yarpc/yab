@@ -281,7 +281,7 @@ func runTestWithOpts(opts Options) (string, string) {
 	// will kill the running goroutine.
 	go func() {
 		defer close(runDone)
-		runWithOptions(opts, out)
+		runWithOptions(opts, out, _testLogger)
 	}()
 	<-runDone
 
