@@ -63,5 +63,6 @@ func TestTimeMillisFlag(t *testing.T) {
 
 		assert.NoError(t, err, "UnmarshalFlag(%v) should not fail", tt.value)
 		assert.Equal(t, tt.want, timeMillis.Duration(), "UnmarshalFlag(%v) expected %v", tt.value, tt.want)
+		assert.Equal(t, tt.want.String(), timeMillis.String(), "String mismatch")
 	}
 }
