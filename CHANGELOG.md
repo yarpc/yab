@@ -1,7 +1,7 @@
 Changelog
 =========
 
-# 0.10.2 (Unreleased)
+# 0.10.2 (2017-08-29)
 * Fix timeouts specified in templates being ignored.
 
 # 0.10.1 (2017-04-24)
