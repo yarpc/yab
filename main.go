@@ -126,7 +126,6 @@ yab includes a full man page (man yab), which is also available online: http://y
 	// Check if the first argument is a yab template. This is to support using
 	// yab as a shebang, since flags aren't supported in shebangs.
 	if len(args) > 0 && isYabTemplate(args[0]) {
-		fmt.Println("found yab template at arg", args)
 		args = append([]string{"-y"}, args...)
 	}
 
