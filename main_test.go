@@ -914,7 +914,7 @@ func TestTemplates(t *testing.T) {
 	echoAddr := echoServer(t, "", []byte{0})
 	os.Args = []string{
 		"yab",
-		"-y", exampleTemplate,
+		exampleTemplate,
 		"-p", echoAddr,
 	}
 
@@ -1111,5 +1111,35 @@ func TestOptionsInheritance(t *testing.T) {
 		if tt.wantTimeout != 0 {
 			assert.Equal(t, tt.wantTimeout, opts.ROpts.Timeout.Duration(), "timeout")
 		}
+	}
+}
+
+func TestIsYabTemplate(t *testing.T) {
+	tests := []struct {
+		msg  string
+		f    string
+		want bool
+	}{
+		{
+			msg:  "exists without .yab suffix",
+			f:    "testdata/templates/args.yaml",
+			want: false,
+		},
+		{
+			msg:  "exists with .yab suffix",
+			f:    "testdata/templates/foo.yab",
+			want: true,
+		},
+		{
+			msg:  "doesn't exist with .yab suffix",
+			f:    "testdata/not-exist.yab",
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.msg, func(t *testing.T) {
+			assert.Equal(t, tt.want, isYabTemplate(tt.f))
+		})
 	}
 }
