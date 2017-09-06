@@ -78,7 +78,7 @@ be run using yab -y get.yab.
 You can make the request by directly executing the file (./get.yab) if you
 add a shebang and mark the file as executable:
 
-	#!/usr/bin/env yab -y
+	#!/usr/bin/env yab
 
 	service: kv
 	peer: localhost:9787
@@ -92,7 +92,7 @@ which can be specified on the command line using -A. If an argument is not
 specified on the command line, then the default value is used. For example,
 we can update the YAML template to take an argument for the key:
 
-	#!/usr/bin/env yab -y
+	#!/usr/bin/env yab
 
 	service: kv
 	peer: localhost:9787

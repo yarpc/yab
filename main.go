@@ -123,6 +123,12 @@ yab includes a full man page (man yab), which is also available online: http://y
 		return nil, fmt.Errorf("error reading defaults: %v", err)
 	}
 
+	// Check if the first argument is a yab template. This is to support using
+	// yab as a shebang, since flags aren't supported in shebangs.
+	if len(args) > 0 && isYabTemplate(args[0]) {
+		args = append([]string{"-y"}, args...)
+	}
+
 	if err := overrideDefaults(opts, args); err != nil {
 		return nil, err
 	}
@@ -420,4 +426,15 @@ func makeInitialRequest(out output, transport transport.Transport, serializer en
 		out.Fatalf("Failed to convert map to JSON: %v\nMap: %+v\n", err, responseMap)
 	}
 	out.Printf("%s\n\n", bs)
+}
+
+// isYabTemplate is currently very conservative, it requires a file that exists
+// that ends with .yab to detect the argument as a template.
+func isYabTemplate(s string) bool {
+	if !strings.HasSuffix(s, ".yab") {
+		return false
+	}
+
+	_, err := os.Stat(s)
+	return err == nil
 }
