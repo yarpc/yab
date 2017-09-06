@@ -1,4 +1,4 @@
-.TH yab 1 "7 April 2017"
+.TH yab 1 "6 September 2017"
 .SH NAME
 yab \- yet another benchmarker
 .SH SYNOPSIS
@@ -46,6 +46,9 @@ warmup = 10
 
 .SH OPTIONS
 .SS Application Options
+.TP
+\fB\fB\-v\fR\fP
+Enable more detailed logging. Repeats increase the verbosity, ie. -vvv
 .TP
 \fB\fB\-\-version\fR\fP
 Displays the application version
@@ -158,7 +161,7 @@ add a shebang and mark the file as executable:
 .PP
 .nf
 .RS
-#!/usr/bin/env yab -y
+#!/usr/bin/env yab
 .RE
 .fi
 .PP
@@ -200,7 +203,7 @@ we can update the YAML template to take an argument for the key:
 .PP
 .nf
 .RS
-#!/usr/bin/env yab -y
+#!/usr/bin/env yab
 .RE
 .fi
 .PP
@@ -319,7 +322,7 @@ Individual context baggage header as a key:value pair per flag
 \fB\fB\-\-health\fR\fP
 Hit the health endpoint, Meta::health
 .TP
-\fB\fB\-\-timeout\fR <default: \fI"1s"\fR>\fP
+\fB\fB\-\-timeout\fR\fP
 The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds are assumed.
 .TP
 \fB\fB\-y\fR, \fB\-\-yaml-template\fR\fP
