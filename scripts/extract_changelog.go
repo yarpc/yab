@@ -45,7 +45,7 @@ func run(version string, out io.Writer) error {
 
 		switch state {
 		case searching:
-			if line == "# "+version {
+			if strings.HasPrefix(line, "# "+version+" (") {
 				state = foundHeader
 			}
 		case foundHeader:
