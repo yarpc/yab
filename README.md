@@ -33,6 +33,8 @@ http://yarpc.github.io/yab/man.html
 
 
 Application Options:
+  -v                             Enable more detailed logging. Repeats increase
+                                 the verbosity, ie. -vvv
       --version                  Displays the application version
 
 Request Options:
