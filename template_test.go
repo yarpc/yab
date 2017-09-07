@@ -63,7 +63,7 @@ func getWd(t *testing.T) string {
 
 func TestTemplate(t *testing.T) {
 	opts := newOptions()
-	mustReadYAMLFile(t, "testdata/templates/foo.yaml", opts)
+	mustReadYAMLFile(t, "testdata/templates/foo.yab", opts)
 
 	assert.Equal(t, toAbsPath(t, "testdata/templates/foo.thrift"), opts.ROpts.ThriftFile)
 	assert.Equal(t, "Simple::foo", opts.ROpts.Procedure)
@@ -115,7 +115,7 @@ func TestTemplateHeadersMerge(t *testing.T) {
 		"header3": "from Headers",
 	}
 
-	mustReadYAMLFile(t, "testdata/templates/foo.yaml", opts)
+	mustReadYAMLFile(t, "testdata/templates/foo.yab", opts)
 
 	headers, err := getHeaders(opts.ROpts.HeadersJSON, opts.ROpts.HeadersFile, opts.ROpts.Headers)
 	assert.NoError(t, err, "failed to merge headers")

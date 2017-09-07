@@ -1,6 +1,9 @@
 Changelog
 =========
 
+# 0.11.0 (2017-09-06)
+* Support using yab as a shebang for files ending with `.yab`.
+
 # 0.10.2 (2017-08-29)
 * Fix timeouts specified in templates being ignored.
 

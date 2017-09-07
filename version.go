@@ -22,4 +22,4 @@ package main
 
 // versionString is the sem-ver version string for yab.
 // It will be bumped explicitly on releases.
-var versionString = "0.10.2"
+var versionString = "0.11.0"

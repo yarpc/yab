@@ -38,7 +38,7 @@ import (
 const (
 	validThrift     = "testdata/simple.thrift"
 	fooMethod       = "Simple::foo"
-	exampleTemplate = "testdata/templates/foo.yaml"
+	exampleTemplate = "testdata/templates/foo.yab"
 )
 
 var _testLogger = zap.NewNop()
