@@ -128,8 +128,8 @@ func readYAMLRequest(base string, contents []byte, templateArgs map[string]strin
 
 	// Baggage and headers specified with command line flags override those
 	// specified in YAML templates.
-	opts.ROpts.Headers = merge(opts.ROpts.Headers, t.Headers)
-	opts.ROpts.Baggage = merge(opts.ROpts.Baggage, t.Baggage)
+	opts.ROpts.Headers = mergeInto(opts.ROpts.Headers, t.Headers)
+	opts.ROpts.Baggage = mergeInto(opts.ROpts.Baggage, t.Baggage)
 	if t.Jaeger {
 		opts.TOpts.Jaeger = true
 	}
@@ -197,7 +197,7 @@ type headers map[string]string
 
 // In these cases, the existing item (target, from flags) overrides the source
 // (template).
-func merge(target, source headers) headers {
+func mergeInto(target, source headers) headers {
 	if len(source) == 0 {
 		return target
 	}

@@ -155,7 +155,7 @@ func TestAbsPeerListTemplate(t *testing.T) {
 	assert.Equal(t, "file:///peers.json", opts.TOpts.PeerList)
 }
 
-func TestMerge(t *testing.T) {
+func TestMergeInto(t *testing.T) {
 	tests := []struct {
 		msg         string
 		left, right headers
@@ -198,7 +198,7 @@ func TestMerge(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.msg, func(t *testing.T) {
-			assert.Equal(t, merge(tt.left, tt.right), tt.want, "merge properly")
+			assert.Equal(t, mergeInto(tt.left, tt.right), tt.want, "merge properly")
 		})
 	}
 }
