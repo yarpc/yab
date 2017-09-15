@@ -21,13 +21,17 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/yarpc/yab/encoding"
+	"github.com/yarpc/yab/transport"
+	"github.com/yarpc/yab/transportmiddleware"
 
 	"gopkg.in/yaml.v2"
 )
@@ -123,4 +127,50 @@ func detectEncoding(opts RequestOptions) encoding.Encoding {
 	}
 
 	return encoding.JSON
+}
+
+// prepares the request by injecting metadata, applying plugin-based transport middleware,
+// before finally adding any user-provided override values
+func prepareRequest(req *transport.Request, headers map[string]string, opts Options) (*transport.Request, error) {
+	reqWithMeta := mutateRequestWithMetadata(req, opts.TOpts)
+	processedReq, err := mutateRequestWithTransportMiddleware(reqWithMeta)
+	if err != nil {
+		return nil, err
+	}
+	return mutateRequestWithCLIOverrides(processedReq, headers, opts), nil
+}
+
+func mutateRequestWithMetadata(req *transport.Request, opts TransportOptions) *transport.Request {
+	req.TargetService = opts.ServiceName
+	return req
+}
+
+func mutateRequestWithTransportMiddleware(req *transport.Request) (*transport.Request, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	return transportmiddleware.Apply(ctx, req)
+}
+
+func mutateRequestWithCLIOverrides(req *transport.Request, headers map[string]string, opts Options) *transport.Request {
+	timeout := opts.ROpts.Timeout.Duration()
+	if timeout == 0 {
+		timeout = time.Second
+	}
+	req.Headers = appendMap(req.Headers, headers)
+	req.TransportHeaders = appendMap(req.TransportHeaders, opts.TOpts.TransportHeaders)
+	req.Baggage = appendMap(req.Baggage, opts.ROpts.Baggage)
+	req.Timeout = timeout
+	return req
+}
+
+// copy key-value pairs from src to dest, overwriting existing values
+func appendMap(dest, src map[string]string) map[string]string {
+	res := dest
+	if res == nil {
+		res = make(map[string]string, len(src))
+	}
+	for k, v := range src {
+		res[k] = v
+	}
+	return res
 }

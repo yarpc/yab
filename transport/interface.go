@@ -36,6 +36,7 @@ type Request struct {
 	TransportHeaders map[string]string
 	ShardKey         string
 	Body             []byte
+	TargetService    string
 }
 
 // Response represents the result of an RPC.

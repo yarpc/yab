@@ -21,12 +21,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/yarpc/yab/encoding"
+	"github.com/yarpc/yab/transport"
+	"github.com/yarpc/yab/transportmiddleware"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -305,4 +309,73 @@ func TestDetectEncoding(t *testing.T) {
 		got := detectEncoding(tt.opts)
 		assert.Equal(t, tt.want, got, "detectEncoding(%+v)", tt.opts)
 	}
+}
+
+func TestNewRequestWithMetadata(t *testing.T) {
+	req := &transport.Request{Method: "foo"}
+	topts := TransportOptions{ServiceName: "bar"}
+	reqWithMeta := mutateRequestWithMetadata(req, topts)
+	assert.Equal(t, "foo", reqWithMeta.Method)
+	assert.Equal(t, "bar", reqWithMeta.TargetService)
+}
+
+func TestNewRequestWithTransportMiddleware(t *testing.T) {
+	req := &transport.Request{Method: "foo"}
+	transportmiddleware.Register(mockTransportMiddleware{})
+	processedReq, err := mutateRequestWithTransportMiddleware(req)
+	assert.NoError(t, err)
+	assert.Equal(t, "bar", processedReq.Method)
+}
+
+type mockTransportMiddleware struct{}
+
+func (tm mockTransportMiddleware) Apply(_ context.Context, req *transport.Request) (*transport.Request, error) {
+	req.Method = "bar"
+	return req, nil
+}
+
+func TestNewRequestWithCLIOverrides(t *testing.T) {
+	req := &transport.Request{
+		Method:  "foo",
+		Baggage: map[string]string{"size": "small"},
+	}
+	opts := Options{
+		ROpts: RequestOptions{
+			Timeout: timeMillisFlag(10 * time.Second),
+			Baggage: map[string]string{"size": "large"},
+		},
+	}
+	headers := map[string]string{"bing": "bong"}
+	finalReq := mutateRequestWithCLIOverrides(req, headers, opts)
+	assert.Equal(t, "foo", finalReq.Method)
+	assert.Equal(t, 10*time.Second, finalReq.Timeout)
+	assert.Equal(t, "large", finalReq.Baggage["size"])
+	assert.Equal(t, "bong", finalReq.Headers["bing"])
+}
+
+func TestPrepareRequest(t *testing.T) {
+	rawReq := &transport.Request{Method: "foo"}
+	transportmiddleware.Register(mockTransportMiddleware{})
+	opts := Options{
+		TOpts: TransportOptions{ServiceName: "baz"},
+		ROpts: RequestOptions{Baggage: map[string]string{"size": "large"}},
+	}
+	req, err := prepareRequest(rawReq, nil, opts)
+	assert.NoError(t, err)
+	assert.Equal(t, "bar", req.Method)
+	assert.Equal(t, "baz", req.TargetService)
+	assert.Equal(t, "large", req.Baggage["size"])
+}
+
+func TestAppendMapCopiesAndOverrides(t *testing.T) {
+	src := map[string]string{"1": "1"}
+	dest := map[string]string{"1": ""}
+	dest = appendMap(dest, src)
+	assert.Equal(t, "1", dest["1"])
+}
+
+func TestAppendMapInitializesDest(t *testing.T) {
+	var dest map[string]string
+	dest = appendMap(dest, map[string]string{"1": "1"})
+	assert.Equal(t, "1", dest["1"])
 }

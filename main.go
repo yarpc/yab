@@ -29,7 +29,6 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/peerprovider"
@@ -326,18 +325,14 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 	serializer = withTransportSerializer(transport.Protocol(), serializer, opts.ROpts)
 
 	// req is the transport.Request that will be used to make a call.
-	req, err := serializer.Request(reqInput)
+	rawReq, err := serializer.Request(reqInput)
 	if err != nil {
 		out.Fatalf("Failed while parsing request input: %v\n", err)
 	}
-
-	req.Headers = headers
-	req.TransportHeaders = opts.TOpts.TransportHeaders
-	req.Timeout = opts.ROpts.Timeout.Duration()
-	if req.Timeout == 0 {
-		req.Timeout = time.Second
+	req, err := prepareRequest(rawReq, headers, opts)
+	if err != nil {
+		out.Fatalf("Failed while preparing the request: %v\n", err)
 	}
-	req.Baggage = opts.ROpts.Baggage
 
 	// Only make the request if the user hasn't specified 0 warmup.
 	if !(opts.BOpts.enabled() && opts.BOpts.WarmupRequests == 0) {
