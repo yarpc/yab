@@ -1,3 +1,5 @@
+// Package transportmiddleware provides an interface for hooking into
+// outgoing yab requests.
 package transportmiddleware
 
 import (
@@ -7,8 +9,10 @@ import (
 	"github.com/yarpc/yab/transport"
 )
 
+// stores the currently registered middleware
 var registeredMiddleware Interface
 
+// serializes access to the currently registered middleware
 var registerLock sync.RWMutex
 
 // Register sets the provided transport middleware to be used on future

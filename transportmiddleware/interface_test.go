@@ -27,10 +27,12 @@ func TestTransportMiddleware(t *testing.T) {
 	tests := []struct {
 		dontRegister bool
 		wantErr      bool
+		testRace     bool
 	}{
 		{ /* run without options */ },
 		{wantErr: true},
 		{dontRegister: true},
+		{testRace: true},
 	}
 	for idx, tt := range tests {
 		var restore func() = func() {}
@@ -39,9 +41,14 @@ func TestTransportMiddleware(t *testing.T) {
 		tm := &headerTransportMiddleware{
 			wantErr: tt.wantErr,
 		}
+		if tt.testRace {
+			go Register(tm)
+		}
 		if !tt.dontRegister {
 			restore = Register(tm)
+			registerLock.RLock()
 			require.Equal(t, tm, registeredMiddleware)
+			registerLock.RUnlock()
 		}
 
 		// create test request
