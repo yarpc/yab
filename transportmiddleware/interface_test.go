@@ -33,14 +33,14 @@ func TestTransportMiddleware(t *testing.T) {
 		{dontRegister: true},
 	}
 	for idx, tt := range tests {
-		registeredMiddleware = nil
+		var restore func() = func() {}
 
 		// create the test middleware
 		tm := &headerTransportMiddleware{
 			wantErr: tt.wantErr,
 		}
 		if !tt.dontRegister {
-			Register(tm)
+			restore = Register(tm)
 			require.Equal(t, tm, registeredMiddleware)
 		}
 
@@ -53,6 +53,7 @@ func TestTransportMiddleware(t *testing.T) {
 
 		// modify the test request
 		req, err := Apply(context.TODO(), rawReq)
+		restore()
 		if tt.dontRegister {
 			assert.NoError(t, err, "[%d] apply should not error", idx)
 			_, ok := req.Headers["foo"]
