@@ -314,17 +314,21 @@ func TestDetectEncoding(t *testing.T) {
 func TestNewRequestWithMetadata(t *testing.T) {
 	req := &transport.Request{Method: "foo"}
 	topts := TransportOptions{ServiceName: "bar"}
-	reqWithMeta := mutateRequestWithMetadata(req, topts)
-	assert.Equal(t, "foo", reqWithMeta.Method)
-	assert.Equal(t, "bar", reqWithMeta.TargetService)
+	req, err := prepareRequest(req, nil, Options{TOpts: topts})
+	assert.NoError(t, err)
+	assert.Equal(t, "foo", req.Method)
+	assert.Equal(t, "bar", req.TargetService)
 }
 
 func TestNewRequestWithTransportMiddleware(t *testing.T) {
 	req := &transport.Request{Method: "foo"}
-	transportmiddleware.Register(mockTransportMiddleware{})
-	processedReq, err := mutateRequestWithTransportMiddleware(req)
+	topts := TransportOptions{ServiceName: "bar"}
+	restore := transportmiddleware.Register(mockTransportMiddleware{})
+	defer restore()
+	req, err := prepareRequest(req, nil, Options{TOpts: topts})
 	assert.NoError(t, err)
-	assert.Equal(t, "bar", processedReq.Method)
+	assert.Equal(t, "bar", req.Method)
+	assert.Equal(t, "bar", req.TargetService)
 }
 
 type mockTransportMiddleware struct{}
@@ -346,7 +350,8 @@ func TestNewRequestWithCLIOverrides(t *testing.T) {
 		},
 	}
 	headers := map[string]string{"bing": "bong"}
-	finalReq := mutateRequestWithCLIOverrides(req, headers, opts)
+	finalReq, err := prepareRequest(req, headers, opts)
+	assert.NoError(t, err)
 	assert.Equal(t, "foo", finalReq.Method)
 	assert.Equal(t, 10*time.Second, finalReq.Timeout)
 	assert.Equal(t, "large", finalReq.Baggage["size"])
@@ -355,7 +360,8 @@ func TestNewRequestWithCLIOverrides(t *testing.T) {
 
 func TestPrepareRequest(t *testing.T) {
 	rawReq := &transport.Request{Method: "foo"}
-	transportmiddleware.Register(mockTransportMiddleware{})
+	restore := transportmiddleware.Register(mockTransportMiddleware{})
+	defer restore()
 	opts := Options{
 		TOpts: TransportOptions{ServiceName: "baz"},
 		ROpts: RequestOptions{Baggage: map[string]string{"size": "large"}},
@@ -370,12 +376,12 @@ func TestPrepareRequest(t *testing.T) {
 func TestAppendMapCopiesAndOverrides(t *testing.T) {
 	src := map[string]string{"1": "1"}
 	dest := map[string]string{"1": ""}
-	dest = appendMap(dest, src)
+	dest = updateMap(dest, src)
 	assert.Equal(t, "1", dest["1"])
 }
 
 func TestAppendMapInitializesDest(t *testing.T) {
 	var dest map[string]string
-	dest = appendMap(dest, map[string]string{"1": "1"})
+	dest = updateMap(dest, map[string]string{"1": "1"})
 	assert.Equal(t, "1", dest["1"])
 }

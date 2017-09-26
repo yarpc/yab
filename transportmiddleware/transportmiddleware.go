@@ -2,32 +2,45 @@ package transportmiddleware
 
 import (
 	"context"
+	"sync"
 
 	"github.com/yarpc/yab/transport"
 )
 
-var registeredMiddleware TransportMiddleware
+var registeredMiddleware Interface
+
+var registerLock sync.RWMutex
 
 // Register sets the provided transport middleware to be used on future
 // calls to Apply(). Calls to Register() will overwrite previously registered
 // middlewares; that is, only one middleware is allowed at a time.
-func Register(tm TransportMiddleware) {
-	registeredMiddleware = tm
+func Register(newMW Interface) (restore func()) {
+	registerLock.Lock()
+	oldMW := registeredMiddleware
+	registeredMiddleware = newMW
+	registerLock.Unlock()
+
+	return func() {
+		registerLock.Lock()
+		registeredMiddleware = oldMW
+		registerLock.Unlock()
+	}
 }
 
-// TransportMiddleware
-type TransportMiddleware interface {
+// Interface allows for its implementors to modify an in-flight Request.
+type Interface interface {
 	// Apply mutates and returns the passed Request object.
-	//
-	// Implementations are prevented from modifying the Request object
-	// in the case that an error is encountered.
 	Apply(ctx context.Context, req *transport.Request) (*transport.Request, error)
 }
 
-// Apply mutates a Request using the previously registered TransportMiddleware.
+// Apply mutates a Request using the previously registered Interface.
 func Apply(ctx context.Context, req *transport.Request) (*transport.Request, error) {
-	if registeredMiddleware == nil {
+	registerLock.RLock()
+	mw := registeredMiddleware
+	registerLock.RUnlock()
+
+	if mw == nil {
 		return req, nil
 	}
-	return registeredMiddleware.Apply(ctx, req)
+	return mw.Apply(ctx, req)
 }

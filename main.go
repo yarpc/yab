@@ -325,11 +325,11 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 	serializer = withTransportSerializer(transport.Protocol(), serializer, opts.ROpts)
 
 	// req is the transport.Request that will be used to make a call.
-	rawReq, err := serializer.Request(reqInput)
+	req, err := serializer.Request(reqInput)
 	if err != nil {
 		out.Fatalf("Failed while parsing request input: %v\n", err)
 	}
-	req, err := prepareRequest(rawReq, headers, opts)
+	req, err = prepareRequest(req, headers, opts)
 	if err != nil {
 		out.Fatalf("Failed while preparing the request: %v\n", err)
 	}
