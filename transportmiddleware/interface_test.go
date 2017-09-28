@@ -3,7 +3,6 @@ package transportmiddleware
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"testing"
 
@@ -61,7 +60,6 @@ func TestTransportMiddleware(t *testing.T) {
 		if tt.dontRegister {
 			assert.NoError(t, err, "[%d] apply should not error", idx)
 			_, ok := req.Headers["foo"]
-			fmt.Println(req.Headers)
 			assert.False(t, ok, "[%d] test middleware should not have applied", idx)
 			continue
 		}
@@ -102,9 +100,4 @@ func TestRegisterRace(t *testing.T) {
 	close(registerCh) // synchronize all calls to Register()
 	close(restoreCh)
 	wg.Wait()
-
-	// check that middleware is nil now
-	registerLock.RLock()
-	require.Equal(t, nil, registeredMiddleware)
-	registerLock.RUnlock()
 }

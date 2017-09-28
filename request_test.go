@@ -325,7 +325,7 @@ func TestNewRequestWithTransportMiddleware(t *testing.T) {
 	topts := TransportOptions{ServiceName: "bar"}
 	restore := transportmiddleware.Register(mockTransportMiddleware{})
 	defer restore()
-	req, err := prepareRequest(req, nil, Options{TOpts: topts})
+	req, err := prepareRequest(req, nil /* headers */, Options{TOpts: topts})
 	assert.NoError(t, err)
 	assert.Equal(t, "bar", req.Method)
 	assert.Equal(t, "bar", req.TargetService)
@@ -366,7 +366,7 @@ func TestPrepareRequest(t *testing.T) {
 		TOpts: TransportOptions{ServiceName: "baz"},
 		ROpts: RequestOptions{Baggage: map[string]string{"size": "large"}},
 	}
-	req, err := prepareRequest(rawReq, nil, opts)
+	req, err := prepareRequest(rawReq, nil /* headers */, opts)
 	assert.NoError(t, err)
 	assert.Equal(t, "bar", req.Method)
 	assert.Equal(t, "baz", req.TargetService)
