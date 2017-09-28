@@ -314,7 +314,7 @@ func TestDetectEncoding(t *testing.T) {
 func TestNewRequestWithMetadata(t *testing.T) {
 	req := &transport.Request{Method: "foo"}
 	topts := TransportOptions{ServiceName: "bar"}
-	req, err := prepareRequest(req, nil, Options{TOpts: topts})
+	req, err := prepareRequest(req, nil /* headers */, Options{TOpts: topts})
 	assert.NoError(t, err)
 	assert.Equal(t, "foo", req.Method)
 	assert.Equal(t, "bar", req.TargetService)

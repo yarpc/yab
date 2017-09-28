@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"testing"
+
+	"github.com/yarpc/yab/transport"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/yarpc/yab/transport"
 )
 
 type headerTransportMiddleware struct {
@@ -27,22 +29,17 @@ func TestTransportMiddleware(t *testing.T) {
 	tests := []struct {
 		dontRegister bool
 		wantErr      bool
-		testRace     bool
 	}{
 		{ /* run without options */ },
 		{wantErr: true},
 		{dontRegister: true},
-		{testRace: true},
 	}
 	for idx, tt := range tests {
-		var restore func() = func() {}
+		restore := func() {}
 
 		// create the test middleware
 		tm := &headerTransportMiddleware{
 			wantErr: tt.wantErr,
-		}
-		if tt.testRace {
-			go Register(tm)
 		}
 		if !tt.dontRegister {
 			restore = Register(tm)
@@ -82,4 +79,32 @@ func TestTransportMiddleware(t *testing.T) {
 		// verify modified values
 		assert.Equal(t, "bar", req.Headers["foo"], "[%d] test middleware should have applied", idx)
 	}
+}
+
+func TestRegisterRace(t *testing.T) {
+	registerCh := make(chan struct{})
+	restoreCh := make(chan struct{})
+	var wg sync.WaitGroup
+
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func() {
+			<-registerCh // wait until register signal is received
+			tm := &headerTransportMiddleware{}
+			restore := Register(tm)
+
+			<-restoreCh
+			restore()
+			wg.Done()
+		}()
+	}
+
+	close(registerCh) // synchronize all calls to Register()
+	close(restoreCh)
+	wg.Wait()
+
+	// check that middleware is nil now
+	registerLock.RLock()
+	require.Equal(t, nil, registeredMiddleware)
+	registerLock.RUnlock()
 }

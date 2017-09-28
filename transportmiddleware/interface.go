@@ -9,15 +9,18 @@ import (
 	"github.com/yarpc/yab/transport"
 )
 
-// stores the currently registered middleware
-var registeredMiddleware Interface
+var (
+	// stores the currently registered middleware
+	registeredMiddleware Interface
 
-// serializes access to the currently registered middleware
-var registerLock sync.RWMutex
+	// serializes access to the currently registered middleware
+	registerLock sync.RWMutex
+)
 
 // Register sets the provided transport middleware to be used on future
 // calls to Apply(). Calls to Register() will overwrite previously registered
 // middlewares; that is, only one middleware is allowed at a time.
+// Returns a function to undo the change made by this call.
 func Register(newMW Interface) (restore func()) {
 	registerLock.Lock()
 	oldMW := registeredMiddleware
