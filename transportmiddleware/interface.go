@@ -11,7 +11,7 @@ import (
 
 var (
 	// stores the currently registered middleware
-	registeredMiddleware Interface
+	registeredInterceptor RequestInterceptor
 
 	// serializes access to the currently registered middleware
 	registerLock sync.RWMutex
@@ -21,29 +21,29 @@ var (
 // calls to Apply(). Calls to Register() will overwrite previously registered
 // middlewares; that is, only one middleware is allowed at a time.
 // Returns a function to undo the change made by this call.
-func Register(newMW Interface) (restore func()) {
+func Register(newMW RequestInterceptor) (restore func()) {
 	registerLock.Lock()
-	oldMW := registeredMiddleware
-	registeredMiddleware = newMW
+	oldMW := registeredInterceptor
+	registeredInterceptor = newMW
 	registerLock.Unlock()
 
 	return func() {
 		registerLock.Lock()
-		registeredMiddleware = oldMW
+		registeredInterceptor = oldMW
 		registerLock.Unlock()
 	}
 }
 
-// Interface allows for its implementors to modify an in-flight Request.
-type Interface interface {
+// RequestInterceptor allows for its implementors to modify an in-flight Request.
+type RequestInterceptor interface {
 	// Apply mutates and returns the passed Request object.
 	Apply(ctx context.Context, req *transport.Request) (*transport.Request, error)
 }
 
-// Apply mutates a Request using the previously registered Interface.
+// Apply mutates a Request using the previously registered RequestInterceptor.
 func Apply(ctx context.Context, req *transport.Request) (*transport.Request, error) {
 	registerLock.RLock()
-	mw := registeredMiddleware
+	mw := registeredInterceptor
 	registerLock.RUnlock()
 
 	if mw == nil {

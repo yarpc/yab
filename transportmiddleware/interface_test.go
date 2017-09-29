@@ -12,19 +12,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type headerTransportMiddleware struct {
+type headerRequestInterceptor struct {
 	wantErr bool
 }
 
-func (tm headerTransportMiddleware) Apply(ctx context.Context, req *transport.Request) (*transport.Request, error) {
+func (ri headerRequestInterceptor) Apply(ctx context.Context, req *transport.Request) (*transport.Request, error) {
 	req.Headers["foo"] = "bar"
-	if tm.wantErr {
+	if ri.wantErr {
 		return nil, errors.New("bad apply")
 	}
 	return req, nil
 }
 
-func TestTransportMiddleware(t *testing.T) {
+func TestRequestInterceptor(t *testing.T) {
 	tests := []struct {
 		dontRegister bool
 		wantErr      bool
@@ -36,14 +36,14 @@ func TestTransportMiddleware(t *testing.T) {
 	for idx, tt := range tests {
 		restore := func() {}
 
-		// create the test middleware
-		tm := &headerTransportMiddleware{
+		// create the test interceptor
+		ri := &headerRequestInterceptor{
 			wantErr: tt.wantErr,
 		}
 		if !tt.dontRegister {
-			restore = Register(tm)
+			restore = Register(ri)
 			registerLock.RLock()
-			require.Equal(t, tm, registeredMiddleware)
+			require.Equal(t, ri, registeredInterceptor)
 			registerLock.RUnlock()
 		}
 
@@ -60,7 +60,7 @@ func TestTransportMiddleware(t *testing.T) {
 		if tt.dontRegister {
 			assert.NoError(t, err, "[%d] apply should not error", idx)
 			_, ok := req.Headers["foo"]
-			assert.False(t, ok, "[%d] test middleware should not have applied", idx)
+			assert.False(t, ok, "[%d] test interceptor should not have applied", idx)
 			continue
 		}
 		if tt.wantErr {
@@ -75,7 +75,7 @@ func TestTransportMiddleware(t *testing.T) {
 		assert.Equal(t, "get", req.Method, "[%d] previous method was not preserved", idx)
 
 		// verify modified values
-		assert.Equal(t, "bar", req.Headers["foo"], "[%d] test middleware should have applied", idx)
+		assert.Equal(t, "bar", req.Headers["foo"], "[%d] test interceptor should have applied", idx)
 	}
 }
 
@@ -88,8 +88,8 @@ func TestRegisterRace(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			<-registerCh // wait until register signal is received
-			tm := &headerTransportMiddleware{}
-			restore := Register(tm)
+			ri := &headerRequestInterceptor{}
+			restore := Register(ri)
 
 			<-restoreCh
 			restore()
