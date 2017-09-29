@@ -31,7 +31,6 @@ import (
 
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
-	"github.com/yarpc/yab/transportmiddleware"
 
 	"gopkg.in/yaml.v2"
 )
@@ -138,7 +137,7 @@ func prepareRequest(req *transport.Request, headers map[string]string, opts Opti
 	// Apply middleware
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	req, err := transportmiddleware.Apply(ctx, req)
+	req, err := transport.ApplyMiddleware(ctx, req)
 	if err != nil {
 		return nil, err
 	}

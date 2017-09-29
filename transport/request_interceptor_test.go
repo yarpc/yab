@@ -1,12 +1,10 @@
-package transportmiddleware
+package transport
 
 import (
 	"context"
 	"errors"
 	"sync"
 	"testing"
-
-	"github.com/yarpc/yab/transport"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,7 +14,7 @@ type headerRequestInterceptor struct {
 	wantErr bool
 }
 
-func (ri headerRequestInterceptor) Apply(ctx context.Context, req *transport.Request) (*transport.Request, error) {
+func (ri headerRequestInterceptor) Apply(ctx context.Context, req *Request) (*Request, error) {
 	req.Headers["foo"] = "bar"
 	if ri.wantErr {
 		return nil, errors.New("bad apply")
@@ -41,7 +39,7 @@ func TestRequestInterceptor(t *testing.T) {
 			wantErr: tt.wantErr,
 		}
 		if !tt.dontRegister {
-			restore = Register(ri)
+			restore = RegisterInterceptor(ri)
 			registerLock.RLock()
 			require.Equal(t, ri, registeredInterceptor)
 			registerLock.RUnlock()
@@ -49,13 +47,13 @@ func TestRequestInterceptor(t *testing.T) {
 
 		// create test request
 		headers := map[string]string{"zim": "zam"}
-		rawReq := &transport.Request{
+		rawReq := &Request{
 			Headers: headers,
 			Method:  "get",
 		}
 
 		// modify the test request
-		req, err := Apply(context.TODO(), rawReq)
+		req, err := ApplyMiddleware(context.TODO(), rawReq)
 		restore()
 		if tt.dontRegister {
 			assert.NoError(t, err, "[%d] apply should not error", idx)
@@ -89,7 +87,7 @@ func TestRegisterRace(t *testing.T) {
 		go func() {
 			<-registerCh // wait until register signal is received
 			ri := &headerRequestInterceptor{}
-			restore := Register(ri)
+			restore := RegisterInterceptor(ri)
 
 			<-restoreCh
 			restore()

@@ -1,12 +1,8 @@
-// Package transportmiddleware provides an interface for hooking into
-// outgoing yab requests.
-package transportmiddleware
+package transport
 
 import (
 	"context"
 	"sync"
-
-	"github.com/yarpc/yab/transport"
 )
 
 var (
@@ -21,7 +17,7 @@ var (
 // calls to Apply(). Calls to Register() will overwrite previously registered
 // middlewares; that is, only one middleware is allowed at a time.
 // Returns a function to undo the change made by this call.
-func Register(newMW RequestInterceptor) (restore func()) {
+func RegisterInterceptor(newMW RequestInterceptor) (restore func()) {
 	registerLock.Lock()
 	oldMW := registeredInterceptor
 	registeredInterceptor = newMW
@@ -37,11 +33,11 @@ func Register(newMW RequestInterceptor) (restore func()) {
 // RequestInterceptor allows for its implementors to modify an in-flight Request.
 type RequestInterceptor interface {
 	// Apply mutates and returns the passed Request object.
-	Apply(ctx context.Context, req *transport.Request) (*transport.Request, error)
+	Apply(ctx context.Context, req *Request) (*Request, error)
 }
 
-// Apply mutates a Request using the previously registered RequestInterceptor.
-func Apply(ctx context.Context, req *transport.Request) (*transport.Request, error) {
+// ApplyMiddleware mutates a Request using the previously registered RequestInterceptor.
+func ApplyMiddleware(ctx context.Context, req *Request) (*Request, error) {
 	registerLock.RLock()
 	mw := registeredInterceptor
 	registerLock.RUnlock()

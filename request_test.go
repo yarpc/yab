@@ -30,7 +30,6 @@ import (
 
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
-	"github.com/yarpc/yab/transportmiddleware"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -323,7 +322,7 @@ func TestNewRequestWithMetadata(t *testing.T) {
 func TestNewRequestWithTransportMiddleware(t *testing.T) {
 	req := &transport.Request{Method: "foo"}
 	topts := TransportOptions{ServiceName: "bar"}
-	restore := transportmiddleware.Register(mockTransportMiddleware{})
+	restore := transport.RegisterInterceptor(mockRequestInterceptor{})
 	defer restore()
 	req, err := prepareRequest(req, nil /* headers */, Options{TOpts: topts})
 	assert.NoError(t, err)
@@ -331,9 +330,9 @@ func TestNewRequestWithTransportMiddleware(t *testing.T) {
 	assert.Equal(t, "bar", req.TargetService)
 }
 
-type mockTransportMiddleware struct{}
+type mockRequestInterceptor struct{}
 
-func (tm mockTransportMiddleware) Apply(_ context.Context, req *transport.Request) (*transport.Request, error) {
+func (ri mockRequestInterceptor) Apply(_ context.Context, req *transport.Request) (*transport.Request, error) {
 	req.Method = "bar"
 	return req, nil
 }
@@ -360,7 +359,7 @@ func TestNewRequestWithCLIOverrides(t *testing.T) {
 
 func TestPrepareRequest(t *testing.T) {
 	rawReq := &transport.Request{Method: "foo"}
-	restore := transportmiddleware.Register(mockTransportMiddleware{})
+	restore := transport.RegisterInterceptor(mockRequestInterceptor{})
 	defer restore()
 	opts := Options{
 		TOpts: TransportOptions{ServiceName: "baz"},
