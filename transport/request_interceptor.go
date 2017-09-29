@@ -6,7 +6,7 @@ import "context"
 var registeredInterceptor RequestInterceptor
 
 // RegisterInterceptor sets the provided request interceptor to be used on future
-// calls to ApplyMiddleware(). Calls to RegisterInterceptor() will overwrite previously
+// calls to ApplyInterceptor(). Calls to RegisterInterceptor() will overwrite previously
 // registered interceptors; that is, only one interceptor is allowed at a time.
 // Returns a function to undo the change made by this call.
 func RegisterInterceptor(newRI RequestInterceptor) (restore func()) {
@@ -23,8 +23,8 @@ type RequestInterceptor interface {
 	Apply(ctx context.Context, req *Request) (*Request, error)
 }
 
-// ApplyMiddleware mutates a Request using the previously registered RequestInterceptor.
-func ApplyMiddleware(ctx context.Context, req *Request) (*Request, error) {
+// ApplyInterceptor mutates a Request using the previously registered RequestInterceptor.
+func ApplyInterceptor(ctx context.Context, req *Request) (*Request, error) {
 	if registeredInterceptor == nil {
 		return req, nil
 	}
