@@ -322,18 +322,26 @@ func TestNewRequestWithMetadata(t *testing.T) {
 func TestNewRequestWithTransportMiddleware(t *testing.T) {
 	req := &transport.Request{Method: "foo"}
 	topts := TransportOptions{ServiceName: "bar"}
-	restore := transport.RegisterInterceptor(mockRequestInterceptor{})
+	restore := transport.RegisterInterceptor(mockRequestInterceptor{method: "baz"})
 	defer restore()
 	req, err := prepareRequest(req, nil /* headers */, Options{TOpts: topts})
 	assert.NoError(t, err)
-	assert.Equal(t, "bar", req.Method)
+	assert.Equal(t, "baz", req.Method)
 	assert.Equal(t, "bar", req.TargetService)
 }
 
-type mockRequestInterceptor struct{}
+type mockRequestInterceptor struct {
+	method  string
+	baggage map[string]string
+}
 
 func (ri mockRequestInterceptor) Apply(_ context.Context, req *transport.Request) (*transport.Request, error) {
-	req.Method = "bar"
+	if ri.method != "" {
+		req.Method = ri.method
+	}
+	if ri.baggage != nil {
+		mergeMap(req.Baggage, ri.baggage)
+	}
 	return req, nil
 }
 
@@ -359,7 +367,8 @@ func TestNewRequestWithCLIOverrides(t *testing.T) {
 
 func TestPrepareRequest(t *testing.T) {
 	rawReq := &transport.Request{Method: "foo"}
-	restore := transport.RegisterInterceptor(mockRequestInterceptor{})
+	ri := mockRequestInterceptor{baggage: map[string]string{"size": "medium"}}
+	restore := transport.RegisterInterceptor(ri)
 	defer restore()
 	opts := Options{
 		TOpts: TransportOptions{ServiceName: "baz"},
@@ -367,20 +376,20 @@ func TestPrepareRequest(t *testing.T) {
 	}
 	req, err := prepareRequest(rawReq, nil /* headers */, opts)
 	assert.NoError(t, err)
-	assert.Equal(t, "bar", req.Method)
+	assert.Equal(t, "foo", req.Method)
 	assert.Equal(t, "baz", req.TargetService)
-	assert.Equal(t, "large", req.Baggage["size"])
+	assert.Equal(t, "medium", req.Baggage["size"])
 }
 
 func TestAppendMapCopiesAndOverrides(t *testing.T) {
 	src := map[string]string{"1": "1"}
 	dest := map[string]string{"1": ""}
-	dest = updateMap(dest, src)
+	dest = mergeMap(dest, src)
 	assert.Equal(t, "1", dest["1"])
 }
 
 func TestAppendMapInitializesDest(t *testing.T) {
 	var dest map[string]string
-	dest = updateMap(dest, map[string]string{"1": "1"})
+	dest = mergeMap(dest, map[string]string{"1": "1"})
 	assert.Equal(t, "1", dest["1"])
 }
