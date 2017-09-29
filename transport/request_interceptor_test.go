@@ -3,7 +3,6 @@ package transport
 import (
 	"context"
 	"errors"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -40,9 +39,7 @@ func TestRequestInterceptor(t *testing.T) {
 		}
 		if !tt.dontRegister {
 			restore = RegisterInterceptor(ri)
-			registerLock.RLock()
 			require.Equal(t, ri, registeredInterceptor)
-			registerLock.RUnlock()
 		}
 
 		// create test request
@@ -75,27 +72,4 @@ func TestRequestInterceptor(t *testing.T) {
 		// verify modified values
 		assert.Equal(t, "bar", req.Headers["foo"], "[%d] test interceptor should have applied", idx)
 	}
-}
-
-func TestRegisterRace(t *testing.T) {
-	registerCh := make(chan struct{})
-	restoreCh := make(chan struct{})
-	var wg sync.WaitGroup
-
-	for i := 0; i < 100; i++ {
-		wg.Add(1)
-		go func() {
-			<-registerCh // wait until register signal is received
-			ri := &headerRequestInterceptor{}
-			restore := RegisterInterceptor(ri)
-
-			<-restoreCh
-			restore()
-			wg.Done()
-		}()
-	}
-
-	close(registerCh) // synchronize all calls to Register()
-	close(restoreCh)
-	wg.Wait()
 }
