@@ -6,8 +6,8 @@ import "context"
 var registeredInterceptor RequestInterceptor
 
 // RegisterInterceptor sets the provided request interceptor to be used on future
-// calls to Apply(). Calls to Register() will overwrite previously registered
-// middlewares; that is, only one middleware is allowed at a time.
+// calls to ApplyMiddleware(). Calls to RegisterInterceptor() will overwrite previously
+// registered interceptors; that is, only one interceptor is allowed at a time.
 // Returns a function to undo the change made by this call.
 func RegisterInterceptor(newRI RequestInterceptor) (restore func()) {
 	oldRI := registeredInterceptor
