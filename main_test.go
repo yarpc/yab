@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/yarpc/yab/encoding"
+	"github.com/yarpc/yab/plugin"
 	"github.com/yarpc/yab/transport"
 
 	"github.com/opentracing/opentracing-go"
@@ -426,6 +427,22 @@ func TestGetOptionsAlias(t *testing.T) {
 
 		assert.Equal(t, tt.flagValue, opts.ROpts.RequestJSON, "Unexpected request body for %v", flags)
 	}
+}
+
+type testOptions struct {
+	Test string `long:"testing"`
+}
+
+func TestGetOptionsAppliesPlugin(t *testing.T) {
+	tOpts := &testOptions{}
+	plugin.AddFlags("Test Options", "", tOpts)
+
+	flags := []string{"--testing", "this is only a test"}
+	_, _, out := getOutput(t)
+
+	_, err := getOptions(flags, out)
+	require.NoError(t, err, "getOptions(%v) failed", flags)
+	require.Equal(t, "this is only a test", tOpts.Test)
 }
 
 func TestAlises(t *testing.T) {
