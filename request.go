@@ -21,13 +21,16 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/yarpc/yab/encoding"
+	"github.com/yarpc/yab/transport"
 
 	"gopkg.in/yaml.v2"
 )
@@ -123,4 +126,26 @@ func detectEncoding(opts RequestOptions) encoding.Encoding {
 	}
 
 	return encoding.JSON
+}
+
+// prepares the request by injecting metadata, applying plugin-based transport middleware,
+// before finally adding any user-provided override values
+func prepareRequest(req *transport.Request, headers map[string]string, opts Options) (*transport.Request, error) {
+	// Apply command line arguments
+	timeout := opts.ROpts.Timeout.Duration()
+	if timeout == 0 {
+		timeout = time.Second
+	}
+	req.Headers = headers
+	req.TransportHeaders = opts.TOpts.TransportHeaders
+	req.Baggage = opts.ROpts.Baggage
+	req.Timeout = timeout
+
+	// Add request metadata
+	req.TargetService = opts.TOpts.ServiceName
+
+	// Apply middleware
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	return transport.ApplyInterceptor(ctx, req)
 }
