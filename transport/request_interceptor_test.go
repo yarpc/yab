@@ -50,7 +50,7 @@ func TestRequestInterceptor(t *testing.T) {
 		}
 
 		// modify the test request
-		req, err := ApplyInterceptor(context.TODO(), rawReq)
+		req, err := ApplyInterceptor(context.Background(), rawReq)
 		restore()
 		if tt.dontRegister {
 			assert.NoError(t, err, "[%d] apply should not error", idx)
