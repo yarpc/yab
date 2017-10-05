@@ -340,7 +340,13 @@ func (ri mockRequestInterceptor) Apply(_ context.Context, req *transport.Request
 		req.Method = ri.method
 	}
 	if ri.baggage != nil {
-		mergeMap(req.Baggage, ri.baggage)
+		if req.Baggage == nil {
+			req.Baggage = ri.baggage
+		} else {
+			for k, v := range ri.baggage {
+				req.Baggage[k] = v
+			}
+		}
 	}
 	return req, nil
 }
@@ -379,17 +385,4 @@ func TestPrepareRequest(t *testing.T) {
 	assert.Equal(t, "foo", req.Method)
 	assert.Equal(t, "baz", req.TargetService)
 	assert.Equal(t, "medium", req.Baggage["size"])
-}
-
-func TestAppendMapCopiesAndOverrides(t *testing.T) {
-	src := map[string]string{"1": "1"}
-	dest := map[string]string{"1": ""}
-	dest = mergeMap(dest, src)
-	assert.Equal(t, "1", dest["1"])
-}
-
-func TestAppendMapInitializesDest(t *testing.T) {
-	var dest map[string]string
-	dest = mergeMap(dest, map[string]string{"1": "1"})
-	assert.Equal(t, "1", dest["1"])
 }

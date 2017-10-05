@@ -136,9 +136,9 @@ func prepareRequest(req *transport.Request, headers map[string]string, opts Opti
 	if timeout == 0 {
 		timeout = time.Second
 	}
-	req.Headers = mergeMap(req.Headers, headers)
-	req.TransportHeaders = mergeMap(req.TransportHeaders, opts.TOpts.TransportHeaders)
-	req.Baggage = mergeMap(req.Baggage, opts.ROpts.Baggage)
+	req.Headers = headers
+	req.TransportHeaders = opts.TOpts.TransportHeaders
+	req.Baggage = opts.ROpts.Baggage
 	req.Timeout = timeout
 
 	// Add request metadata
@@ -153,15 +153,4 @@ func prepareRequest(req *transport.Request, headers map[string]string, opts Opti
 	}
 
 	return req, nil
-}
-
-// copy key-value pairs from src to dest, overwriting existing values
-func mergeMap(dest, src map[string]string) map[string]string {
-	if dest == nil {
-		dest = make(map[string]string, len(src))
-	}
-	for k, v := range src {
-		dest[k] = v
-	}
-	return dest
 }
