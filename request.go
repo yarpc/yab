@@ -147,10 +147,5 @@ func prepareRequest(req *transport.Request, headers map[string]string, opts Opti
 	// Apply middleware
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	req, err := transport.ApplyInterceptor(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
+	return transport.ApplyInterceptor(ctx, req)
 }
