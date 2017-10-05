@@ -22,6 +22,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -331,11 +332,15 @@ func TestNewRequestWithTransportMiddleware(t *testing.T) {
 }
 
 type mockRequestInterceptor struct {
-	method  string
-	baggage map[string]string
+	shouldErr bool
+	method    string
+	baggage   map[string]string
 }
 
 func (ri mockRequestInterceptor) Apply(_ context.Context, req *transport.Request) (*transport.Request, error) {
+	if ri.shouldErr {
+		return nil, errors.New("bad apply")
+	}
 	if ri.method != "" {
 		req.Method = ri.method
 	}
@@ -385,4 +390,14 @@ func TestPrepareRequest(t *testing.T) {
 	assert.Equal(t, "foo", req.Method)
 	assert.Equal(t, "baz", req.TargetService)
 	assert.Equal(t, "medium", req.Baggage["size"])
+}
+
+func TestPrepareRequestErr(t *testing.T) {
+	req := &transport.Request{}
+	ri := mockRequestInterceptor{shouldErr: true}
+	restore := transport.RegisterInterceptor(ri)
+	defer restore()
+	req, err := prepareRequest(req, nil /* headers */, Options{})
+	assert.Error(t, err)
+	assert.Nil(t, req)
 }
