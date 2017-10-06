@@ -41,6 +41,7 @@ import (
 	opentracing_ext "github.com/opentracing/opentracing-go/ext"
 	"github.com/uber/jaeger-client-go"
 	"github.com/uber/tchannel-go"
+	"go.uber.org/multierr"
 	"go.uber.org/zap"
 )
 
@@ -137,8 +138,8 @@ yab includes a full man page (man yab), which is also available online: http://y
 	setGroupDescs(parser, "transport", "Transport Options", toGroff(_transportOptsDesc))
 	setGroupDescs(parser, "benchmark", "Benchmark Options", toGroff(_benchmarkOptsDesc))
 
-	if errs := plugin.AddToParser(pluginParserAdapter{parser}); errs != nil {
-		for _, err := range errs {
+	if err := plugin.AddToParser(pluginParserAdapter{parser}); err != nil {
+		for _, err := range multierr.Errors(err) {
 			out.Warnf("WARNING: Error adding plugin-based custom flags: %v. Continuing.", err)
 		}
 	}

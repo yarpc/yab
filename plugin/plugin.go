@@ -1,6 +1,10 @@
 package plugin
 
-import "fmt"
+import (
+	"fmt"
+
+	"go.uber.org/multierr"
+)
 
 // AddFlags should be used by embedded modules to inject custom flags into `yab`.
 // It adds a set of custom flags with heading `shortDescription`.
@@ -40,15 +44,15 @@ type Parser interface {
 // AddToParser adds all registered flags to the passed Parser.
 // This operation is not atomic, flags are applied on a best-effort basis (not "all-or-nothing")
 // Returns a slice of errors indicating which flags groups failed to be added.
-func AddToParser(p Parser) []error {
-	var errs []error
+func AddToParser(p Parser) error {
+	var err error
 	for _, f := range _flags {
-		err := p.AddFlagGroup(f.shortDescription, f.longDescription, f.data)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("adding %v to parser: %v", f.shortDescription, err))
+		flagErr := p.AddFlagGroup(f.shortDescription, f.longDescription, f.data)
+		if flagErr != nil {
+			err = multierr.Append(err, fmt.Errorf("adding %v to parser: %v", f.shortDescription, flagErr))
 		}
 	}
-	return errs
+	return err
 }
 
 // stores the list of currently registered flags

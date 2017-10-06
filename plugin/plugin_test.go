@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"go.uber.org/multierr"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -62,12 +64,14 @@ func TestAddToParser(t *testing.T) {
 			errOnCallCount: tt.errOnCallCount,
 		}
 
-		errs := AddToParser(p)
+		err := AddToParser(p)
 		if tt.shouldErr {
-			assert.NotNil(t, errs)
+			assert.NotNil(t, err)
 		} else {
-			assert.Nil(t, errs)
+			assert.Nil(t, err)
 		}
+
+		errs := multierr.Errors(err)
 		assert.Equal(t, tt.numErrs, len(errs))
 		assert.Equal(t, tt.numAddFlagGroupCallCounts, p.addFlagGroupCallCount)
 		assert.Equal(t, tt.numParserFlags, len(p.flags))
