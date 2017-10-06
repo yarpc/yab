@@ -48,7 +48,7 @@ func TestAddToParser(t *testing.T) {
 		numAddFlagGroupCallCounts int
 		numParserFlags            int
 	}{
-		{numErrs: 0, numAddFlagGroupCallCounts: 3, numParserFlags: 3},
+		{numAddFlagGroupCallCounts: 3, numParserFlags: 3},
 		{shouldErr: true, numErrs: 3},
 		{shouldErr: true, errOnCallCount: 2, numErrs: 1, numAddFlagGroupCallCounts: 2, numParserFlags: 2},
 	}
