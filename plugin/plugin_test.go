@@ -33,7 +33,7 @@ type fooFlags struct {
 }
 
 // defer-able test cleanup for global state
-func resetFlags(flags []*flag) func() {
+func setFlags(flags []*flag) (restore func()) {
 	_flags = flags
 	return func() {
 		_flags = nil
@@ -54,7 +54,7 @@ func TestAddToParser(t *testing.T) {
 	}
 
 	threeFlags := []*flag{{}, {}, {}}
-	defer resetFlags(threeFlags)()
+	defer setFlags(threeFlags)()
 
 	for _, tt := range tests {
 		p := &mockParser{
@@ -80,7 +80,7 @@ func TestAddToParserMany(t *testing.T) {
 	for i := range mockFlags {
 		mockFlags[i] = &flag{shortDescription: fmt.Sprintf("foo-%d", i)}
 	}
-	defer resetFlags(mockFlags)()
+	defer setFlags(mockFlags)()
 
 	p := &mockParser{}
 
@@ -95,7 +95,7 @@ func TestAddToParserMany(t *testing.T) {
 }
 
 func TestAddFlags(t *testing.T) {
-	defer resetFlags(nil)()
+	defer setFlags(nil)()
 	short := "Foo Options"
 	long := "This is a lot of usage information about Foo"
 	foo := &fooFlags{}
@@ -110,7 +110,7 @@ func TestAddFlags(t *testing.T) {
 }
 
 func TestAddedFlagsArePassedToParser(t *testing.T) {
-	defer resetFlags(nil)()
+	defer setFlags(nil)()
 	short := "Foo Options"
 	long := "This is a lot of usage information about Foo"
 	foo := &fooFlags{}
