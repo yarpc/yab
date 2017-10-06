@@ -24,7 +24,7 @@ import "fmt"
 // In order to retrieve the mutated results of the set flag, users of AddFlags() should
 // retain a reference to the `data` object and check its values after parsing is complete.
 func AddFlags(shortDescription string, longDescription string, data interface{}) {
-	flags = append(flags, &flag{
+	_flags = append(_flags, &flag{
 		shortDescription: shortDescription,
 		longDescription:  longDescription,
 		data:             data,
@@ -42,7 +42,7 @@ type Parser interface {
 // Returns a slice of errors indicating which flags groups failed to be added.
 func AddToParser(p Parser) []error {
 	var errs []error
-	for _, f := range flags {
+	for _, f := range _flags {
 		err := p.AddFlagGroup(f.shortDescription, f.longDescription, f.data)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("adding %v to parser: %v", f.shortDescription, err))
@@ -52,7 +52,7 @@ func AddToParser(p Parser) []error {
 }
 
 // stores the list of currently registered flags
-var flags []*flag
+var _flags []*flag
 
 type flag struct {
 	shortDescription string

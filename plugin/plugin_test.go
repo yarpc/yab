@@ -33,10 +33,10 @@ type fooFlags struct {
 }
 
 // defer-able test cleanup for global state
-func resetFlags(_flags []*flag) func() {
-	flags = _flags
+func resetFlags(flags []*flag) func() {
+	_flags = flags
 	return func() {
-		flags = nil
+		_flags = nil
 	}
 }
 
@@ -101,9 +101,9 @@ func TestAddFlags(t *testing.T) {
 	foo := &fooFlags{}
 
 	AddFlags(short, long, foo)
-	assert.Equal(t, 1, len(flags))
+	assert.Equal(t, 1, len(_flags))
 
-	setFlag := flags[0]
+	setFlag := _flags[0]
 	assert.Equal(t, short, setFlag.shortDescription)
 	assert.Equal(t, long, setFlag.longDescription)
 	assert.Equal(t, foo, setFlag.data)
