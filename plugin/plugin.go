@@ -7,7 +7,7 @@ import (
 )
 
 // AddFlags should be used by embedded modules to inject custom flags into `yab`.
-// It adds a set of custom flags with heading `shortDescription`.
+// It adds a set of custom flags with heading `groupName`.
 //
 // The `data` argument should be a pointer to a struct with one field for each
 // command line flag. Each field should use tags like `description` to inform
@@ -27,18 +27,18 @@ import (
 //
 // In order to retrieve the mutated results of the set flag, users of AddFlags() should
 // retain a reference to the `data` object and check its values after parsing is complete.
-func AddFlags(shortDescription string, longDescription string, data interface{}) {
+func AddFlags(groupName string, longDescription string, data interface{}) {
 	_flags = append(_flags, &flag{
-		shortDescription: shortDescription,
-		longDescription:  longDescription,
-		data:             data,
+		groupName:       groupName,
+		longDescription: longDescription,
+		data:            data,
 	})
 }
 
 // Parser is any object that can add flag groups to itself before performing its parse.
 type Parser interface {
 	// AddFlagGroup adds an additional flag group to process during parsing.
-	AddFlagGroup(shortDescription, longDescription string, data interface{}) error
+	AddFlagGroup(groupName, longDescription string, data interface{}) error
 }
 
 // AddToParser adds all registered flags to the passed Parser.
@@ -47,9 +47,9 @@ type Parser interface {
 func AddToParser(p Parser) error {
 	var err error
 	for _, f := range _flags {
-		flagErr := p.AddFlagGroup(f.shortDescription, f.longDescription, f.data)
+		flagErr := p.AddFlagGroup(f.groupName, f.longDescription, f.data)
 		if flagErr != nil {
-			err = multierr.Append(err, fmt.Errorf("adding %v to parser: %v", f.shortDescription, flagErr))
+			err = multierr.Append(err, fmt.Errorf("adding %v to parser: %v", f.groupName, flagErr))
 		}
 	}
 	return err
@@ -59,7 +59,7 @@ func AddToParser(p Parser) error {
 var _flags []*flag
 
 type flag struct {
-	shortDescription string
-	longDescription  string
-	data             interface{}
+	groupName       string
+	longDescription string
+	data            interface{}
 }

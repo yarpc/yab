@@ -22,9 +22,9 @@ func (p *mockParser) AddFlagGroup(short, long string, data interface{}) error {
 		return errors.New("bad")
 	}
 	p.flags = append(p.flags, &flag{
-		shortDescription: short,
-		longDescription:  long,
-		data:             data,
+		groupName:       short,
+		longDescription: long,
+		data:            data,
 	})
 	p.addFlagGroupCallCount++
 	return nil
@@ -82,7 +82,7 @@ func TestAddToParserMany(t *testing.T) {
 	numFlags := 100
 	mockFlags := make([]*flag, numFlags)
 	for i := range mockFlags {
-		mockFlags[i] = &flag{shortDescription: fmt.Sprintf("foo-%d", i)}
+		mockFlags[i] = &flag{groupName: fmt.Sprintf("foo-%d", i)}
 	}
 	defer setFlags(mockFlags)()
 
@@ -108,7 +108,7 @@ func TestAddFlags(t *testing.T) {
 	assert.Equal(t, 1, len(_flags))
 
 	setFlag := _flags[0]
-	assert.Equal(t, short, setFlag.shortDescription)
+	assert.Equal(t, short, setFlag.groupName)
 	assert.Equal(t, long, setFlag.longDescription)
 	assert.Equal(t, foo, setFlag.data)
 }
@@ -128,7 +128,7 @@ func TestAddedFlagsArePassedToParser(t *testing.T) {
 	assert.Equal(t, 1, len(p.flags))
 
 	setFlag := p.flags[0]
-	assert.Equal(t, short, setFlag.shortDescription)
+	assert.Equal(t, short, setFlag.groupName)
 	assert.Equal(t, long, setFlag.longDescription)
 	assert.Equal(t, foo, setFlag.data)
 }
