@@ -42,40 +42,46 @@ func setFlags(flags []*flag) (restore func()) {
 	}
 }
 
-func TestAddToParser(t *testing.T) {
-	tests := []struct {
-		shouldErr                 bool
-		errOnCallCount            int
-		numErrs                   int
-		numAddFlagGroupCallCounts int
-		numParserFlags            int
-	}{
-		{numAddFlagGroupCallCounts: 3, numParserFlags: 3},
-		{shouldErr: true, numErrs: 3},
-		{shouldErr: true, errOnCallCount: 2, numErrs: 1, numAddFlagGroupCallCounts: 2, numParserFlags: 2},
+func TestAddToParserSuccess(t *testing.T) {
+	flags := []*flag{{}}
+	defer setFlags(flags)()
+	p := &mockParser{}
+
+	err := AddToParser(p)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, p.addFlagGroupCallCount)
+	assert.Equal(t, 1, len(p.flags))
+}
+
+func TestAddToParserFail(t *testing.T) {
+	flags := []*flag{{}}
+	defer setFlags(flags)()
+	p := &mockParser{
+		shouldErr: true,
 	}
 
-	threeFlags := []*flag{{}, {}, {}}
-	defer setFlags(threeFlags)()
+	err := AddToParser(p)
+	assert.Error(t, err)
+	errs := multierr.Errors(err)
+	assert.Equal(t, 1, len(errs))
+	assert.Equal(t, 0, p.addFlagGroupCallCount)
+	assert.Equal(t, 0, len(p.flags))
+}
 
-	for _, tt := range tests {
-		p := &mockParser{
-			shouldErr:      tt.shouldErr,
-			errOnCallCount: tt.errOnCallCount,
-		}
-
-		err := AddToParser(p)
-		if tt.shouldErr {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-		}
-
-		errs := multierr.Errors(err)
-		assert.Equal(t, tt.numErrs, len(errs))
-		assert.Equal(t, tt.numAddFlagGroupCallCounts, p.addFlagGroupCallCount)
-		assert.Equal(t, tt.numParserFlags, len(p.flags))
+func TestAddToParserFailPartial(t *testing.T) {
+	flags := []*flag{{}, {}, {}}
+	defer setFlags(flags)()
+	p := &mockParser{
+		shouldErr:      true,
+		errOnCallCount: 2,
 	}
+
+	err := AddToParser(p)
+	assert.Error(t, err)
+	errs := multierr.Errors(err)
+	assert.Equal(t, 1, len(errs))
+	assert.Equal(t, 2, p.addFlagGroupCallCount)
+	assert.Equal(t, 2, len(p.flags))
 }
 
 func TestAddToParserMany(t *testing.T) {
