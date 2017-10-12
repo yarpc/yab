@@ -66,9 +66,9 @@ func TestAddToParser(t *testing.T) {
 
 		err := AddToParser(p)
 		if tt.shouldErr {
-			assert.NotNil(t, err)
+			assert.Error(t, err)
 		} else {
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 		}
 
 		errs := multierr.Errors(err)
@@ -89,7 +89,7 @@ func TestAddToParserMany(t *testing.T) {
 	p := &mockParser{}
 
 	errs := AddToParser(p)
-	assert.Nil(t, errs)
+	assert.NoError(t, errs)
 	assert.Equal(t, numFlags, p.addFlagGroupCallCount)
 	assert.Equal(t, numFlags, len(p.flags))
 
@@ -122,7 +122,7 @@ func TestAddedFlagsArePassedToParser(t *testing.T) {
 	p := &mockParser{}
 	AddFlags(short, long, foo)
 	errs := AddToParser(p)
-	assert.Nil(t, errs)
+	assert.NoError(t, errs)
 
 	assert.Equal(t, 1, p.addFlagGroupCallCount)
 	assert.Equal(t, 1, len(p.flags))
