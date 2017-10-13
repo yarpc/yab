@@ -6,6 +6,15 @@ import (
 	"go.uber.org/multierr"
 )
 
+type flag struct {
+	groupName       string
+	longDescription string
+	data            interface{}
+}
+
+// stores the list of currently registered flags
+var _flags []*flag
+
 // AddFlags should be used by embedded modules to inject custom flags into `yab`.
 // It adds a set of custom flags with heading `groupName`.
 //
@@ -53,13 +62,4 @@ func AddToParser(p Parser) error {
 		}
 	}
 	return err
-}
-
-// stores the list of currently registered flags
-var _flags []*flag
-
-type flag struct {
-	groupName       string
-	longDescription string
-	data            interface{}
 }
