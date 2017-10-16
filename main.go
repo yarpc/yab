@@ -32,6 +32,7 @@ import (
 
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/peerprovider"
+	"github.com/yarpc/yab/plugin"
 	"github.com/yarpc/yab/transport"
 
 	"github.com/casimir/xdg-go"
@@ -135,6 +136,10 @@ yab includes a full man page (man yab), which is also available online: http://y
 	setGroupDescs(parser, "request", "Request Options", toGroff(_reqOptsDesc))
 	setGroupDescs(parser, "transport", "Transport Options", toGroff(_transportOptsDesc))
 	setGroupDescs(parser, "benchmark", "Benchmark Options", toGroff(_benchmarkOptsDesc))
+
+	if err := plugin.AddToParser(pluginParserAdapter{parser}); err != nil {
+		out.Warnf("WARNING: Error adding plugin-based custom flags: %+v.", err)
+	}
 
 	remaining, err := parser.ParseArgs(args)
 	// If there are no arguments specified, write the help.
