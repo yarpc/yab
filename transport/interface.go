@@ -29,13 +29,11 @@ import (
 
 // Request is the fields used to make an RPC.
 type Request struct {
-	TargetService    string
 	Method           string
 	Timeout          time.Duration
 	Headers          map[string]string
 	Baggage          map[string]string
 	TransportHeaders map[string]string
-	ShardKey         string
 	Body             []byte
 }
 

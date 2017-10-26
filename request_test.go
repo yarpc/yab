@@ -317,7 +317,6 @@ func TestNewRequestWithMetadata(t *testing.T) {
 	req, err := prepareRequest(req, nil /* headers */, Options{TOpts: topts})
 	assert.NoError(t, err)
 	assert.Equal(t, "foo", req.Method)
-	assert.Equal(t, "bar", req.TargetService)
 }
 
 func TestNewRequestWithTransportMiddleware(t *testing.T) {
@@ -328,7 +327,6 @@ func TestNewRequestWithTransportMiddleware(t *testing.T) {
 	req, err := prepareRequest(req, nil /* headers */, Options{TOpts: topts})
 	assert.NoError(t, err)
 	assert.Equal(t, "baz", req.Method)
-	assert.Equal(t, "bar", req.TargetService)
 }
 
 type mockRequestInterceptor struct {
@@ -388,7 +386,6 @@ func TestPrepareRequest(t *testing.T) {
 	req, err := prepareRequest(rawReq, nil /* headers */, opts)
 	assert.NoError(t, err)
 	assert.Equal(t, "foo", req.Method)
-	assert.Equal(t, "baz", req.TargetService)
 	assert.Equal(t, "medium", req.Baggage["size"])
 }
 
