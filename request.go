@@ -141,9 +141,6 @@ func prepareRequest(req *transport.Request, headers map[string]string, opts Opti
 	req.Baggage = opts.ROpts.Baggage
 	req.Timeout = timeout
 
-	// Add request metadata
-	req.TargetService = opts.TOpts.ServiceName
-
 	// Apply middleware
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
