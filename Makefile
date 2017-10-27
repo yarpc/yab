@@ -1,4 +1,4 @@
-PACKAGES := $(shell glide novendor)
+PACKAGES := $(shell glide novendor | grep -v \/testdata\/)
 
 export GO15VENDOREXPERIMENT=1
 
