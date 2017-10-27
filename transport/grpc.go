@@ -22,7 +22,6 @@ package transport
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"io/ioutil"
 	"time"
@@ -35,6 +34,7 @@ import (
 	"go.uber.org/yarpc/peer/hostport"
 	"go.uber.org/yarpc/peer/roundrobin"
 	"go.uber.org/yarpc/transport/grpc"
+	"golang.org/x/net/context"
 )
 
 var (
