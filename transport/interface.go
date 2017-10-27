@@ -21,10 +21,10 @@
 package transport
 
 import (
+	"context"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-	"golang.org/x/net/context"
 )
 
 // Request is the fields used to make an RPC.

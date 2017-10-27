@@ -22,6 +22,7 @@ package transport
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -31,7 +32,6 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-	"golang.org/x/net/context"
 )
 
 type httpTransport struct {
