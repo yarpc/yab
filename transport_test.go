@@ -21,6 +21,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -35,7 +36,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/uber/tchannel-go"
 	"github.com/uber/tchannel-go/raw"
-	"golang.org/x/net/context"
 )
 
 func TestParsePeer(t *testing.T) {

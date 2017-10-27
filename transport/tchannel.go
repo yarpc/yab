@@ -22,6 +22,7 @@ package transport
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -31,7 +32,6 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/uber/tchannel-go"
 	"github.com/uber/tchannel-go/thrift"
-	"golang.org/x/net/context"
 )
 
 // rawHeadersKey is a hack to specify a raw payload via the headers map.

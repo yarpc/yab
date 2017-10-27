@@ -21,6 +21,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -30,7 +31,6 @@ import (
 	"github.com/uber/tchannel-go/raw"
 	"github.com/uber/tchannel-go/testutils"
 	"go.uber.org/atomic"
-	"golang.org/x/net/context"
 )
 
 type server struct {

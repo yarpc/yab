@@ -22,6 +22,7 @@ package transport
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -35,7 +36,6 @@ import (
 	"github.com/uber/tchannel-go/raw"
 	"github.com/uber/tchannel-go/testutils"
 	"github.com/uber/tchannel-go/thrift"
-	"golang.org/x/net/context"
 )
 
 func TestTChannelConstructor(t *testing.T) {
@@ -80,7 +80,7 @@ func setupServerAndTransport(t *testing.T, changeOpts ...func(*TChannelOptions))
 	opts := TChannelOptions{
 		SourceService: "yab",
 		TargetService: svr.ServiceName(),
-		Peers:     []string{svr.PeerInfo().HostPort},
+		Peers:         []string{svr.PeerInfo().HostPort},
 		Encoding:      "raw",
 	}
 
