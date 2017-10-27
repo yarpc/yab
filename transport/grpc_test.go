@@ -21,6 +21,7 @@
 package transport
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -35,7 +36,6 @@ import (
 	yarpcjson "go.uber.org/yarpc/encoding/json"
 	"go.uber.org/yarpc/transport/grpc"
 	"go.uber.org/yarpc/yarpcerrors"
-	"golang.org/x/net/context"
 )
 
 func TestGRPCSuccess(t *testing.T) {
