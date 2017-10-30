@@ -38,6 +38,70 @@ import (
 	"go.uber.org/yarpc/yarpcerrors"
 )
 
+func TestGRPCConstructor(t *testing.T) {
+	tests := []struct {
+		options GRPCOptions
+		wantErr error
+	}{
+		{
+			options: GRPCOptions{
+				Addresses: []string{
+					"1:1:1:1:2345",
+				},
+				Tracer:   opentracing.NoopTracer{},
+				Caller:   "example-caller",
+				Encoding: "json",
+			},
+		},
+		{
+			options: GRPCOptions{
+				Tracer:   opentracing.NoopTracer{},
+				Caller:   "example-caller",
+				Encoding: "json",
+			},
+			wantErr: errGRPCNoAddresses,
+		},
+		{
+			options: GRPCOptions{
+				Addresses: []string{
+					"1:1:1:1:2345",
+				},
+				Caller:   "example-caller",
+				Encoding: "json",
+			},
+			wantErr: errGRPCNoTracer,
+		},
+		{
+			options: GRPCOptions{
+				Addresses: []string{
+					"1:1:1:1:2345",
+				},
+				Tracer:   opentracing.NoopTracer{},
+				Encoding: "json",
+			},
+			wantErr: errGRPCNoCaller,
+		},
+		{
+			options: GRPCOptions{
+				Addresses: []string{
+					"1:1:1:1:2345",
+				},
+				Tracer: opentracing.NoopTracer{},
+				Caller: "example-caller",
+			},
+			wantErr: errGRPCNoEncoding,
+		},
+	}
+	for _, tt := range tests {
+		_, err := NewGRPC(tt.options)
+		if tt.wantErr != nil {
+			assert.Equal(t, tt.wantErr, err)
+		} else {
+			assert.NoError(t, err)
+		}
+	}
+}
+
 func TestGRPCSuccess(t *testing.T) {
 	doWithTestEnv(t, "example-caller", 5, []transport.Procedure{
 		newTestJSONProcedure("example", "Foo::Bar", testBar),
@@ -120,7 +184,7 @@ func doWithTestEnv(
 
 type testEnv struct {
 	Caller         string
-	Transport      *grpcTransport
+	Transport      TransportCloser
 	YARPCTransport *grpc.Transport
 	YARPCInbounds  []*grpc.Inbound
 }
@@ -161,7 +225,7 @@ func newTestEnv(
 		yarpcInbounds[i] = yarpcInbound
 	}
 
-	transport, err := newGRPC(GRPCOptions{
+	transport, err := NewGRPC(GRPCOptions{
 		Addresses: addresses,
 		Tracer:    opentracing.NoopTracer{},
 		Caller:    caller,
