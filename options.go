@@ -56,7 +56,7 @@ type RequestOptions struct {
 	TemplateArgs map[string]string `short:"A" long:"arg" description:"A list of key-value template arguments, specified as -A foo:bar -A user:me"`
 
 	// Thrift options
-	ThriftDisableEnvelopes bool `long:"disable-thrift-envelope" description:"Disables Thrift envelopes (disabled by default for TChannel)"`
+	ThriftDisableEnvelopes bool `long:"disable-thrift-envelope" description:"Disables Thrift envelopes (disabled by default for TChannel and gRPC)"`
 	ThriftMultiplexed      bool `long:"multiplexed-thrift" description:"Enables the Thrift TMultiplexedProtocol used by services that host multiple Thrift services on a single endpoint."`
 
 	// These are aliases for tcurl compatibility.
