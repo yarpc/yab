@@ -45,7 +45,9 @@ var (
 	errPeerOptions     = errors.New("do not specify peers using --peer and --peer-list")
 )
 
+// works for either tchannel or grpc
 func remapLocalHost(hostPorts []string) {
+	// this works for either tchannel or grpc
 	ip, err := tchannel.ListenIP()
 	if err != nil {
 		panic(err)
@@ -58,37 +60,69 @@ func remapLocalHost(hostPorts []string) {
 	}
 }
 
-func parsePeer(peer string) (protocol, host string) {
-	// If we get a pure host:port, then we assume tchannel.
+// host and port must be specified in peer
+// explicitProtocol is from --protocol flag
+// protocol will be tchannel, grpc, http, https, ftp in valid case
+// boolean will be false in invalid case
+// TODO(pedge): ftp actually valid? there is a test for it
+func parsePeer(explicitProtocol string, peer string) (protocol, host string, valid bool) {
+	// If we get a pure host:port, then we assume tchannel or grpc.
 	if _, _, err := net.SplitHostPort(peer); err == nil && !strings.Contains(peer, "://") {
-		return "tchannel", peer
+		if explicitProtocol == "" {
+			// If no explicit protocol specified, assume tchannel.
+			return "tchannel", peer, true
+		}
+		switch explicitProtocol {
+		case "tchannel", "grpc":
+			return explicitProtocol, peer, true
+		default:
+			return "", "", false
+		}
 	}
 
 	u, err := url.ParseRequestURI(peer)
 	if err != nil {
-		return "unknown", ""
+		return "", "", false
 	}
-
-	return u.Scheme, u.Host
+	switch u.Scheme {
+	case "http", "https", "ftp", "tchannel", "grpc":
+		if explicitProtocol != "" && explicitProtocol != u.Scheme {
+			return "", "", false
+		}
+		return u.Scheme, u.Host, true
+	default:
+		return "", "", false
+	}
 }
 
 // ensureSameProtocol must get at least one host:port.
-func ensureSameProtocol(peers []string) (string, error) {
-	lastProtocol, _ := parsePeer(peers[0])
+func ensureSameProtocol(explicitProtocol string, peers []string) (string, error) {
+	lastProtocol, _, valid := parsePeer(explicitProtocol, peers[0])
+	if !valid {
+		return "", fmt.Errorf("could not parse protocol for explicitProtocol '%s' and peer '%s'", explicitProtocol, peers[0])
+	}
 	for _, hp := range peers[1:] {
-		if p, _ := parsePeer(hp); lastProtocol != p {
+		p, _, valid := parsePeer(explicitProtocol, hp)
+		if !valid {
+			return "", fmt.Errorf("could not parse protocol for explicitProtocol '%s' and peer '%s'", explicitProtocol, hp)
+		}
+		if lastProtocol != p {
 			return "", fmt.Errorf("found mixed protocols, expected all to be %v, got %v", lastProtocol, p)
 		}
 	}
 	return lastProtocol, nil
 }
 
-func getHosts(peers []string) []string {
+func getHosts(explicitProtocol string, peers []string) ([]string, bool) {
 	hosts := make([]string, len(peers))
+	var valid bool
 	for i, p := range peers {
-		_, hosts[i] = parsePeer(p)
+		_, hosts[i], valid = parsePeer(explicitProtocol, p)
+		if !valid {
+			return nil, false
+		}
 	}
-	return hosts
+	return hosts, true
 }
 
 func loadTransportPeers(opts TransportOptions) (TransportOptions, error) {
@@ -143,16 +177,32 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding, tracer open
 		return nil, err
 	}
 
-	protocol, err := ensureSameProtocol(opts.Peers)
+	protocol, err := ensureSameProtocol(opts.Protocol, opts.Peers)
 	if err != nil {
 		return nil, err
 	}
 
-	if protocol == "tchannel" {
-		hostPorts := getHosts(opts.Peers)
-		remapLocalHost(hostPorts)
+	if protocol == "http" || protocol == "https" {
+		return transport.NewHTTP(transport.HTTPOptions{
+			SourceService:   opts.CallerName,
+			TargetService:   opts.ServiceName,
+			RoutingDelegate: opts.RoutingDelegate,
+			RoutingKey:      opts.RoutingKey,
+			ShardKey:        opts.ShardKey,
+			Encoding:        encoding.String(),
+			URLs:            opts.Peers,
+			Tracer:          tracer,
+		})
+	}
 
-		topts := transport.TChannelOptions{
+	hostPorts, valid := getHosts(opts.Protocol, opts.Peers)
+	if !valid {
+		return nil, fmt.Errorf("invalid peers '%v'", opts.Peers)
+	}
+	remapLocalHost(hostPorts)
+
+	if protocol == "tchannel" {
+		return transport.NewTChannel(transport.TChannelOptions{
 			SourceService:   opts.CallerName,
 			TargetService:   opts.ServiceName,
 			RoutingDelegate: opts.RoutingDelegate,
@@ -162,19 +212,19 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding, tracer open
 			Encoding:        encoding.String(),
 			TransportOpts:   opts.TransportHeaders,
 			Tracer:          tracer,
-		}
-		return transport.NewTChannel(topts)
+		})
+	}
+	if protocol == "grpc" {
+		return transport.NewGRPC(transport.GRPCOptions{
+			Addresses:       hostPorts,
+			Tracer:          tracer,
+			Caller:          opts.CallerName,
+			Encoding:        encoding.String(),
+			RoutingKey:      opts.RoutingKey,
+			RoutingDelegate: opts.RoutingDelegate,
+			// TODO(pedge): ignored: opts.ShardKey, opts.TransportHeader, opts.ServiceName
+		})
 	}
 
-	hopts := transport.HTTPOptions{
-		SourceService:   opts.CallerName,
-		TargetService:   opts.ServiceName,
-		RoutingDelegate: opts.RoutingDelegate,
-		RoutingKey:      opts.RoutingKey,
-		ShardKey:        opts.ShardKey,
-		Encoding:        encoding.String(),
-		URLs:            opts.Peers,
-		Tracer:          tracer,
-	}
-	return transport.NewHTTP(hopts)
+	return nil, fmt.Errorf("unknown protocol: %s", protocol)
 }

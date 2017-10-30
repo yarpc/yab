@@ -73,6 +73,7 @@ type RequestOptions struct {
 
 // TransportOptions are transport related options.
 type TransportOptions struct {
+	Protocol         string            `long:"protocol" description:"The protocol to use, either tchannel, http, https, ftp, or grpc. Overrides all implicit protocol settings."`
 	ServiceName      string            `short:"s" long:"service" description:"The TChannel/Hyperbahn service name"`
 	Peers            []string          `short:"p" long:"peer" description:"The host:port of the service to call"`
 	PeerList         string            `short:"P" long:"peer-list" description:"Path or URL of a JSON, YAML, or flat file containing a list of host:ports. -P? for supported protocols."`

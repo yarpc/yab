@@ -40,31 +40,35 @@ import (
 
 func TestParsePeer(t *testing.T) {
 	tests := []struct {
-		peer     string
-		protocol string
-		host     string
+		explicitProtocol string
+		peer             string
+		protocol         string
+		host             string
+		valid            bool
 	}{
-		{"1.1.1.1:1", "tchannel", "1.1.1.1:1"},
-		{"some.host:1234", "tchannel", "some.host:1234"},
-		{"1.1.1.1", "unknown", ""},
-		{"ftp://1.1.1.1", "ftp", "1.1.1.1"},
-		{"http://1.1.1.1", "http", "1.1.1.1"},
-		{"https://1.1.1.1", "https", "1.1.1.1"},
-		{"http://1.1.1.1:8080", "http", "1.1.1.1:8080"},
-		{"://asd", "unknown", ""},
+		{"", "1.1.1.1:1", "tchannel", "1.1.1.1:1", true},
+		{"", "some.host:1234", "tchannel", "some.host:1234", true},
+		{"", "1.1.1.1", "", "", false},
+		{"", "ftp://1.1.1.1", "ftp", "1.1.1.1", true},
+		{"", "http://1.1.1.1", "http", "1.1.1.1", true},
+		{"", "https://1.1.1.1", "https", "1.1.1.1", true},
+		{"", "http://1.1.1.1:8080", "http", "1.1.1.1:8080", true},
+		{"", "://asd", "", "", false},
 	}
 
 	for _, tt := range tests {
-		protocol, host := parsePeer(tt.peer)
+		protocol, host, valid := parsePeer(tt.explicitProtocol, tt.peer)
 		assert.Equal(t, tt.protocol, protocol, "unexpected protocol for %q", tt.peer)
 		assert.Equal(t, tt.host, host, "unexpected host for %q", tt.peer)
+		assert.Equal(t, tt.valid, valid, "unexpected valid for %q", tt.peer)
 	}
 }
 
 func TestEnsureSameProtocol(t *testing.T) {
 	tests := []struct {
-		peers []string
-		want  string // if want is empty, expect an error.
+		explicitProtocol string
+		peers            []string
+		want             string // if want is empty, expect an error.
 	}{
 		{
 			// tchannel host:ports
@@ -74,7 +78,6 @@ func TestEnsureSameProtocol(t *testing.T) {
 		{
 			// only hosts without port
 			peers: []string{"1.1.1.1", "2.2.2.2"},
-			want:  "unknown",
 		},
 		{
 			peers: []string{"http://1.1.1.1", "http://2.2.2.2:8080"},
@@ -91,7 +94,7 @@ func TestEnsureSameProtocol(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got, err := ensureSameProtocol(tt.peers)
+		got, err := ensureSameProtocol(tt.explicitProtocol, tt.peers)
 		if tt.want == "" {
 			assert.Error(t, err, "Expect error for %v", tt.peers)
 			continue
