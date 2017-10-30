@@ -73,7 +73,7 @@ func parsePeer(explicitProtocol string, peer string) (protocol, host string, val
 			return "tchannel", peer, true
 		}
 		switch explicitProtocol {
-		case "tchannel", "grpc":
+		case "http", "https", "ftp", "tchannel", "grpc":
 			return explicitProtocol, peer, true
 		default:
 			return "", "", false
@@ -222,7 +222,7 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding, tracer open
 			Encoding:        encoding.String(),
 			RoutingKey:      opts.RoutingKey,
 			RoutingDelegate: opts.RoutingDelegate,
-			// TODO(pedge): ignored: opts.ShardKey, opts.TransportHeader, opts.ServiceName
+			// TODO(pedge): ignored: opts.ShardKey, opts.TransportHeaders, opts.ServiceName
 		})
 	}
 
