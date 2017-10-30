@@ -132,11 +132,7 @@ func (t *grpcTransport) Call(ctx context.Context, request *Request) (*Response, 
 	if err != nil {
 		return nil, err
 	}
-	response, err := transportResponseToResponse(transportResponse)
-	if err != nil {
-		return nil, err
-	}
-	return response, nil
+	return transportResponseToResponse(transportResponse)
 }
 
 func (t *grpcTransport) Close() error {
