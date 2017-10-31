@@ -85,12 +85,8 @@ func newGRPC(options GRPCOptions) (*grpcTransport, error) {
 		return nil, errGRPCNoEncoding
 	}
 
-	identifiers := make([]apipeer.Identifier, len(options.Addresses))
-	for i, address := range options.Addresses {
-		identifiers[i] = hostport.Identify(address)
-	}
 	transport := grpc.NewTransport(grpc.Tracer(options.Tracer))
-	outbound := transport.NewOutbound(peer.Bind(roundrobin.New(transport), peer.BindPeers(identifiers)))
+	outbound := transport.NewOutbound(peer.Bind(roundrobin.New(transport), peer.BindPeers(peersToIdentifiers(options.Addresses))))
 	if err := transport.Start(); err != nil {
 		return nil, err
 	}
@@ -155,7 +151,7 @@ func (t *grpcTransport) requestToTransportRequest(request *Request) *transport.R
 
 func requestContextWithTimeout(ctx context.Context, request *Request) (context.Context, context.CancelFunc) {
 	if _, ok := ctx.Deadline(); ok {
-		return ctx, noop
+		return ctx, func() {}
 	}
 	timeout := time.Second
 	if request.Timeout > 0 {
@@ -181,4 +177,10 @@ func transportResponseToResponse(transportResponse *transport.Response) (*Respon
 	return response, nil
 }
 
-func noop() {}
+func peersToIdentifiers(peers []string) []apipeer.Identifier {
+	identifiers := make([]apipeer.Identifier, len(peers))
+	for i, peer := range peers {
+		identifiers[i] = hostport.Identify(peer)
+	}
+	return identifiers
+}

@@ -103,12 +103,12 @@ func TestGRPCConstructor(t *testing.T) {
 }
 
 func TestGRPCSuccess(t *testing.T) {
-	doWithTestEnv(t, "example-caller", 5, []transport.Procedure{
+	doWithGRPCTestEnv(t, "example-caller", 5, []transport.Procedure{
 		newTestJSONProcedure("example", "Foo::Bar", testBar),
-	}, func(t *testing.T, testEnv *testEnv) {
+	}, func(t *testing.T, grpcTestEnv *grpcTestEnv) {
 		request, err := newTestJSONRequest("example", "Foo::Bar", &testBarRequest{One: "hello"})
 		require.NoError(t, err)
-		response, err := testEnv.Transport.Call(context.Background(), request)
+		response, err := grpcTestEnv.Transport.Call(context.Background(), request)
 		require.NoError(t, err)
 		require.NotNil(t, response)
 		testBarResponse := &testBarResponse{}
@@ -118,12 +118,12 @@ func TestGRPCSuccess(t *testing.T) {
 }
 
 func TestGRPCError(t *testing.T) {
-	doWithTestEnv(t, "example-caller", 5, []transport.Procedure{
+	doWithGRPCTestEnv(t, "example-caller", 5, []transport.Procedure{
 		newTestJSONProcedure("example", "Foo::Bar", testBar),
-	}, func(t *testing.T, testEnv *testEnv) {
+	}, func(t *testing.T, grpcTestEnv *grpcTestEnv) {
 		request, err := newTestJSONRequest("example", "Foo::Bar", &testBarRequest{Error: "hello"})
 		require.NoError(t, err)
-		_, err = testEnv.Transport.Call(context.Background(), request)
+		_, err = grpcTestEnv.Transport.Call(context.Background(), request)
 		require.Equal(t, yarpcerrors.UnknownErrorf("hello"), err)
 	})
 }
@@ -167,33 +167,33 @@ func newTestJSONProcedure(service string, name string, handler interface{}) tran
 	return procedure
 }
 
-func doWithTestEnv(
+func doWithGRPCTestEnv(
 	t *testing.T,
 	caller string,
 	numInbounds int,
 	procedures []transport.Procedure,
-	f func(*testing.T, *testEnv),
+	f func(*testing.T, *grpcTestEnv),
 ) {
-	testEnv, err := newTestEnv(caller, numInbounds, procedures)
+	grpcTestEnv, err := newGRPCTestEnv(caller, numInbounds, procedures)
 	require.NoError(t, err)
 	defer func() {
-		assert.NoError(t, testEnv.Close())
+		assert.NoError(t, grpcTestEnv.Close())
 	}()
-	f(t, testEnv)
+	f(t, grpcTestEnv)
 }
 
-type testEnv struct {
+type grpcTestEnv struct {
 	Caller         string
 	Transport      TransportCloser
 	YARPCTransport *grpc.Transport
 	YARPCInbounds  []*grpc.Inbound
 }
 
-func newTestEnv(
+func newGRPCTestEnv(
 	caller string,
 	numInbounds int,
 	procedures []transport.Procedure,
-) (_ *testEnv, err error) {
+) (_ *grpcTestEnv, err error) {
 	yarpcTransport := grpc.NewTransport()
 	if err := yarpcTransport.Start(); err != nil {
 		return nil, err
@@ -235,7 +235,7 @@ func newTestEnv(
 		return nil, err
 	}
 
-	return &testEnv{
+	return &grpcTestEnv{
 		caller,
 		transport,
 		yarpcTransport,
@@ -243,7 +243,7 @@ func newTestEnv(
 	}, nil
 }
 
-func (e *testEnv) Close() error {
+func (e *grpcTestEnv) Close() error {
 	err := e.Transport.Close()
 	for _, yarpcInbound := range e.YARPCInbounds {
 		err = multierr.Combine(err, yarpcInbound.Stop())
