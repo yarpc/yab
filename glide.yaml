@@ -18,8 +18,8 @@ import:
   version: ^1
 - package: github.com/uber/jaeger-client-go
   version: ^2.9
+- package: go.uber.org/yarpc
+  version: ^1.21
 testImport:
 - package: github.com/apache/thrift
   version: ">=0.9.3, <0.11.0"
-- package: go.uber.org/yarpc
-  version: ^1

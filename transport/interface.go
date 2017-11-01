@@ -21,6 +21,7 @@
 package transport
 
 import (
+	"io"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -55,6 +56,7 @@ type Protocol int
 const (
 	TChannel Protocol = iota + 1
 	HTTP
+	GRPC
 )
 
 // Transport defines the interface for the underlying transport over which
@@ -63,4 +65,10 @@ type Transport interface {
 	Call(ctx context.Context, request *Request) (*Response, error)
 	Protocol() Protocol
 	Tracer() opentracing.Tracer
+}
+
+// TransportCloser is a Transport that can be closed.
+type TransportCloser interface {
+	Transport
+	io.Closer
 }
