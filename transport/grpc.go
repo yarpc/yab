@@ -124,18 +124,18 @@ func (t *grpcTransport) Call(ctx context.Context, request *Request) (*Response, 
 
 	ctx, cancel := requestContextWithTimeout(ctx, request)
 	defer cancel()
-	transportResponse, err := t.Outbound.Call(ctx, t.requestToTransportRequest(request))
+	transportResponse, err := t.Outbound.Call(ctx, t.requestToYARPCRequest(request))
 	if err != nil {
 		return nil, err
 	}
-	return transportResponseToResponse(transportResponse)
+	return yarpcResponseToResponse(transportResponse)
 }
 
 func (t *grpcTransport) Close() error {
 	return multierr.Combine(t.Transport.Stop(), t.Outbound.Stop())
 }
 
-func (t *grpcTransport) requestToTransportRequest(request *Request) *transport.Request {
+func (t *grpcTransport) requestToYARPCRequest(request *Request) *transport.Request {
 	return &transport.Request{
 		Caller:          t.Caller,
 		Service:         request.TargetService,
@@ -160,7 +160,7 @@ func requestContextWithTimeout(ctx context.Context, request *Request) (context.C
 	return context.WithTimeout(ctx, timeout)
 }
 
-func transportResponseToResponse(transportResponse *transport.Response) (*Response, error) {
+func yarpcResponseToResponse(transportResponse *transport.Response) (*Response, error) {
 	response := &Response{
 		Headers: transportResponse.Headers.Items(),
 	}
