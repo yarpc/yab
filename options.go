@@ -56,7 +56,7 @@ type RequestOptions struct {
 	TemplateArgs map[string]string `short:"A" long:"arg" description:"A list of key-value template arguments, specified as -A foo:bar -A user:me"`
 
 	// Thrift options
-	ThriftDisableEnvelopes bool `long:"disable-thrift-envelope" description:"Disables Thrift envelopes (disabled by default for TChannel)"`
+	ThriftDisableEnvelopes bool `long:"disable-thrift-envelope" description:"Disables Thrift envelopes (disabled by default for TChannel and gRPC)"`
 	ThriftMultiplexed      bool `long:"multiplexed-thrift" description:"Enables the Thrift TMultiplexedProtocol used by services that host multiple Thrift services on a single endpoint."`
 
 	// These are aliases for tcurl compatibility.
@@ -73,6 +73,7 @@ type RequestOptions struct {
 
 // TransportOptions are transport related options.
 type TransportOptions struct {
+	Protocol         string            `long:"protocol" description:"The protocol to use, either tchannel, http, https, ftp, or grpc. Overrides all implicit protocol settings."`
 	ServiceName      string            `short:"s" long:"service" description:"The TChannel/Hyperbahn service name"`
 	Peers            []string          `short:"p" long:"peer" description:"The host:port of the service to call"`
 	PeerList         string            `short:"P" long:"peer-list" description:"Path or URL of a JSON, YAML, or flat file containing a list of host:ports. -P? for supported protocols."`

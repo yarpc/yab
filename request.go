@@ -143,6 +143,7 @@ func prepareRequest(req *transport.Request, headers map[string]string, opts Opti
 
 	// Add request metadata
 	req.TargetService = opts.TOpts.ServiceName
+	req.ShardKey = opts.TOpts.ShardKey
 
 	// Apply middleware
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
