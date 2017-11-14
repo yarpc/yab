@@ -46,6 +46,7 @@ import (
 	"go.uber.org/yarpc"
 	ytransport "go.uber.org/yarpc/api/transport"
 	ythrift "go.uber.org/yarpc/encoding/thrift"
+	ygrpc "go.uber.org/yarpc/transport/grpc"
 	yhttp "go.uber.org/yarpc/transport/http"
 	ytchan "go.uber.org/yarpc/transport/tchannel"
 )
@@ -227,6 +228,15 @@ func TestIntegrationProtocols(t *testing.T) {
 			},
 			disableEnvelope: true,
 		},
+		{
+			desc: "YARPC GRPC",
+			setup: func() (string, func()) {
+				addr, dispatcher := setupYARPCGRPC(t, tracer)
+				return "grpc://" + addr.String(), func() {
+					dispatcher.Stop()
+				}
+			},
+		},
 	}
 
 	for _, c := range cases {
@@ -327,6 +337,15 @@ func setupYARPCHTTP(t *testing.T, tracer opentracing.Tracer, enveloped bool) (ne
 	}
 	dispatcher := setupYARPCServer(t, inbound, opts...)
 	return inbound.Addr(), dispatcher
+}
+
+func setupYARPCGRPC(t *testing.T, tracer opentracing.Tracer) (net.Addr, *yarpc.Dispatcher) {
+	transport := ygrpc.NewTransport(ygrpc.Tracer(tracer))
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	inbound := transport.NewInbound(listener)
+	dispatcher := setupYARPCServer(t, inbound)
+	return listener.Addr(), dispatcher
 }
 
 func setupYARPCServer(t *testing.T, inbound ytransport.Inbound, opts ...ythrift.RegisterOption) *yarpc.Dispatcher {

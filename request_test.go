@@ -313,11 +313,12 @@ func TestDetectEncoding(t *testing.T) {
 
 func TestNewRequestWithMetadata(t *testing.T) {
 	req := &transport.Request{Method: "foo"}
-	topts := TransportOptions{ServiceName: "bar"}
+	topts := TransportOptions{ServiceName: "bar", ShardKey: "baz"}
 	req, err := prepareRequest(req, nil /* headers */, Options{TOpts: topts})
 	assert.NoError(t, err)
 	assert.Equal(t, "foo", req.Method)
 	assert.Equal(t, "bar", req.TargetService)
+	assert.Equal(t, "baz", req.ShardKey)
 }
 
 func TestNewRequestWithTransportMiddleware(t *testing.T) {

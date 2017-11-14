@@ -839,6 +839,16 @@ func TestWithTransportSerializer(t *testing.T) {
 			rOpts:    noEnvelopeOpts,
 			want:     []byte{0},
 		},
+		{
+			protocol: transport.GRPC,
+			rOpts:    validRequestOpts,
+			want:     []byte{0},
+		},
+		{
+			protocol: transport.GRPC,
+			rOpts:    noEnvelopeOpts,
+			want:     []byte{0},
+		},
 	}
 
 	for _, tt := range tests {
