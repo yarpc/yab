@@ -166,6 +166,17 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding, tracer open
 		return transport.NewTChannel(topts)
 	}
 
+	if protocol == "grpc" {
+		return transport.NewGRPC(transport.GRPCOptions{
+			Addresses:       getHosts(opts.Peers),
+			Tracer:          tracer,
+			Caller:          opts.CallerName,
+			Encoding:        encoding.String(),
+			RoutingKey:      opts.RoutingKey,
+			RoutingDelegate: opts.RoutingDelegate,
+		})
+	}
+
 	hopts := transport.HTTPOptions{
 		SourceService:   opts.CallerName,
 		TargetService:   opts.ServiceName,
