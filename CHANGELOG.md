@@ -1,6 +1,12 @@
 Changelog
 =========
 
+# 0.12.0 (2017-11-16)
+* Add gRPC support
+* Cleanup Travis and Makefiles
+* Add plugin for injecting custom CLI flags
+* Add plugin for pre-flight request modification
+
 # 0.11.0 (2017-09-06)
 * Support using yab as a shebang for files ending with `.yab`.
 
