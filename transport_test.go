@@ -51,6 +51,7 @@ func TestParsePeer(t *testing.T) {
 		{"http://1.1.1.1", "http", "1.1.1.1"},
 		{"https://1.1.1.1", "https", "1.1.1.1"},
 		{"http://1.1.1.1:8080", "http", "1.1.1.1:8080"},
+		{"grpc://1.1.1.1:8080", "grpc", "1.1.1.1:8080"},
 		{"://asd", "unknown", ""},
 	}
 
@@ -79,6 +80,10 @@ func TestEnsureSameProtocol(t *testing.T) {
 		{
 			peers: []string{"http://1.1.1.1", "http://2.2.2.2:8080"},
 			want:  "http",
+		},
+		{
+			peers: []string{"grpc://1.1.1.1", "grpc://2.2.2.2:8080"},
+			want:  "grpc",
 		},
 		{
 			// mix of http and https

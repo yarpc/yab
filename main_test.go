@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/yarpc/yab/encoding"
+	"github.com/yarpc/yab/plugin"
 	"github.com/yarpc/yab/transport"
 
 	"github.com/opentracing/opentracing-go"
@@ -428,6 +429,42 @@ func TestGetOptionsAlias(t *testing.T) {
 	}
 }
 
+type testOptions struct {
+	Test string `long:"testing"`
+}
+
+func TestGetOptionsAppliesPlugin(t *testing.T) {
+	tOpts := &testOptions{}
+	plugin.AddFlags("Test Options", "", tOpts)
+
+	flags := []string{"--testing", "this is only a test"}
+	_, _, out := getOutput(t)
+
+	_, err := getOptions(flags, out)
+	require.NoError(t, err, "getOptions(%v) failed", flags)
+	require.Equal(t, "this is only a test", tOpts.Test)
+}
+
+// this struct triggers a go-flags error, since adding a group with duplicate `long` tags will fail
+type testOptionsDuplicate struct {
+	Test  string `long:"testing"`
+	Test1 string `long:"testing"`
+}
+
+func TestGetOptionsPrintsPluginErrors(t *testing.T) {
+	tOpts := &testOptionsDuplicate{}
+	plugin.AddFlags("Test Options", "", tOpts)
+
+	flags := []string{"--testing", "this is only a test"}
+	_, warnBuf, out := getOutput(t)
+
+	_, err := getOptions(flags, out)
+	require.NoError(t, err, "getOptions(%v) failed", flags)
+	// parsing a duplicate flag should fail to parse anything at all, and should print a warning
+	require.Equal(t, "", tOpts.Test)
+	require.Contains(t, warnBuf.String(), "WARNING: Error adding plugin-based custom flags")
+}
+
 func TestAlises(t *testing.T) {
 	type cmdArgs []string
 
@@ -799,6 +836,16 @@ func TestWithTransportSerializer(t *testing.T) {
 		},
 		{
 			protocol: transport.TChannel,
+			rOpts:    noEnvelopeOpts,
+			want:     []byte{0},
+		},
+		{
+			protocol: transport.GRPC,
+			rOpts:    validRequestOpts,
+			want:     []byte{0},
+		},
+		{
+			protocol: transport.GRPC,
 			rOpts:    noEnvelopeOpts,
 			want:     []byte{0},
 		},

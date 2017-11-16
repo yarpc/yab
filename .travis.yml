@@ -2,12 +2,11 @@ sudo: false
 language: go
 
 go:
-    - 1.7
     - 1.8
+    - 1.9
 
 env:
     global:
-        - GO15VENDOREXPERIMENT=1
         - TEST_TIMEOUT_SCALE=10
         - secure: paMlkVWaAi0NACXU2oAcSZQugszfb8sALV/FrtXmWtCen42n/6JXLHU4EHNwnLUDo7ZtgTniEPzBXW4GPSMJyyjyk55T4mWmbeMrELfNpHATmIhTRA6xP8AVHwph14i9jDXNLfiGsCZEkpyBfEOsUHc2jS7wSCA2yXBD6OFSoFGWwrpHMrUO0UHXyKGTGKsQrSQMkIaZ9WOXW0S6FRxjfUTLG9oCFfTxM7LGsz26YYI61nRSPnecitmoKVOCj3toMmg8vG6EwsBwDLggLblc70Fw5fggWeTUpvFUrczzqiWq2Sv61FIhMaT1OsO990w5B5BAODoa/L/G0OExd66GSBGHeu7vudIncKoE2jWxinFQzrJ21cEIyT+1LE0ABC4Zcb51KMzm/Alkn4oaSH2X9al/xQjTrVYGaEJdUu62JzkV5SuUrR+3ZzSy9MaUP8CAaP2W7MlyrjNewoO53BkkDtfh0/EbQFWGgE6lULkWwL4JX9qDkJWB5O7aHCM/fjfVRxODsgUfKksabeycabp1mqLQovQhVLLkk/DH66HKFIAO+EHg+EEQA3Z0PJuOf6zqDgHYxj9fXGvega1Yhuecnkej02iEBsuFM+WMDvAXMj5kWwMy5XhFc57ZJtVoFFA0HEjWJessbQNX3ci919wJQuSwI/5HG5ATg2o3Pb5KtD4=
 
@@ -29,5 +28,5 @@ deploy:
       script: scripts/release.sh $TRAVIS_TAG
       skip_cleanup: true
       on:
-          go: 1.8
+          go: 1.9
           tags: true

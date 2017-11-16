@@ -21,12 +21,16 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/yarpc/yab/encoding"
+	"github.com/yarpc/yab/transport"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -305,4 +309,96 @@ func TestDetectEncoding(t *testing.T) {
 		got := detectEncoding(tt.opts)
 		assert.Equal(t, tt.want, got, "detectEncoding(%+v)", tt.opts)
 	}
+}
+
+func TestNewRequestWithMetadata(t *testing.T) {
+	req := &transport.Request{Method: "foo"}
+	topts := TransportOptions{ServiceName: "bar", ShardKey: "baz"}
+	req, err := prepareRequest(req, nil /* headers */, Options{TOpts: topts})
+	assert.NoError(t, err)
+	assert.Equal(t, "foo", req.Method)
+	assert.Equal(t, "bar", req.TargetService)
+	assert.Equal(t, "baz", req.ShardKey)
+}
+
+func TestNewRequestWithTransportMiddleware(t *testing.T) {
+	req := &transport.Request{Method: "foo"}
+	topts := TransportOptions{ServiceName: "bar"}
+	restore := transport.RegisterInterceptor(mockRequestInterceptor{method: "baz"})
+	defer restore()
+	req, err := prepareRequest(req, nil /* headers */, Options{TOpts: topts})
+	assert.NoError(t, err)
+	assert.Equal(t, "baz", req.Method)
+	assert.Equal(t, "bar", req.TargetService)
+}
+
+type mockRequestInterceptor struct {
+	shouldErr bool
+	method    string
+	baggage   map[string]string
+}
+
+func (ri mockRequestInterceptor) Apply(_ context.Context, req *transport.Request) (*transport.Request, error) {
+	if ri.shouldErr {
+		return nil, errors.New("bad apply")
+	}
+	if ri.method != "" {
+		req.Method = ri.method
+	}
+	if ri.baggage != nil {
+		if req.Baggage == nil {
+			req.Baggage = ri.baggage
+		} else {
+			for k, v := range ri.baggage {
+				req.Baggage[k] = v
+			}
+		}
+	}
+	return req, nil
+}
+
+func TestNewRequestWithCLIOverrides(t *testing.T) {
+	req := &transport.Request{
+		Method:  "foo",
+		Baggage: map[string]string{"size": "small"},
+	}
+	opts := Options{
+		ROpts: RequestOptions{
+			Timeout: timeMillisFlag(10 * time.Second),
+			Baggage: map[string]string{"size": "large"},
+		},
+	}
+	headers := map[string]string{"bing": "bong"}
+	finalReq, err := prepareRequest(req, headers, opts)
+	assert.NoError(t, err)
+	assert.Equal(t, "foo", finalReq.Method)
+	assert.Equal(t, 10*time.Second, finalReq.Timeout)
+	assert.Equal(t, "large", finalReq.Baggage["size"])
+	assert.Equal(t, "bong", finalReq.Headers["bing"])
+}
+
+func TestPrepareRequest(t *testing.T) {
+	rawReq := &transport.Request{Method: "foo"}
+	ri := mockRequestInterceptor{baggage: map[string]string{"size": "medium"}}
+	restore := transport.RegisterInterceptor(ri)
+	defer restore()
+	opts := Options{
+		TOpts: TransportOptions{ServiceName: "baz"},
+		ROpts: RequestOptions{Baggage: map[string]string{"size": "large"}},
+	}
+	req, err := prepareRequest(rawReq, nil /* headers */, opts)
+	assert.NoError(t, err)
+	assert.Equal(t, "foo", req.Method)
+	assert.Equal(t, "baz", req.TargetService)
+	assert.Equal(t, "medium", req.Baggage["size"])
+}
+
+func TestPrepareRequestErr(t *testing.T) {
+	req := &transport.Request{}
+	ri := mockRequestInterceptor{shouldErr: true}
+	restore := transport.RegisterInterceptor(ri)
+	defer restore()
+	req, err := prepareRequest(req, nil /* headers */, Options{})
+	assert.Error(t, err)
+	assert.Nil(t, req)
 }

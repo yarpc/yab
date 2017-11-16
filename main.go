@@ -29,10 +29,10 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/peerprovider"
+	"github.com/yarpc/yab/plugin"
 	"github.com/yarpc/yab/transport"
 
 	"github.com/casimir/xdg-go"
@@ -136,6 +136,10 @@ yab includes a full man page (man yab), which is also available online: http://y
 	setGroupDescs(parser, "request", "Request Options", toGroff(_reqOptsDesc))
 	setGroupDescs(parser, "transport", "Transport Options", toGroff(_transportOptsDesc))
 	setGroupDescs(parser, "benchmark", "Benchmark Options", toGroff(_benchmarkOptsDesc))
+
+	if err := plugin.AddToParser(pluginParserAdapter{parser}); err != nil {
+		out.Warnf("WARNING: Error adding plugin-based custom flags: %+v.", err)
+	}
 
 	remaining, err := parser.ParseArgs(args)
 	// If there are no arguments specified, write the help.
@@ -330,14 +334,10 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 	if err != nil {
 		out.Fatalf("Failed while parsing request input: %v\n", err)
 	}
-
-	req.Headers = headers
-	req.TransportHeaders = opts.TOpts.TransportHeaders
-	req.Timeout = opts.ROpts.Timeout.Duration()
-	if req.Timeout == 0 {
-		req.Timeout = time.Second
+	req, err = prepareRequest(req, headers, opts)
+	if err != nil {
+		out.Fatalf("Failed while preparing the request: %v\n", err)
 	}
-	req.Baggage = opts.ROpts.Baggage
 
 	// Only make the request if the user hasn't specified 0 warmup.
 	if !(opts.BOpts.enabled() && opts.BOpts.WarmupRequests == 0) {
@@ -368,10 +368,10 @@ func getTracer(opts Options, out output) (opentracing.Tracer, io.Closer) {
 }
 
 // withTransportSerializer may modify the serializer for the transport used.
-// E.g. Thrift payloads are not enveloped when used with TChannel.
+// E.g. Thrift payloads are not enveloped when used with TChannel or gRPC.
 func withTransportSerializer(p transport.Protocol, s encoding.Serializer, rOpts RequestOptions) encoding.Serializer {
 	switch {
-	case p == transport.TChannel && s.Encoding() == encoding.Thrift,
+	case (p == transport.TChannel || p == transport.GRPC) && s.Encoding() == encoding.Thrift,
 		rOpts.ThriftDisableEnvelopes:
 		s = s.(noEnveloper).WithoutEnvelopes()
 	}
