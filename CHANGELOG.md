@@ -1,6 +1,11 @@
 Changelog
 =========
 
+# 0.12.0 (2017-11-16)
+* Add gRPC+Thrift support. Protobuf is not yet supported.
+* Allow build-time plugins to register middleware for request modification.
+* Allow build-time plugins to register custom CLI flags.
+
 # 0.11.0 (2017-09-06)
 * Support using yab as a shebang for files ending with `.yab`.
 
