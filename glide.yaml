@@ -3,7 +3,6 @@ import:
 - package: github.com/cactus/go-statsd-client
 - package: github.com/casimir/xdg-go
 - package: github.com/jessevdk/go-flags
-- package: github.com/stretchr/testify
 - package: go.uber.org/thriftrw
   version: ^1
 - package: go.uber.org/atomic
@@ -21,5 +20,6 @@ import:
 - package: go.uber.org/yarpc
   version: ^1.21
 testImport:
+- package: github.com/stretchr/testify
 - package: github.com/apache/thrift
   version: ">=0.9.3, <0.11.0"
