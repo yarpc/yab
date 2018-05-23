@@ -1,5 +1,5 @@
 hash: 647950b878fb64d766eebc7f60b44d5711d19ac5bd584d76016bb22a9b36ae15
-updated: 2018-05-18T12:56:57.505478-04:00
+updated: 2018-05-23T17:06:36.293535-04:00
 imports:
 - name: github.com/apache/thrift
   version: b2a4d4ae21c789b689dd162deb819665567f481c
@@ -40,6 +40,8 @@ imports:
   subpackages:
   - ext
   - log
+- name: github.com/pkg/errors
+  version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/pmezard/go-difflib
   version: 792786c7400a136282c1664665ae0a8db921c6c2
   subpackages:
@@ -83,12 +85,17 @@ imports:
 - name: github.com/uber/jaeger-client-go
   version: b043381d944715b469fd6b37addfd30145ca1758
   subpackages:
+  - config
   - internal/baggage
+  - internal/baggage/remote
   - internal/spanlog
   - internal/throttler
+  - internal/throttler/remote
   - log
+  - rpcmetrics
   - thrift
   - thrift-gen/agent
+  - thrift-gen/baggage
   - thrift-gen/jaeger
   - thrift-gen/sampling
   - thrift-gen/zipkincore
