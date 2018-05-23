@@ -89,12 +89,9 @@ func verifyBaggage(ctx context.Context) error {
 		return errors.New("missing span")
 	}
 
-	spanCtx, ok := span.Context().(jaeger.SpanContext)
+	_, ok := span.Context().(jaeger.SpanContext)
 	if !ok {
 		return errors.New("trace context is not from jaeger")
-	}
-	if !spanCtx.IsDebug() {
-		return errors.New("span context is not configured to submit traces")
 	}
 
 	val := span.BaggageItem("baggagekey")
