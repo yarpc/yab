@@ -166,7 +166,7 @@ func (yarpcHandler) Bar(ctx context.Context, arg *int32) (int32, error) {
 }
 
 func TestIntegrationProtocols(t *testing.T) {
-	tracer, closer := getTestTracer("foo")
+	tracer, closer := getTestTracerWithCredits("foo", 5, t)
 	defer closer.Close()
 
 	cases := []struct {

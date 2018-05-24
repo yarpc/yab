@@ -26,6 +26,7 @@ import (
 	"io"
 	"io/ioutil"
 	"runtime"
+	"sync"
 	"testing"
 
 	"github.com/opentracing/opentracing-go"
@@ -84,6 +85,71 @@ func writeFile(t *testing.T, prefix, contents string) string {
 	return f.Name()
 }
 
+type debugThrottler struct {
+	sync.Mutex
+	credits float64
+}
+
+func (d *debugThrottler) IsAllowed(operation string) bool {
+	const (
+		creditsPerDebugTrace = 1
+	)
+	d.Lock()
+	defer d.Unlock()
+	if d.credits >= creditsPerDebugTrace {
+		d.credits -= creditsPerDebugTrace
+		return true
+	}
+	return false
+}
+
+func newDebugThrottler(credits float64) *debugThrottler {
+	return &debugThrottler{credits: credits}
+}
+
+type debugTraceCounter struct {
+	sync.Mutex
+	numDebugSpans int
+	max           int
+	t             *testing.T
+}
+
+func newDebugTraceCounter(numDebugTraces int, t *testing.T) jaeger.Reporter {
+	return &debugTraceCounter{numDebugSpans: 0, max: numDebugTraces, t: t}
+}
+
+func (d *debugTraceCounter) Report(span *jaeger.Span) {
+	if span == nil {
+		return
+	}
+	d.Lock()
+	defer d.Unlock()
+	if span.Context().(jaeger.SpanContext).IsDebug() {
+		d.numDebugSpans += 1
+	}
+}
+
+func (d *debugTraceCounter) Close() {
+	d.Lock()
+	defer d.Unlock()
+	if d.t == nil {
+		return
+	}
+	require.True(d.t, d.numDebugSpans <= d.max, "Incorrect number of debug traces")
+}
+
 func getTestTracer(serviceName string) (opentracing.Tracer, io.Closer) {
-	return jaeger.NewTracer(serviceName, jaeger.NewConstSampler(true), jaeger.NewNullReporter())
+	const (
+		credits = 10
+	)
+	return getTestTracerWithCredits(serviceName, credits, nil)
+}
+
+func getTestTracerWithCredits(serviceName string, credits float64, t *testing.T) (opentracing.Tracer, io.Closer) {
+	return jaeger.NewTracer(
+		serviceName,
+		jaeger.NewConstSampler(true),
+		newDebugTraceCounter(int(credits), t),
+		jaeger.TracerOptions.DebugThrottler(newDebugThrottler(credits)),
+	)
 }
