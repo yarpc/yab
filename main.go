@@ -368,7 +368,11 @@ func getTracer(opts Options, out output) (opentracing.Tracer, io.Closer) {
 				SynchronousInitialization: true,
 			},
 		}.NewTracer(
-			jaeger_config.Sampler(jaeger.NewConstSampler(true)),
+			// SamplingPriority overrides sampler decision when below
+			// throttling threshold. Better to use "always false" sampling and
+			// only enable the span when we have not hit the throttling
+			// threshold.
+			jaeger_config.Sampler(jaeger.NewConstSampler(false)),
 			jaeger_config.Reporter(jaeger.NewNullReporter()),
 		)
 		if err != nil {
