@@ -89,8 +89,7 @@ func verifyBaggage(ctx context.Context) error {
 		return errors.New("missing span")
 	}
 
-	_, ok := span.Context().(jaeger.SpanContext)
-	if !ok {
+	if _, ok := span.Context().(jaeger.SpanContext); !ok {
 		return errors.New("trace context is not from jaeger")
 	}
 
@@ -166,7 +165,7 @@ func (yarpcHandler) Bar(ctx context.Context, arg *int32) (int32, error) {
 }
 
 func TestIntegrationProtocols(t *testing.T) {
-	tracer, closer := getTestTracerWithCredits("foo", 5, t)
+	tracer, closer := getTestTracerWithCredits(t, "foo", 5)
 	defer closer.Close()
 
 	cases := []struct {

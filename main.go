@@ -361,6 +361,10 @@ func getTracer(opts Options, out output) (opentracing.Tracer, io.Closer) {
 		closer io.Closer
 	)
 	if opts.TOpts.Jaeger && !opts.TOpts.NoJaeger {
+		// yab must set the `SynchronousInitialization` flag to indicate that
+		// the Jaeger client must fetch debug credits synchronously. In a
+		// short-lived process like yab, the Jaeger client cannot afford to
+		// postpone the credit request for later in time.
 		var err error
 		tracer, closer, err = jaeger_config.Configuration{
 			ServiceName: opts.TOpts.CallerName,

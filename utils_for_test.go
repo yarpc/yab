@@ -87,15 +87,15 @@ func writeFile(t *testing.T, prefix, contents string) string {
 
 type debugThrottler struct {
 	sync.Mutex
-	credits float64
+	credits int
 }
 
 func (d *debugThrottler) IsAllowed(operation string) bool {
-	const (
-		creditsPerDebugTrace = 1
-	)
+	const creditsPerDebugTrace = 1
+
 	d.Lock()
 	defer d.Unlock()
+
 	if d.credits >= creditsPerDebugTrace {
 		d.credits -= creditsPerDebugTrace
 		return true
@@ -103,7 +103,7 @@ func (d *debugThrottler) IsAllowed(operation string) bool {
 	return false
 }
 
-func newDebugThrottler(credits float64) *debugThrottler {
+func newDebugThrottler(credits int) *debugThrottler {
 	return &debugThrottler{credits: credits}
 }
 
@@ -114,16 +114,14 @@ type debugTraceCounter struct {
 	t             *testing.T
 }
 
-func newDebugTraceCounter(numDebugTraces int, t *testing.T) jaeger.Reporter {
+func newDebugTraceCounter(t *testing.T, numDebugTraces int) jaeger.Reporter {
 	return &debugTraceCounter{numDebugSpans: 0, max: numDebugTraces, t: t}
 }
 
 func (d *debugTraceCounter) Report(span *jaeger.Span) {
-	if span == nil {
-		return
-	}
 	d.Lock()
 	defer d.Unlock()
+
 	if span.Context().(jaeger.SpanContext).IsDebug() {
 		d.numDebugSpans += 1
 	}
@@ -139,17 +137,15 @@ func (d *debugTraceCounter) Close() {
 }
 
 func getTestTracer(serviceName string) (opentracing.Tracer, io.Closer) {
-	const (
-		credits = 10
-	)
-	return getTestTracerWithCredits(serviceName, credits, nil)
+	const credits = 10
+	return getTestTracerWithCredits(nil, serviceName, credits)
 }
 
-func getTestTracerWithCredits(serviceName string, credits float64, t *testing.T) (opentracing.Tracer, io.Closer) {
+func getTestTracerWithCredits(t *testing.T, serviceName string, credits int) (opentracing.Tracer, io.Closer) {
 	return jaeger.NewTracer(
 		serviceName,
 		jaeger.NewConstSampler(true),
-		newDebugTraceCounter(int(credits), t),
+		newDebugTraceCounter(t, credits),
 		jaeger.TracerOptions.DebugThrottler(newDebugThrottler(credits)),
 	)
 }
