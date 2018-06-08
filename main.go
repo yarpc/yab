@@ -387,17 +387,13 @@ func createJaegerTracer(opts Options, out output) (opentracing.Tracer, io.Closer
 }
 
 func getTracer(opts Options, out output) (opentracing.Tracer, io.Closer) {
-	var (
-		tracer opentracing.Tracer = opentracing.NoopTracer{}
-		closer io.Closer
-	)
 	if opts.TOpts.Jaeger && !opts.TOpts.NoJaeger {
 		return createJaegerTracer(opts, out)
 	}
 	if len(opts.ROpts.Baggage) > 0 {
 		out.Fatalf("To propagate baggage, you must opt-into a tracing client, i.e., --jaeger")
 	}
-	return tracer, closer
+	return opentracing.NoopTracer{}, nil
 }
 
 // withTransportSerializer may modify the serializer for the transport used.
