@@ -130,15 +130,13 @@ func (d *debugTraceCounter) Report(span *jaeger.Span) {
 func (d *debugTraceCounter) Close() {
 	d.Lock()
 	defer d.Unlock()
-	if d.t == nil {
-		return
-	}
+
 	require.True(d.t, d.numDebugSpans <= d.max, "Incorrect number of debug traces")
 }
 
-func getTestTracer(serviceName string) (opentracing.Tracer, io.Closer) {
+func getTestTracer(t *testing.T, serviceName string) (opentracing.Tracer, io.Closer) {
 	const credits = 10
-	return getTestTracerWithCredits(nil, serviceName, credits)
+	return getTestTracerWithCredits(t, serviceName, credits)
 }
 
 func getTestTracerWithCredits(t *testing.T, serviceName string, credits int) (opentracing.Tracer, io.Closer) {

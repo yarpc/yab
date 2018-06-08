@@ -355,34 +355,46 @@ type noEnveloper interface {
 	WithoutEnvelopes() encoding.Serializer
 }
 
+func createJaegerTracer(opts Options, out output) (opentracing.Tracer, io.Closer) {
+	// yab must set the `SynchronousInitialization` flag to indicate that
+	// the Jaeger client must fetch debug credits synchronously. In a
+	// short-lived process like yab, the Jaeger client cannot afford to
+	// postpone the credit request for later in time.
+	//
+	// In the event that no Jaeger agent is found, the client will silently
+	// ignore debug spans. This behavior is no different than past
+	// non-throttling behavior, seeing as no Jaeger agent is available to
+	// receive spans (debug or otherwise). In short, the value of `err` will be
+	// `nil` regardless of whether or not an agent is present and/or fails to
+	// dispense credits to the client synchronously.
+	tracer, closer, err := jaeger_config.Configuration{
+		ServiceName: opts.TOpts.CallerName,
+		Throttler: &jaeger_config.ThrottlerConfig{
+			SynchronousInitialization: true,
+		},
+	}.NewTracer(
+		// SamplingPriority overrides sampler decision when below
+		// throttling threshold. Better to use "always false" sampling and
+		// only enable the span when we have not hit the throttling
+		// threshold.
+		jaeger_config.Sampler(jaeger.NewConstSampler(false)),
+		jaeger_config.Reporter(jaeger.NewNullReporter()),
+	)
+	if err != nil {
+		out.Fatalf("Failed to create Jaeger tracer: %s", err.Error())
+	}
+	return tracer, closer
+}
+
 func getTracer(opts Options, out output) (opentracing.Tracer, io.Closer) {
 	var (
 		tracer opentracing.Tracer = opentracing.NoopTracer{}
 		closer io.Closer
 	)
 	if opts.TOpts.Jaeger && !opts.TOpts.NoJaeger {
-		// yab must set the `SynchronousInitialization` flag to indicate that
-		// the Jaeger client must fetch debug credits synchronously. In a
-		// short-lived process like yab, the Jaeger client cannot afford to
-		// postpone the credit request for later in time.
-		var err error
-		tracer, closer, err = jaeger_config.Configuration{
-			ServiceName: opts.TOpts.CallerName,
-			Throttler: &jaeger_config.ThrottlerConfig{
-				SynchronousInitialization: true,
-			},
-		}.NewTracer(
-			// SamplingPriority overrides sampler decision when below
-			// throttling threshold. Better to use "always false" sampling and
-			// only enable the span when we have not hit the throttling
-			// threshold.
-			jaeger_config.Sampler(jaeger.NewConstSampler(false)),
-			jaeger_config.Reporter(jaeger.NewNullReporter()),
-		)
-		if err != nil {
-			out.Fatalf("Failed to create Jaeger tracer: %s", err.Error())
-		}
-	} else if len(opts.ROpts.Baggage) > 0 {
+		return createJaegerTracer(opts, out)
+	}
+	if len(opts.ROpts.Baggage) > 0 {
 		out.Fatalf("To propagate baggage, you must opt-into a tracing client, i.e., --jaeger")
 	}
 	return tracer, closer

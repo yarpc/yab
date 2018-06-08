@@ -223,7 +223,7 @@ func TestGetTransportCallerName(t *testing.T) {
 }
 
 func TestGetTransportTraceEnabled(t *testing.T) {
-	tracer, closer := getTestTracer("foo")
+	tracer, closer := getTestTracer(t, "foo")
 	defer closer.Close()
 
 	s := newServer(t, withTracer(tracer))
