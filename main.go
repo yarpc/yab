@@ -40,6 +40,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	opentracing_ext "github.com/opentracing/opentracing-go/ext"
 	"github.com/uber/jaeger-client-go"
+	jaeger_config "github.com/uber/jaeger-client-go/config"
 	"github.com/uber/tchannel-go"
 	"go.uber.org/zap"
 )
@@ -354,17 +355,45 @@ type noEnveloper interface {
 	WithoutEnvelopes() encoding.Serializer
 }
 
-func getTracer(opts Options, out output) (opentracing.Tracer, io.Closer) {
-	var (
-		tracer opentracing.Tracer = opentracing.NoopTracer{}
-		closer io.Closer
+func createJaegerTracer(opts Options, out output) (opentracing.Tracer, io.Closer) {
+	// yab must set the `SynchronousInitialization` flag to indicate that
+	// the Jaeger client must fetch debug credits synchronously. In a
+	// short-lived process like yab, the Jaeger client cannot afford to
+	// postpone the credit request for later in time.
+	//
+	// In the event that no Jaeger agent is found, the client will silently
+	// ignore debug spans. This behavior is no different than past
+	// non-throttling behavior, seeing as no Jaeger agent is available to
+	// receive spans (debug or otherwise). In short, the value of `err` will be
+	// `nil` regardless of whether or not an agent is present and/or fails to
+	// dispense credits to the client synchronously.
+	tracer, closer, err := jaeger_config.Configuration{
+		ServiceName: opts.TOpts.CallerName,
+		Throttler: &jaeger_config.ThrottlerConfig{
+			SynchronousInitialization: true,
+		},
+	}.NewTracer(
+		// SamplingPriority overrides sampler decision when below
+		// throttling threshold. Better to use "always false" sampling and
+		// only enable the span when we have not hit the throttling
+		// threshold.
+		jaeger_config.Sampler(jaeger.NewConstSampler(false)),
+		jaeger_config.Reporter(jaeger.NewNullReporter()),
 	)
-	if opts.TOpts.Jaeger && !opts.TOpts.NoJaeger {
-		tracer, closer = jaeger.NewTracer(opts.TOpts.CallerName, jaeger.NewConstSampler(true), jaeger.NewNullReporter())
-	} else if len(opts.ROpts.Baggage) > 0 {
-		out.Fatalf("To propagate baggage, you must opt-into a tracing client, i.e., --jaeger")
+	if err != nil {
+		out.Fatalf("Failed to create Jaeger tracer: %s", err.Error())
 	}
 	return tracer, closer
+}
+
+func getTracer(opts Options, out output) (opentracing.Tracer, io.Closer) {
+	if opts.TOpts.Jaeger && !opts.TOpts.NoJaeger {
+		return createJaegerTracer(opts, out)
+	}
+	if len(opts.ROpts.Baggage) > 0 {
+		out.Fatalf("To propagate baggage, you must opt-into a tracing client, i.e., --jaeger")
+	}
+	return opentracing.NoopTracer{}, nil
 }
 
 // withTransportSerializer may modify the serializer for the transport used.
