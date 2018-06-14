@@ -1,6 +1,9 @@
 Changelog
 =========
 
+# 0.13.0 (2018-06-14)
+* Add Jaeger throttling config.
+
 # 0.12.0 (2017-11-16)
 * Add gRPC+Thrift support. Protobuf is not yet supported.
 * Allow build-time plugins to register middleware for request modification.
