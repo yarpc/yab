@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+message Foo {}
+
+service Bar{
+    rpc Baz(Foo) returns (Foo);
+}
