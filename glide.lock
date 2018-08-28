@@ -1,5 +1,5 @@
-hash: 30b36e8d5a3a223118dfdfdb62c36f46759f26290ab7fd36b375ba3810eb79f1
-updated: 2018-08-28T11:46:55.988834-07:00
+hash: 006acdba74cd43aabedce565abf8ae3739d68a11225ef5065c0a0a2a7047a77d
+updated: 2018-08-28T15:33:13.708606-07:00
 imports:
 - name: github.com/apache/thrift
   version: b2a4d4ae21c789b689dd162deb819665567f481c
@@ -222,6 +222,8 @@ imports:
   - ipv4
   - ipv6
   - trace
+- name: golang.org/x/sys
+  version: 1a700e749ce29638d0bbcb531cce1094ea096bd3
 - name: golang.org/x/text
   version: 5c1cf69b5978e5a34c5f9ba09a83e56acc4b7877
   subpackages:
