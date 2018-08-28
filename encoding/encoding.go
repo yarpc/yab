@@ -56,6 +56,7 @@ const (
 	JSON                Encoding = "json"
 	Thrift              Encoding = "thrift"
 	Raw                 Encoding = "raw"
+	Protobuf            Encoding = "proto"
 )
 
 var (
@@ -75,7 +76,7 @@ func (e *Encoding) UnmarshalText(text []byte) error {
 	}
 
 	switch s := strings.ToLower(string(text)); s {
-	case "", "json", "thrift", "raw":
+	case "", "json", "thrift", "raw", "proto":
 		*e = Encoding(s)
 		return nil
 	default:

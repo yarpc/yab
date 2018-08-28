@@ -100,6 +100,12 @@ func NewSerializer(opts RequestOptions) (encoding.Serializer, error) {
 	e := detectEncoding(opts)
 	if e == encoding.Thrift {
 		return encoding.NewThrift(opts.ThriftFile, opts.Procedure, opts.ThriftMultiplexed)
+	} else if e == encoding.Protobuf {
+		descSource, err := encoding.ProtoDescriptorSourceFromProtoFiles(opts.ProtoImports, opts.ProtoFile)
+		if err != nil {
+			return nil, err
+		}
+		return encoding.NewProtobuf(opts.Procedure, descSource)
 	}
 
 	if opts.Procedure == "" {
