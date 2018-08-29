@@ -1,4 +1,4 @@
-package encoding
+package protobuf
 
 import (
 	"testing"
@@ -13,9 +13,10 @@ func TestProtoDescriptorSourceFromProtoFiles(t *testing.T) {
 		fileNames   []string
 	}
 	tests := []struct {
-		name   string
-		args   args
-		errMsg string
+		name           string
+		args           args
+		expectedSymbol string
+		errMsg         string
 	}{
 		{
 			name: "test imports",
@@ -23,13 +24,14 @@ func TestProtoDescriptorSourceFromProtoFiles(t *testing.T) {
 				importPaths: []string{"../testdata/"},
 				fileNames:   []string{"simple.proto"},
 			},
+			expectedSymbol: "Bar.Baz",
 		},
 		{
 			name: "fail imports",
 			args: args{
 				fileNames: []string{"simple.proto"},
 			},
-			errMsg: `could not parse given files: open simple.proto: no such file or directory`,
+			errMsg: `simple.proto: No such file or directory`,
 		},
 	}
 	for _, tt := range tests {
@@ -38,6 +40,11 @@ func TestProtoDescriptorSourceFromProtoFiles(t *testing.T) {
 			if tt.errMsg == "" {
 				assert.NotNil(t, got)
 				assert.NoError(t, err)
+				if tt.expectedSymbol != "" {
+					s, err := got.FindSymbol(tt.expectedSymbol)
+					assert.NoError(t, err)
+					assert.Equal(t, tt.expectedSymbol, s.GetFullyQualifiedName())
+				}
 			} else {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errMsg, "%v: invalid error", tt.name)

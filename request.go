@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/yarpc/yab/encoding"
+	"github.com/yarpc/yab/protobuf"
 	"github.com/yarpc/yab/transport"
 
 	"gopkg.in/yaml.v2"
@@ -101,7 +102,7 @@ func NewSerializer(opts RequestOptions) (encoding.Serializer, error) {
 	if e == encoding.Thrift {
 		return encoding.NewThrift(opts.ThriftFile, opts.Procedure, opts.ThriftMultiplexed)
 	} else if e == encoding.Protobuf {
-		descSource, err := encoding.ProtoDescriptorSourceFromProtoFiles(opts.ProtoImports, opts.ProtoFile)
+		descSource, err := protobuf.ProtoDescriptorSourceFromProtoFiles(opts.ProtoImports, opts.ProtoFile)
 		if err != nil {
 			return nil, err
 		}

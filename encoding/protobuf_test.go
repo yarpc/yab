@@ -3,34 +3,34 @@ package encoding
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"strings"
+	"os"
+	"path/filepath"
 	"testing"
 
-	"github.com/jhump/protoreflect/desc/protoparse"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/yarpc/yab/protobuf"
 	"github.com/yarpc/yab/transport"
 )
 
-func protoDescriptorSourceFromMap(m map[string]string) (ProtoDescriptorSource, error) {
-	acc := func(filename string) (io.ReadCloser, error) {
-		f, ok := m[filename]
-		if !ok {
-			return nil, fmt.Errorf("file not found: %s", filename)
-		}
-		return ioutil.NopCloser(strings.NewReader(f)), nil
-	}
-	names := make([]string, 0, len(m))
-	for k := range m {
-		names = append(names, k)
-	}
-	fds, err := protoparse.Parser{Accessor: acc}.ParseFiles(names...)
+func protoDescriptorSourceFromMap(m map[string]string) (protobuf.ProtoDescriptorSource, error) {
+	fileNames := make([]string, 0, len(m))
+
+	tempdir, err := ioutil.TempDir("", "yab")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not create temporary directory to compile proto: %s", err)
 	}
-	return ProtoDescriptorSourceFromFileDescriptors(fds...)
+	defer os.RemoveAll(tempdir)
+
+	for f, c := range m {
+		fileNames = append(fileNames, f)
+		err = ioutil.WriteFile(filepath.Join(tempdir, f), []byte(c), 0644)
+		if err != nil {
+			return nil, fmt.Errorf("error creating temporary files for compiling proto: %s", err)
+		}
+	}
+	return protobuf.ProtoDescriptorSourceFromProtoFiles([]string{tempdir}, fileNames...)
 }
 
 func TestNewProtobuf(t *testing.T) {

@@ -1,5 +1,15 @@
 PACKAGES := $(shell glide novendor | grep -v '/testdata/')
 
+PROTOC_VERSION := 3.6.1
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+    PROTOC_OS := linux
+endif
+ifeq ($(UNAME_S),Darwin)
+    PROTOC_OS := osx
+endif
+PROTOC_FILE := protoc-${PROTOC_VERSION}-${PROTOC_OS}-$(shell uname -m).zip
+
 export GO15VENDOREXPERIMENT=1
 
 .DEFAULT_GOAL:=build
@@ -20,9 +30,13 @@ install:
 test:
 	go test -cover -race $(PACKAGES)
 
+.PHONY: install_protobuf
+install_protobuf:
+	curl -L https://github.com/google/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_FILE} -o /tmp/protoc.zip
+	unzip -o /tmp/protoc.zip -d "${HOME}"/protoc
 
 .PHONY: install_ci
-install_ci: install
+install_ci: install install_protobuf
 		go get github.com/wadey/gocovmerge
 		go get github.com/mattn/goveralls
 		go get golang.org/x/tools/cmd/cover

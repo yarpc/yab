@@ -8,6 +8,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/dynamic"
+	"github.com/yarpc/yab/protobuf"
 	"github.com/yarpc/yab/transport"
 )
 
@@ -31,7 +32,7 @@ type protoSerializer struct {
 }
 
 // NewProtobuf returns a protobuf serializer.
-func NewProtobuf(fullMethodName string, source ProtoDescriptorSource) (Serializer, error) {
+func NewProtobuf(fullMethodName string, source protobuf.ProtoDescriptorSource) (Serializer, error) {
 	svc, mth, err := SplitMethod(fullMethodName)
 	if err != nil {
 		return nil, err
