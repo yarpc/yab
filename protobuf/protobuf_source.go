@@ -65,5 +65,5 @@ func (fs *fileSource) FindSymbol(fullyQualifiedName string) (desc.Descriptor, er
 			return dsc, nil
 		}
 	}
-	return nil, fmt.Errorf("Symbol not found: %s", fullyQualifiedName)
+	return nil, fmt.Errorf("Symbol not found: %q", fullyQualifiedName)
 }

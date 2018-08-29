@@ -263,6 +263,19 @@ func TestNewSerializer(t *testing.T) {
 			opts:     RequestOptions{Procedure: "procedure"},
 			want:     encoding.Raw,
 		},
+		{
+			encoding: encoding.Protobuf,
+			wantErr:  "could not parse provided files",
+		},
+		{
+			encoding: encoding.Protobuf,
+			opts: RequestOptions{
+				ProtoFile:    "simple.proto",
+				ProtoImports: []string{"testdata"},
+				Procedure:    "Bar::Baz",
+			},
+			want: encoding.Protobuf,
+		},
 	}
 
 	for _, tt := range tests {

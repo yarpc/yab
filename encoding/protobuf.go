@@ -61,8 +61,7 @@ func (p protoSerializer) Encoding() Encoding {
 
 func (p protoSerializer) Request(body []byte) (*transport.Request, error) {
 	req := dynamic.NewMessage(p.method.GetInputType())
-	err := req.UnmarshalJSON(body)
-	if err != nil {
+	if err := req.UnmarshalJSON(body); err != nil {
 		return nil, fmt.Errorf("could not parse given request body as message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
 	}
 	bytes, err := proto.Marshal(req)
@@ -77,8 +76,7 @@ func (p protoSerializer) Request(body []byte) (*transport.Request, error) {
 
 func (p protoSerializer) Response(body *transport.Response) (interface{}, error) {
 	resp := dynamic.NewMessage(p.method.GetOutputType())
-	err := resp.Unmarshal(body.Body)
-	if err != nil {
+	if err := resp.Unmarshal(body.Body); err != nil {
 		return nil, fmt.Errorf("could not parse given response body as message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
 	}
 	str, err := resp.MarshalJSON()
