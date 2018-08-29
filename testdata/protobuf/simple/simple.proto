@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+message Foo {
+    int32 test = 1;
+}
+
+service Bar{
+    rpc Baz(Foo) returns (Foo);
+}

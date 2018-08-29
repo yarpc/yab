@@ -40,22 +40,21 @@ type Options struct {
 
 // RequestOptions are request related options
 type RequestOptions struct {
-	Encoding     encoding.Encoding `short:"e" long:"encoding" description:"The encoding of the data, options are: Thrift, proto, JSON, raw. Defaults to Thrift if the method contains '::' or a Thrift file is specified"`
-	ThriftFile   string            `short:"t" long:"thrift" description:"Path of the .thrift file"`
-	ProtoFile    string            `long:"proto" description:"Path of the .proto file"`
-	ProtoImports []string          `long:"proto-imports" description:"Import paths for the proto file"`
-	Procedure    string            `long:"procedure" description:"The full Thrift method name (Svc::Method) to invoke"`
-	MethodName   stringAlias       `short:"m" long:"method" description:"Alias for procedure"`
-	RequestJSON  string            `short:"r" long:"request" unquote:"false" description:"The request body, in JSON or YAML format"`
-	RequestFile  string            `short:"f" long:"file" description:"Path of a file containing the request body in JSON or YAML"`
-	Headers      map[string]string `short:"H" long:"header" description:"Individual application header as a key:value pair per flag"`
-	HeadersJSON  string            `long:"headers" unquote:"false" description:"The headers in JSON or YAML format"`
-	HeadersFile  string            `long:"headers-file" description:"Path of a file containing the headers in JSON or YAML"`
-	Baggage      map[string]string `short:"B" long:"baggage" description:"Individual context baggage header as a key:value pair per flag"`
-	Health       bool              `long:"health" description:"Hit the health endpoint, Meta::health"`
-	Timeout      timeMillisFlag    `long:"timeout" default-mask:"1s" description:"The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds are assumed."`
-	YamlTemplate string            `short:"y" long:"yaml-template" description:"Send a tchannel request specified by a YAML template"`
-	TemplateArgs map[string]string `short:"A" long:"arg" description:"A list of key-value template arguments, specified as -A foo:bar -A user:me"`
+	Encoding          encoding.Encoding `short:"e" long:"encoding" description:"The encoding of the data, options are: Thrift, proto, JSON, raw. Defaults to Thrift if the method contains '::' or a Thrift file is specified"`
+	ThriftFile        string            `short:"t" long:"thrift" description:"Path of the .thrift file"`
+	FileDescriptorSet []string          `short:"F" long:"file-descriptor-set-bin" description:"A binary file containing a compiled protobuf FileDescriptorSet."`
+	Procedure         string            `long:"procedure" description:"The full Thrift method name (Svc::Method) to invoke"`
+	MethodName        stringAlias       `short:"m" long:"method" description:"Alias for procedure"`
+	RequestJSON       string            `short:"r" long:"request" unquote:"false" description:"The request body, in JSON or YAML format"`
+	RequestFile       string            `short:"f" long:"file" description:"Path of a file containing the request body in JSON or YAML"`
+	Headers           map[string]string `short:"H" long:"header" description:"Individual application header as a key:value pair per flag"`
+	HeadersJSON       string            `long:"headers" unquote:"false" description:"The headers in JSON or YAML format"`
+	HeadersFile       string            `long:"headers-file" description:"Path of a file containing the headers in JSON or YAML"`
+	Baggage           map[string]string `short:"B" long:"baggage" description:"Individual context baggage header as a key:value pair per flag"`
+	Health            bool              `long:"health" description:"Hit the health endpoint, Meta::health"`
+	Timeout           timeMillisFlag    `long:"timeout" default-mask:"1s" description:"The timeout for each request. E.g., 100ms, 0.5s, 1s. If no unit is specified, milliseconds are assumed."`
+	YamlTemplate      string            `short:"y" long:"yaml-template" description:"Send a tchannel request specified by a YAML template"`
+	TemplateArgs      map[string]string `short:"A" long:"arg" description:"A list of key-value template arguments, specified as -A foo:bar -A user:me"`
 
 	// Thrift options
 	ThriftDisableEnvelopes bool `long:"disable-thrift-envelope" description:"Disables Thrift envelopes (disabled by default for TChannel and gRPC)"`

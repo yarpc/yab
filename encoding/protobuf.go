@@ -84,8 +84,7 @@ func (p protoSerializer) Response(body *transport.Response) (interface{}, error)
 		return nil, err
 	}
 	var objmap map[string]*json.RawMessage
-	err = json.Unmarshal(str, &objmap)
-	if err != nil {
+	if err = json.Unmarshal(str, &objmap); err != nil {
 		return nil, err
 	}
 	return objmap, nil

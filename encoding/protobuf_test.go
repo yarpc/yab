@@ -2,10 +2,6 @@ package encoding
 
 import (
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,85 +10,41 @@ import (
 	"github.com/yarpc/yab/transport"
 )
 
-func protoDescriptorSourceFromMap(m map[string]string) (protobuf.ProtoDescriptorSource, error) {
-	fileNames := make([]string, 0, len(m))
-
-	tempdir, err := ioutil.TempDir("", "yab")
-	if err != nil {
-		return nil, fmt.Errorf("could not create temporary directory to compile proto: %s", err)
-	}
-	defer os.RemoveAll(tempdir)
-
-	for f, c := range m {
-		fileNames = append(fileNames, f)
-		err = ioutil.WriteFile(filepath.Join(tempdir, f), []byte(c), 0644)
-		if err != nil {
-			return nil, fmt.Errorf("error creating temporary files for compiling proto: %s", err)
-		}
-	}
-	return protobuf.ProtoDescriptorSourceFromProtoFiles([]string{tempdir}, fileNames...)
-}
-
 func TestNewProtobuf(t *testing.T) {
 	tests := []struct {
 		desc   string
 		method string
-		protos map[string]string
 		errMsg string
 	}{
 		{
 			desc:   "simple",
 			method: "Bar::Baz",
-			protos: map[string]string{
-				"foo.proto": "message Foo{}; service Bar { rpc Baz(Foo) returns (Foo); }",
-			},
-		},
-		{
-			desc:   "imports",
-			method: "Bar::Baz",
-			protos: map[string]string{
-				"bar.proto": "message Foo{}",
-				"foo.proto": `import "bar.proto"; service Bar { rpc Baz(Foo) returns (Foo); }`,
-			},
 		},
 		{
 			desc:   "no method",
 			method: "Bar",
-			protos: map[string]string{
-				"foo.proto": "message Foo{}; service Bar { rpc Baz(Foo) returns (Foo); }",
-			},
 			errMsg: `service "Bar" does not include a method named ""`,
 		},
 		{
 			desc:   "invalid method",
 			method: "Bar::Baz::Foo",
-			protos: map[string]string{
-				"foo.proto": "message Foo{}; service Bar { rpc Baz(Foo) returns (Foo); }",
-			},
 			errMsg: `invalid proto method "Bar::Baz::Foo", expected form package.Service::Method`,
 		},
 		{
 			desc:   "service not found",
 			method: "Baq::Foo",
-			protos: map[string]string{
-				"foo.proto": "message Foo{}; service Bar { rpc Baz(Foo) returns (Foo); }",
-			},
 			errMsg: `failed to query for service for symbol "Baq"`,
 		},
 		{
 			desc:   "service not found but symbol is",
 			method: "Foo::Foo",
-			protos: map[string]string{
-				"foo.proto": "message Foo{}; service Bar { rpc Baz(Foo) returns (Foo); }",
-			},
 			errMsg: `target server does not expose service "Foo"`,
 		},
 	}
+	source, err := protobuf.ProtoDescriptorSourceFromFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
+	require.Nil(t, err)
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			source, err := protoDescriptorSourceFromMap(tt.protos)
-			require.Nil(t, err)
-
 			serializer, err := NewProtobuf(tt.method, source)
 			if tt.errMsg == "" {
 				require.NoError(t, err)
@@ -141,12 +93,9 @@ func TestProtobufRequest(t *testing.T) {
 		},
 	}
 
+	source, err := protobuf.ProtoDescriptorSourceFromFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
+	require.Nil(t, err)
 	for _, tt := range tests {
-		source, err := protoDescriptorSourceFromMap(
-			map[string]string{
-				"foo.proto": `syntax = "proto3"; message Foo{ int32 test = 1; }; service Bar { rpc Baz(Foo) returns (Foo); }`,
-			})
-		require.Nil(t, err)
 		t.Run(tt.desc, func(t *testing.T) {
 			serializer, err := NewProtobuf("Bar::Baz", source)
 			require.NoError(t, err, "Failed to create serializer")
@@ -154,11 +103,11 @@ func TestProtobufRequest(t *testing.T) {
 			got, err := serializer.Request(tt.bsIn)
 			if tt.errMsg == "" {
 				assert.NoError(t, err, "%v", tt.desc)
-				assert.NotNil(t, got, "%v: Invalid request")
+				require.NotNil(t, got, "%v: Invalid request")
 				assert.Equal(t, tt.bsOut, got.Body)
 			} else {
-				assert.Error(t, err, "%v", tt.desc)
 				assert.Nil(t, got, "%v: Error cases should not return any bytes", tt.desc)
+				require.Error(t, err, "%v", tt.desc)
 				assert.Contains(t, err.Error(), tt.errMsg, "%v: invalid error", tt.desc)
 			}
 		})
@@ -182,14 +131,16 @@ func TestProtobufResponse(t *testing.T) {
 			bsIn:      []byte{0x8, 0xA},
 			outAsJSON: `{"test":10}`,
 		},
+		{
+			desc:   "fail invalid response",
+			bsIn:   []byte{0xF, 0xF, 0xA, 0xB},
+			errMsg: `could not parse given response body as message of type`,
+		},
 	}
 
+	source, err := protobuf.ProtoDescriptorSourceFromFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
+	require.Nil(t, err)
 	for _, tt := range tests {
-		source, err := protoDescriptorSourceFromMap(
-			map[string]string{
-				"foo.proto": `syntax = "proto3"; message Foo{ int32 test = 1; }; service Bar { rpc Baz(Foo) returns (Foo); }`,
-			})
-		require.Nil(t, err)
 		t.Run(tt.desc, func(t *testing.T) {
 			serializer, err := NewProtobuf("Bar::Baz", source)
 			require.NoError(t, err, "Failed to create serializer")
@@ -207,8 +158,8 @@ func TestProtobufResponse(t *testing.T) {
 				err = serializer.CheckSuccess(response)
 				assert.NoError(t, err)
 			} else {
-				assert.Error(t, err, "%v", tt.desc)
 				assert.Nil(t, got, "%v: Error cases should not return any bytes", tt.desc)
+				require.Error(t, err, "%v", tt.desc)
 				assert.Contains(t, err.Error(), tt.errMsg, "%v: invalid error", tt.desc)
 			}
 		})

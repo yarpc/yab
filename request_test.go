@@ -265,14 +265,16 @@ func TestNewSerializer(t *testing.T) {
 		},
 		{
 			encoding: encoding.Protobuf,
-			wantErr:  "could not parse provided files",
+			opts: RequestOptions{
+				FileDescriptorSet: []string{"testdata/protobuf/simple/nonexisting.bin"},
+			},
+			wantErr: "could not load protoset file",
 		},
 		{
 			encoding: encoding.Protobuf,
 			opts: RequestOptions{
-				ProtoFile:    "simple.proto",
-				ProtoImports: []string{"testdata"},
-				Procedure:    "Bar::Baz",
+				FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+				Procedure:         "Bar::Baz",
 			},
 			want: encoding.Protobuf,
 		},

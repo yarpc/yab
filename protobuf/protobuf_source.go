@@ -2,7 +2,9 @@ package protobuf
 
 import (
 	"fmt"
+	"io/ioutil"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"github.com/jhump/protoreflect/desc"
 )
@@ -13,6 +15,25 @@ import (
 type ProtoDescriptorSource interface {
 	// FindSymbol returns a descriptor for the given fully-qualified symbol name.
 	FindSymbol(fullyQualifiedName string) (desc.Descriptor, error)
+}
+
+// ProtoDescriptorSourceFromFileDescriptorSetBins creates a DescriptorSource that is backed by the named files, whose contents
+// are encoded FileDescriptorSet protos.
+func ProtoDescriptorSourceFromFileDescriptorSetBins(fileNames ...string) (ProtoDescriptorSource, error) {
+	files := &descriptor.FileDescriptorSet{}
+	for _, fileName := range fileNames {
+		b, err := ioutil.ReadFile(fileName)
+		if err != nil {
+			return nil, fmt.Errorf("could not load protoset file %q: %v", fileName, err)
+		}
+		var fs descriptor.FileDescriptorSet
+		err = proto.Unmarshal(b, &fs)
+		if err != nil {
+			return nil, fmt.Errorf("could not parse contents of protoset file %q: %v", fileName, err)
+		}
+		files.File = append(files.File, fs.File...)
+	}
+	return ProtoDescriptorSourceFromFileDescriptorSet(files)
 }
 
 // ProtoDescriptorSourceFromFileDescriptorSet creates a DescriptorSource that is backed by the FileDescriptorSet.
