@@ -274,7 +274,7 @@ func TestNewSerializer(t *testing.T) {
 			encoding: encoding.Protobuf,
 			opts: RequestOptions{
 				FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-				Procedure:         "Bar::Baz",
+				Procedure:         "Bar/Baz",
 			},
 			want: encoding.Protobuf,
 		},
@@ -317,6 +317,17 @@ func TestDetectEncoding(t *testing.T) {
 		{
 			opts: RequestOptions{ThriftFile: validThrift, Procedure: "procedure"},
 			want: encoding.Thrift,
+		},
+		{
+			opts: RequestOptions{Procedure: "package.Service/Method"},
+			want: encoding.Protobuf,
+		},
+		{
+			opts: RequestOptions{
+				FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+				Procedure:         "procedure",
+			},
+			want: encoding.Protobuf,
 		},
 	}
 

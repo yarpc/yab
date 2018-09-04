@@ -132,6 +132,10 @@ func detectEncoding(opts RequestOptions) encoding.Encoding {
 		return encoding.Thrift
 	}
 
+	if strings.Contains(opts.Procedure, "/") || len(opts.FileDescriptorSet) > 0 {
+		return encoding.Protobuf
+	}
+
 	return encoding.JSON
 }
 

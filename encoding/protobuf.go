@@ -12,28 +12,15 @@ import (
 	"github.com/yarpc/yab/transport"
 )
 
-// SplitMethod takes a method name like Service::Method and splits it
-// into Service and Method.
-func SplitMethod(fullMethod string) (svc, method string, err error) {
-	parts := strings.Split(fullMethod, "::")
-	switch len(parts) {
-	case 1:
-		return parts[0], "", nil
-	case 2:
-		return parts[0], parts[1], nil
-	default:
-		return "", "", fmt.Errorf("invalid proto method %q, expected form package.Service::Method", fullMethod)
-	}
-}
-
 type protoSerializer struct {
-	fullMethodName string
-	method         *desc.MethodDescriptor
+	serviceName string
+	methodName  string
+	method      *desc.MethodDescriptor
 }
 
 // NewProtobuf returns a protobuf serializer.
 func NewProtobuf(fullMethodName string, source protobuf.ProtoDescriptorSource) (Serializer, error) {
-	svc, mth, err := SplitMethod(fullMethodName)
+	svc, mth, err := splitMethod(fullMethodName)
 	if err != nil {
 		return nil, err
 	}
@@ -50,8 +37,9 @@ func NewProtobuf(fullMethodName string, source protobuf.ProtoDescriptorSource) (
 		return nil, fmt.Errorf("service %q does not include a method named %q", svc, mth)
 	}
 	return &protoSerializer{
-		fullMethodName: fullMethodName,
-		method:         mtd,
+		serviceName: svc,
+		methodName:  mth,
+		method:      mtd,
 	}, nil
 }
 
@@ -69,7 +57,7 @@ func (p protoSerializer) Request(body []byte) (*transport.Request, error) {
 		return nil, fmt.Errorf("could marshal message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
 	}
 	return &transport.Request{
-		Method: p.fullMethodName,
+		Method: fmt.Sprintf("%s::%s", p.serviceName, p.methodName),
 		Body:   bytes,
 	}, nil
 }
@@ -93,4 +81,16 @@ func (p protoSerializer) Response(body *transport.Response) (interface{}, error)
 func (p protoSerializer) CheckSuccess(body *transport.Response) error {
 	_, err := p.Response(body)
 	return err
+}
+
+func splitMethod(fullMethod string) (svc, method string, err error) {
+	parts := strings.Split(fullMethod, "/")
+	switch len(parts) {
+	case 1:
+		return parts[0], "", nil
+	case 2:
+		return parts[0], parts[1], nil
+	default:
+		return "", "", fmt.Errorf("invalid proto method %q, expected form package.Service/Method", fullMethod)
+	}
 }

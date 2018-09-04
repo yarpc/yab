@@ -18,7 +18,7 @@ func TestNewProtobuf(t *testing.T) {
 	}{
 		{
 			desc:   "simple",
-			method: "Bar::Baz",
+			method: "Bar/Baz",
 		},
 		{
 			desc:   "no method",
@@ -27,17 +27,17 @@ func TestNewProtobuf(t *testing.T) {
 		},
 		{
 			desc:   "invalid method",
-			method: "Bar::Baz::Foo",
-			errMsg: `invalid proto method "Bar::Baz::Foo", expected form package.Service::Method`,
+			method: "Bar/Baz/Foo",
+			errMsg: `invalid proto method "Bar/Baz/Foo", expected form package.Service/Method`,
 		},
 		{
 			desc:   "service not found",
-			method: "Baq::Foo",
+			method: "Baq/Foo",
 			errMsg: `failed to query for service for symbol "Baq"`,
 		},
 		{
 			desc:   "service not found but symbol is",
-			method: "Foo::Foo",
+			method: "Foo/Foo",
 			errMsg: `target server does not expose service "Foo"`,
 		},
 	}
@@ -97,7 +97,7 @@ func TestProtobufRequest(t *testing.T) {
 	require.Nil(t, err)
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			serializer, err := NewProtobuf("Bar::Baz", source)
+			serializer, err := NewProtobuf("Bar/Baz", source)
 			require.NoError(t, err, "Failed to create serializer")
 
 			got, err := serializer.Request(tt.bsIn)
@@ -142,7 +142,7 @@ func TestProtobufResponse(t *testing.T) {
 	require.Nil(t, err)
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			serializer, err := NewProtobuf("Bar::Baz", source)
+			serializer, err := NewProtobuf("Bar/Baz", source)
 			require.NoError(t, err, "Failed to create serializer")
 
 			response := &transport.Response{
