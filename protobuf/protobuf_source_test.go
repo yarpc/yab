@@ -26,6 +26,16 @@ func TestProtoDescriptorSourceFromProtoSets(t *testing.T) {
 			lookupSymbol: `Foo`,
 		},
 		{
+			name:         "pass combined dependencies (multiroot)",
+			fileNames:    []string{"../testdata/protobuf/multiroot/root/combined.bin"},
+			lookupSymbol: `Foo`,
+		},
+		{
+			name:         "pass combined dependencies (nested)",
+			fileNames:    []string{"../testdata/protobuf/nested/combined.bin"},
+			lookupSymbol: `Foo`,
+		},
+		{
 			name: "pass multiple dependencies",
 			fileNames: []string{
 				"../testdata/protobuf/dependencies/main.proto.bin",
@@ -37,7 +47,7 @@ func TestProtoDescriptorSourceFromProtoSets(t *testing.T) {
 			name:         "pass parsing fail finding symbol",
 			fileNames:    []string{"../testdata/protobuf/simple/simple.proto.bin"},
 			lookupSymbol: "Bar.Baq",
-			symbolErrMsg: "a",
+			symbolErrMsg: `Symbol not found: "Bar.Baq"`,
 		},
 		{
 			name:      "fail is not protoset",
@@ -80,7 +90,7 @@ func TestProtoDescriptorSourceFromProtoSets(t *testing.T) {
 					require.Error(t, err)
 					assert.Contains(t, err.Error(), tt.symbolErrMsg, "%v: invalid error", tt.name)
 				} else {
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					assert.Equal(t, tt.lookupSymbol, s.GetFullyQualifiedName())
 				}
 			}
