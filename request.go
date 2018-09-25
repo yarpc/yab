@@ -103,7 +103,7 @@ func NewSerializer(opts Options) (encoding.Serializer, error) {
 	case encoding.Thrift:
 		return encoding.NewThrift(opts.ROpts.ThriftFile, opts.ROpts.Procedure, opts.ROpts.ThriftMultiplexed)
 	case encoding.Protobuf:
-		descSource, err := protobuf.NewDescriptorProviderFileDescriptorSetBins(opts.ROpts.FileDescriptorSet...)
+		descSource, err := newProtoDescriptorProvider(opts.ROpts, opts.TOpts)
 		if err != nil {
 			return nil, err
 		}
@@ -122,6 +122,22 @@ func NewSerializer(opts Options) (encoding.Serializer, error) {
 	}
 
 	return nil, errUnrecognizedEncoding
+}
+
+func newProtoDescriptorProvider(ROpts RequestOptions, TOpts TransportOptions) (protobuf.DescriptorProvider, error) {
+	if len(ROpts.FileDescriptorSet) > 0 {
+		return protobuf.NewDescriptorProviderFileDescriptorSetBins(ROpts.FileDescriptorSet...)
+	}
+	TOpts, err := loadTransportPeers(TOpts)
+	if err != nil {
+		return nil, err
+	}
+	return protobuf.NewDescriptorProviderReflection(protobuf.ReflectionArgs{
+		Caller:  TOpts.CallerName,
+		Service: TOpts.ServiceName,
+		Peers:   TOpts.Peers,
+		Timeout: ROpts.Timeout.Duration(),
+	})
 }
 
 func detectEncoding(opts RequestOptions) encoding.Encoding {

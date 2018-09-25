@@ -25,12 +25,16 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/yarpc/yab/encoding"
+	"github.com/yarpc/yab/protobuf"
 	"github.com/yarpc/yab/transport"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -280,6 +284,22 @@ func TestNewSerializer(t *testing.T) {
 			},
 			want: encoding.Protobuf,
 		},
+		{
+			encoding: encoding.Protobuf,
+			opts: RequestOptions{
+				Procedure: "Bar/Baz",
+				Timeout:   timeMillisFlag(time.Millisecond),
+			},
+			topts:   TransportOptions{Peers: []string{"127.0.0.1:0"}},
+			wantErr: protobuf.ErrorCouldNotDialReflectionServer.Error(),
+		},
+		{
+			encoding: encoding.Protobuf,
+			opts: RequestOptions{
+				Procedure: "Bar/Baz",
+			},
+			wantErr: "specify at least one peer using --peer or using --peer-list",
+		},
 	}
 
 	for _, tt := range tests {
@@ -297,6 +317,25 @@ func TestNewSerializer(t *testing.T) {
 			assert.Equal(t, tt.want, got.Encoding(), "NewSerializer(%+v) wrong encoding", tt.opts)
 		})
 	}
+}
+func TestNewSerializerProtobufReflection(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	defer ln.Close()
+	require.NoError(t, err)
+	s := grpc.NewServer()
+	reflection.Register(s)
+	go s.Serve(ln)
+
+	serializer, err := NewSerializer(Options{
+		ROpts: RequestOptions{
+			Procedure: "grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo",
+			Timeout:   timeMillisFlag(time.Millisecond * 100),
+		},
+		TOpts: TransportOptions{Peers: []string{ln.Addr().String()}},
+	})
+	assert.NoError(t, err)
+	require.NotNil(t, serializer)
+	assert.Equal(t, encoding.Protobuf, serializer.Encoding())
 }
 
 func TestDetectEncoding(t *testing.T) {
