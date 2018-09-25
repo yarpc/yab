@@ -102,7 +102,7 @@ func NewSerializer(opts RequestOptions) (encoding.Serializer, error) {
 	if e == encoding.Thrift {
 		return encoding.NewThrift(opts.ThriftFile, opts.Procedure, opts.ThriftMultiplexed)
 	} else if e == encoding.Protobuf {
-		descSource, err := protobuf.ProtoDescriptorSourceFromFileDescriptorSetBins(opts.FileDescriptorSet...)
+		descSource, err := protobuf.NewDescriptorProviderFileDescriptorSetBins(opts.FileDescriptorSet...)
 		if err != nil {
 			return nil, err
 		}

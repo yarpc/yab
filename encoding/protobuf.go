@@ -19,7 +19,7 @@ type protoSerializer struct {
 }
 
 // NewProtobuf returns a protobuf serializer.
-func NewProtobuf(fullMethodName string, source protobuf.ProtoDescriptorSource) (Serializer, error) {
+func NewProtobuf(fullMethodName string, source protobuf.DescriptorProvider) (Serializer, error) {
 	svc, mth, err := splitMethod(fullMethodName)
 	if err != nil {
 		return nil, err

@@ -41,7 +41,7 @@ func TestNewProtobuf(t *testing.T) {
 			errMsg: `target server does not expose service "Foo"`,
 		},
 	}
-	source, err := protobuf.ProtoDescriptorSourceFromFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
+	source, err := protobuf.NewDescriptorProviderFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
 	require.Nil(t, err)
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
@@ -93,7 +93,7 @@ func TestProtobufRequest(t *testing.T) {
 		},
 	}
 
-	source, err := protobuf.ProtoDescriptorSourceFromFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
+	source, err := protobuf.NewDescriptorProviderFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
 	require.Nil(t, err)
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
@@ -138,7 +138,7 @@ func TestProtobufResponse(t *testing.T) {
 		},
 	}
 
-	source, err := protobuf.ProtoDescriptorSourceFromFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
+	source, err := protobuf.NewDescriptorProviderFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
 	require.Nil(t, err)
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
