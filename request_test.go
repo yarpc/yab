@@ -185,6 +185,7 @@ func TestNewSerializer(t *testing.T) {
 	tests := []struct {
 		encoding encoding.Encoding
 		opts     RequestOptions
+		topts    TransportOptions
 		want     encoding.Encoding
 		wantErr  string
 	}{
@@ -284,7 +285,7 @@ func TestNewSerializer(t *testing.T) {
 	for _, tt := range tests {
 		tt.opts.Encoding = tt.encoding
 		t.Run(fmt.Sprintf("%+v", tt.opts), func(t *testing.T) {
-			got, err := NewSerializer(tt.opts)
+			got, err := NewSerializer(Options{ROpts: tt.opts, TOpts: tt.topts})
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.wantErr, "unexpected error")

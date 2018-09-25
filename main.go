@@ -297,7 +297,7 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 		out.Fatalf("Failed while loading headers input: %v\n", err)
 	}
 
-	serializer, err := NewSerializer(opts.ROpts)
+	serializer, err := NewSerializer(opts)
 	if err != nil {
 		out.Fatalf("Failed while parsing input: %v\n", err)
 	}

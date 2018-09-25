@@ -86,39 +86,39 @@ func getHeaders(inline, file string, override map[string]string) (map[string]str
 }
 
 // NewSerializer creates a Serializer for the specific encoding.
-func NewSerializer(opts RequestOptions) (encoding.Serializer, error) {
-	if opts.Health {
-		if opts.Procedure != "" {
+func NewSerializer(opts Options) (encoding.Serializer, error) {
+	if opts.ROpts.Health {
+		if opts.ROpts.Procedure != "" {
 			return nil, errHealthAndProcedure
 		}
 
-		return opts.Encoding.GetHealth()
+		return opts.ROpts.Encoding.GetHealth()
 	}
 
 	// Thrift returns available methods if one is not specified, while the other
 	// encodings will just return an error, so only do the empty procedure check
 	// for non-Thrift encodings.
-	e := detectEncoding(opts)
+	e := detectEncoding(opts.ROpts)
 	switch e {
 	case encoding.Thrift:
-		return encoding.NewThrift(opts.ThriftFile, opts.Procedure, opts.ThriftMultiplexed)
+		return encoding.NewThrift(opts.ROpts.ThriftFile, opts.ROpts.Procedure, opts.ROpts.ThriftMultiplexed)
 	case encoding.Protobuf:
-		descSource, err := protobuf.NewDescriptorProviderFileDescriptorSetBins(opts.FileDescriptorSet...)
+		descSource, err := protobuf.NewDescriptorProviderFileDescriptorSetBins(opts.ROpts.FileDescriptorSet...)
 		if err != nil {
 			return nil, err
 		}
-		return encoding.NewProtobuf(opts.Procedure, descSource)
+		return encoding.NewProtobuf(opts.ROpts.Procedure, descSource)
 	}
 
-	if opts.Procedure == "" {
+	if opts.ROpts.Procedure == "" {
 		return nil, errMissingProcedure
 	}
 
 	switch e {
 	case encoding.JSON:
-		return encoding.NewJSON(opts.Procedure), nil
+		return encoding.NewJSON(opts.ROpts.Procedure), nil
 	case encoding.Raw:
-		return encoding.NewRaw(opts.Procedure), nil
+		return encoding.NewRaw(opts.ROpts.Procedure), nil
 	}
 
 	return nil, errUnrecognizedEncoding
