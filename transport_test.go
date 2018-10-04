@@ -44,8 +44,8 @@ func TestParsePeer(t *testing.T) {
 		protocol string
 		host     string
 	}{
-		{"1.1.1.1:1", "tchannel", "1.1.1.1:1"},
-		{"some.host:1234", "tchannel", "some.host:1234"},
+		{"1.1.1.1:1", "unspecified", "1.1.1.1:1"},
+		{"some.host:1234", "unspecified", "some.host:1234"},
 		{"1.1.1.1", "unknown", ""},
 		{"ftp://1.1.1.1", "ftp", "1.1.1.1"},
 		{"http://1.1.1.1", "http", "1.1.1.1"},
@@ -70,7 +70,7 @@ func TestEnsureSameProtocol(t *testing.T) {
 		{
 			// tchannel host:ports
 			peers: []string{"1.1.1.1:1234", "2.2.2.2:1234"},
-			want:  "tchannel",
+			want:  "unspecified",
 		},
 		{
 			// only hosts without port
@@ -260,5 +260,59 @@ func TestGetTransportTraceEnabled(t *testing.T) {
 		require.NoError(t, err, "transport.Call failed")
 
 		assert.Equal(t, tt.traceEnabled, res.Body[0], "TraceEnabled mismatch")
+	}
+}
+
+func TestGetTransportInferFromEncoding(t *testing.T) {
+	tests := []struct {
+		desc     string
+		peer     string
+		encoding encoding.Encoding
+		want     transport.Protocol
+	}{
+		{
+			desc:     "infer grpc from proto encoding",
+			peer:     "1.1.1.1:1234",
+			encoding: encoding.Protobuf,
+			want:     transport.GRPC,
+		},
+		{
+			desc:     "don't infer encoding if specified",
+			peer:     "http://1.1.1.1:1234",
+			encoding: encoding.Protobuf,
+			want:     transport.HTTP,
+		},
+		{
+			desc:     "infer tchannel from thrift encoding",
+			peer:     "1.1.1.1:1234",
+			encoding: encoding.Thrift,
+			want:     transport.TChannel,
+		},
+		{
+			desc:     "infer tchannel from raw encoding",
+			peer:     "1.1.1.1:1234",
+			encoding: encoding.Raw,
+			want:     transport.TChannel,
+		},
+		{
+			desc:     "infer tchannel from JSON encoding",
+			peer:     "1.1.1.1:1234",
+			encoding: encoding.JSON,
+			want:     transport.TChannel,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			tOpts := TransportOptions{
+				ServiceName: "service",
+				CallerName:  "caller",
+				Peers:       []string{tt.peer},
+			}
+			transport, err := getTransport(tOpts, tt.encoding, opentracing.NoopTracer{})
+			assert.NoError(t, err, "getTransport(%v) should not fail", tt.desc)
+			require.NotNil(t, transport, "getTransport(%v) didn't get transport", tt.desc)
+			assert.Equal(t, tt.want, transport.Protocol())
+		})
 	}
 }

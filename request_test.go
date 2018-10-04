@@ -263,6 +263,21 @@ func TestNewSerializer(t *testing.T) {
 			opts:     RequestOptions{Procedure: "procedure"},
 			want:     encoding.Raw,
 		},
+		{
+			encoding: encoding.Protobuf,
+			opts: RequestOptions{
+				FileDescriptorSet: []string{"testdata/protobuf/simple/nonexisting.bin"},
+			},
+			wantErr: "could not load protoset file",
+		},
+		{
+			encoding: encoding.Protobuf,
+			opts: RequestOptions{
+				FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+				Procedure:         "Bar/Baz",
+			},
+			want: encoding.Protobuf,
+		},
 	}
 
 	for _, tt := range tests {
@@ -302,6 +317,17 @@ func TestDetectEncoding(t *testing.T) {
 		{
 			opts: RequestOptions{ThriftFile: validThrift, Procedure: "procedure"},
 			want: encoding.Thrift,
+		},
+		{
+			opts: RequestOptions{Procedure: "package.Service/Method"},
+			want: encoding.Protobuf,
+		},
+		{
+			opts: RequestOptions{
+				FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+				Procedure:         "procedure",
+			},
+			want: encoding.Protobuf,
 		},
 	}
 

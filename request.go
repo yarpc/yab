@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/yarpc/yab/encoding"
+	"github.com/yarpc/yab/protobuf"
 	"github.com/yarpc/yab/transport"
 
 	"gopkg.in/yaml.v2"
@@ -100,6 +101,12 @@ func NewSerializer(opts RequestOptions) (encoding.Serializer, error) {
 	e := detectEncoding(opts)
 	if e == encoding.Thrift {
 		return encoding.NewThrift(opts.ThriftFile, opts.Procedure, opts.ThriftMultiplexed)
+	} else if e == encoding.Protobuf {
+		descSource, err := protobuf.NewDescriptorProviderFileDescriptorSetBins(opts.FileDescriptorSet...)
+		if err != nil {
+			return nil, err
+		}
+		return encoding.NewProtobuf(opts.Procedure, descSource)
 	}
 
 	if opts.Procedure == "" {
@@ -123,6 +130,10 @@ func detectEncoding(opts RequestOptions) encoding.Encoding {
 
 	if strings.Contains(opts.Procedure, "::") || opts.ThriftFile != "" {
 		return encoding.Thrift
+	}
+
+	if strings.Contains(opts.Procedure, "/") || len(opts.FileDescriptorSet) > 0 {
+		return encoding.Protobuf
 	}
 
 	return encoding.JSON
