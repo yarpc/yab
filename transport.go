@@ -37,8 +37,6 @@ import (
 	"github.com/uber/tchannel-go"
 )
 
-const transportUnspecified = "unspecified"
-
 var (
 	errServiceRequired = errors.New("specify a target service using --service")
 	errCallerRequired  = errors.New("caller name is required")

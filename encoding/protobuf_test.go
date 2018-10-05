@@ -33,7 +33,7 @@ func TestNewProtobuf(t *testing.T) {
 		{
 			desc:   "service not found",
 			method: "Baq/Foo",
-			errMsg: `failed to query for service for symbol "Baq"`,
+			errMsg: `symbol not found: "Baq"`,
 		},
 		{
 			desc:   "service not found but symbol is",

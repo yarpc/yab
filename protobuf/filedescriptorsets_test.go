@@ -47,7 +47,7 @@ func TestNewDescriptorProviderFileDescriptorSetBins(t *testing.T) {
 			name:         "pass parsing fail finding symbol",
 			fileNames:    []string{"../testdata/protobuf/simple/simple.proto.bin"},
 			lookupSymbol: "Bar.Baq",
-			symbolErrMsg: `Symbol not found: "Bar.Baq"`,
+			symbolErrMsg: `symbol not found: "Bar.Baq"`,
 		},
 		{
 			name:      "fail is not protoset",
@@ -76,23 +76,23 @@ func TestNewDescriptorProviderFileDescriptorSetBins(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := NewDescriptorProviderFileDescriptorSetBins(tt.fileNames...)
-			if tt.errMsg == "" {
-				assert.NotNil(t, got)
-				assert.NoError(t, err)
-			} else {
+			if tt.errMsg != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errMsg, "%v: invalid error", tt.name)
+				return
 			}
+			assert.NotNil(t, got)
+			assert.NoError(t, err)
 			if tt.lookupSymbol != "" {
 				require.NotNil(t, got)
 				s, err := got.FindSymbol(tt.lookupSymbol)
 				if tt.symbolErrMsg != "" {
 					require.Error(t, err)
 					assert.Contains(t, err.Error(), tt.symbolErrMsg, "%v: invalid error", tt.name)
-				} else {
-					require.NoError(t, err)
-					assert.Equal(t, tt.lookupSymbol, s.GetFullyQualifiedName())
+					return
 				}
+				require.NoError(t, err)
+				assert.Equal(t, tt.lookupSymbol, s.GetFullyQualifiedName())
 			}
 		})
 	}

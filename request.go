@@ -99,9 +99,10 @@ func NewSerializer(opts RequestOptions) (encoding.Serializer, error) {
 	// encodings will just return an error, so only do the empty procedure check
 	// for non-Thrift encodings.
 	e := detectEncoding(opts)
-	if e == encoding.Thrift {
+	switch e {
+	case encoding.Thrift:
 		return encoding.NewThrift(opts.ThriftFile, opts.Procedure, opts.ThriftMultiplexed)
-	} else if e == encoding.Protobuf {
+	case encoding.Protobuf:
 		descSource, err := protobuf.NewDescriptorProviderFileDescriptorSetBins(opts.FileDescriptorSet...)
 		if err != nil {
 			return nil, err

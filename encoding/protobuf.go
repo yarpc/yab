@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/yarpc/yab/protobuf"
+	"github.com/yarpc/yab/transport"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/dynamic"
-	"github.com/yarpc/yab/protobuf"
-	"github.com/yarpc/yab/transport"
+	"go.uber.org/yarpc/pkg/procedure"
 )
 
 type protoSerializer struct {
@@ -24,18 +26,23 @@ func NewProtobuf(fullMethodName string, source protobuf.DescriptorProvider) (Ser
 	if err != nil {
 		return nil, err
 	}
+
 	service, err := source.FindSymbol(serviceName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query for service for symbol %q: %v", serviceName, err)
+		return nil, err
 	}
+
 	serviceDescriptor, ok := service.(*desc.ServiceDescriptor)
 	if !ok {
 		return nil, fmt.Errorf("target server does not expose service %q", serviceName)
 	}
+
 	methodDescriptor := serviceDescriptor.FindMethodByName(methodName)
 	if methodDescriptor == nil {
+		//TODO: return a list of available methods
 		return nil, fmt.Errorf("service %q does not include a method named %q", serviceName, methodName)
 	}
+
 	return &protoSerializer{
 		serviceName: serviceName,
 		methodName:  methodName,
@@ -57,7 +64,7 @@ func (p protoSerializer) Request(body []byte) (*transport.Request, error) {
 		return nil, fmt.Errorf("could marshal message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
 	}
 	return &transport.Request{
-		Method: p.serviceName + "::" + p.methodName,
+		Method: procedure.ToName(p.serviceName, p.methodName),
 		Body:   bytes,
 	}, nil
 }
@@ -71,11 +78,11 @@ func (p protoSerializer) Response(body *transport.Response) (interface{}, error)
 	if err != nil {
 		return nil, err
 	}
-	var unmarshaledJson json.RawMessage
-	if err = json.Unmarshal(str, &unmarshaledJson); err != nil {
+	var unmarshaledJSON json.RawMessage
+	if err = json.Unmarshal(str, &unmarshaledJSON); err != nil {
 		return nil, err
 	}
-	return unmarshaledJson, nil
+	return unmarshaledJSON, nil
 }
 
 func (p protoSerializer) CheckSuccess(body *transport.Response) error {

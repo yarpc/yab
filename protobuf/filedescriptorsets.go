@@ -30,14 +30,13 @@ func NewDescriptorProviderFileDescriptorSetBins(fileNames ...string) (Descriptor
 
 // NewDescriptorProviderFileDescriptorSet creates a DescriptorSource that is backed by the FileDescriptorSet.
 func NewDescriptorProviderFileDescriptorSet(files *descriptor.FileDescriptorSet) (DescriptorProvider, error) {
-	unresolved := map[string]*descriptor.FileDescriptorProto{}
+	unresolved := make(map[string]*descriptor.FileDescriptorProto, len(files.File))
 	for _, fd := range files.File {
 		unresolved[fd.GetName()] = fd
 	}
 	resolved := map[string]*desc.FileDescriptor{}
 	for _, fd := range files.File {
-		_, err := resolveFileDescriptor(unresolved, resolved, fd.GetName())
-		if err != nil {
+		if _, err := resolveFileDescriptor(unresolved, resolved, fd.GetName()); err != nil {
 			return nil, err
 		}
 	}
@@ -78,5 +77,5 @@ func (fs *fileSource) FindSymbol(fullyQualifiedName string) (desc.Descriptor, er
 			return dsc, nil
 		}
 	}
-	return nil, fmt.Errorf("Symbol not found: %q", fullyQualifiedName)
+	return nil, fmt.Errorf("symbol not found: %q", fullyQualifiedName)
 }
