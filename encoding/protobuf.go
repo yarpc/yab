@@ -20,26 +20,26 @@ type protoSerializer struct {
 
 // NewProtobuf returns a protobuf serializer.
 func NewProtobuf(fullMethodName string, source protobuf.DescriptorProvider) (Serializer, error) {
-	svc, mth, err := splitMethod(fullMethodName)
+	serviceName, methodName, err := splitMethod(fullMethodName)
 	if err != nil {
 		return nil, err
 	}
-	dsc, err := source.FindSymbol(svc)
+	service, err := source.FindSymbol(serviceName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query for service for symbol %q: %v", svc, err)
+		return nil, fmt.Errorf("failed to query for service for symbol %q: %v", serviceName, err)
 	}
-	sd, ok := dsc.(*desc.ServiceDescriptor)
+	serviceDescriptor, ok := service.(*desc.ServiceDescriptor)
 	if !ok {
-		return nil, fmt.Errorf("target server does not expose service %q", svc)
+		return nil, fmt.Errorf("target server does not expose service %q", serviceName)
 	}
-	mtd := sd.FindMethodByName(mth)
-	if mtd == nil {
-		return nil, fmt.Errorf("service %q does not include a method named %q", svc, mth)
+	methodDescriptor := serviceDescriptor.FindMethodByName(methodName)
+	if methodDescriptor == nil {
+		return nil, fmt.Errorf("service %q does not include a method named %q", serviceName, methodName)
 	}
 	return &protoSerializer{
-		serviceName: svc,
-		methodName:  mth,
-		method:      mtd,
+		serviceName: serviceName,
+		methodName:  methodName,
+		method:      methodDescriptor,
 	}, nil
 }
 
@@ -57,7 +57,7 @@ func (p protoSerializer) Request(body []byte) (*transport.Request, error) {
 		return nil, fmt.Errorf("could marshal message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
 	}
 	return &transport.Request{
-		Method: fmt.Sprintf("%s::%s", p.serviceName, p.methodName),
+		Method: p.serviceName + "::" + p.methodName,
 		Body:   bytes,
 	}, nil
 }
@@ -71,11 +71,11 @@ func (p protoSerializer) Response(body *transport.Response) (interface{}, error)
 	if err != nil {
 		return nil, err
 	}
-	var objmap map[string]*json.RawMessage
-	if err = json.Unmarshal(str, &objmap); err != nil {
+	var unmarshaledJson json.RawMessage
+	if err = json.Unmarshal(str, &unmarshaledJson); err != nil {
 		return nil, err
 	}
-	return objmap, nil
+	return unmarshaledJson, nil
 }
 
 func (p protoSerializer) CheckSuccess(body *transport.Response) error {
@@ -86,8 +86,6 @@ func (p protoSerializer) CheckSuccess(body *transport.Response) error {
 func splitMethod(fullMethod string) (svc, method string, err error) {
 	parts := strings.Split(fullMethod, "/")
 	switch len(parts) {
-	case 1:
-		return parts[0], "", nil
 	case 2:
 		return parts[0], parts[1], nil
 	default:

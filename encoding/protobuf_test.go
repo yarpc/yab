@@ -22,8 +22,8 @@ func TestNewProtobuf(t *testing.T) {
 		},
 		{
 			desc:   "no method",
-			method: "Bar",
-			errMsg: `service "Bar" does not include a method named ""`,
+			method: "Bar/baq",
+			errMsg: `service "Bar" does not include a method named "baq"`,
 		},
 		{
 			desc:   "invalid method",
@@ -152,7 +152,8 @@ func TestProtobufResponse(t *testing.T) {
 			if tt.errMsg == "" {
 				assert.NoError(t, err, "%v", tt.desc)
 				assert.NotNil(t, got, "%v: Invalid request")
-				r, _ := json.Marshal(got)
+				r, err := json.Marshal(got)
+				assert.NoError(t, err)
 				assert.JSONEq(t, tt.outAsJSON, string(r))
 
 				err = serializer.CheckSuccess(response)
