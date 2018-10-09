@@ -39,8 +39,12 @@ func NewProtobuf(fullMethodName string, source protobuf.DescriptorProvider) (Ser
 
 	methodDescriptor := serviceDescriptor.FindMethodByName(methodName)
 	if methodDescriptor == nil {
-		//TODO: return a list of available methods
-		return nil, fmt.Errorf("service %q does not include a method named %q", serviceName, methodName)
+		available := make([]string, len(serviceDescriptor.GetMethods()))
+		for i, method := range serviceDescriptor.GetMethods() {
+			available[i] = serviceDescriptor.GetFullyQualifiedName() + "/" + method.GetName()
+		}
+		errMsg := fmt.Sprintf("service %q does not include a method named %q", serviceName, methodName)
+		return nil, notFoundError{errMsg + ", available methods:", available}
 	}
 
 	return &protoSerializer{
@@ -93,6 +97,8 @@ func (p protoSerializer) CheckSuccess(body *transport.Response) error {
 func splitMethod(fullMethod string) (svc, method string, err error) {
 	parts := strings.Split(fullMethod, "/")
 	switch len(parts) {
+	case 1:
+		return parts[0], "", nil
 	case 2:
 		return parts[0], parts[1], nil
 	default:

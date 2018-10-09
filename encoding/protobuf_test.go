@@ -22,11 +22,16 @@ func TestNewProtobuf(t *testing.T) {
 		},
 		{
 			desc:   "no method",
-			method: "Bar/baq",
-			errMsg: `service "Bar" does not include a method named "baq"`,
+			method: "Bar",
+			errMsg: "service \"Bar\" does not include a method named \"\", available methods:\n\tBar/Baz",
 		},
 		{
-			desc:   "invalid method",
+			desc:   "missing method for service",
+			method: "Bar/baq",
+			errMsg: "service \"Bar\" does not include a method named \"baq\", available methods:\n\tBar/Baz",
+		},
+		{
+			desc:   "invalid method format",
 			method: "Bar/Baz/Foo",
 			errMsg: `invalid proto method "Bar/Baz/Foo", expected form package.Service/Method`,
 		},
@@ -53,7 +58,7 @@ func TestNewProtobuf(t *testing.T) {
 			} else {
 				require.Error(t, err, "%v", tt.desc)
 				require.Nil(t, serializer, "%v: Error cases should not return a serializer", tt.desc)
-				assert.Contains(t, err.Error(), tt.errMsg, "%v: invalid error", tt.desc)
+				assert.EqualError(t, err, tt.errMsg)
 			}
 		})
 	}
