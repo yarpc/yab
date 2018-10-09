@@ -266,6 +266,7 @@ func TestNewSerializer(t *testing.T) {
 		{
 			encoding: encoding.Protobuf,
 			opts: RequestOptions{
+				Procedure:         "Bar/Baz",
 				FileDescriptorSet: []string{"testdata/protobuf/simple/nonexisting.bin"},
 			},
 			wantErr: "could not load protoset file",

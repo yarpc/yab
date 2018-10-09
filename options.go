@@ -40,10 +40,10 @@ type Options struct {
 
 // RequestOptions are request related options
 type RequestOptions struct {
-	Encoding          encoding.Encoding `short:"e" long:"encoding" description:"The encoding of the data, options are: Thrift, proto, JSON, raw. Defaults to Thrift if the method contains '::' or a Thrift file is specified"`
+	Encoding          encoding.Encoding `short:"e" long:"encoding" description:"The encoding of the data, options are: Thrift, proto, JSON, raw. Defaults to Thrift if the method contains '::' or a Thrift file is specified. Defaults to proto if the method contains '/' or a proto filedescriptorset is specified"`
 	ThriftFile        string            `short:"t" long:"thrift" description:"Path of the .thrift file"`
 	FileDescriptorSet []string          `short:"F" long:"file-descriptor-set-bin" description:"A binary file containing a compiled protobuf FileDescriptorSet."`
-	Procedure         string            `long:"procedure" description:"The full Thrift method name (Svc::Method) to invoke"`
+	Procedure         string            `long:"procedure" description:"The full method name to invoke (Thrift: Svc::Method, Proto: package.Service/Method)."`
 	MethodName        stringAlias       `short:"m" long:"method" description:"Alias for procedure"`
 	RequestJSON       string            `short:"r" long:"request" unquote:"false" description:"The request body, in JSON or YAML format"`
 	RequestFile       string            `short:"f" long:"file" description:"Path of a file containing the request body in JSON or YAML"`

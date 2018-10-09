@@ -59,9 +59,9 @@ func remapLocalHost(hostPorts []string) {
 }
 
 func parsePeer(peer string) (protocol, host string) {
-	// If we get a pure host:port, we return unspecified to determine based on encoding
+	// If we get a pure host:port, we return empty protocol to determine based on encoding
 	if _, _, err := net.SplitHostPort(peer); err == nil && !strings.Contains(peer, "://") {
-		return "unspecified", peer
+		return "", peer
 	}
 
 	u, err := url.ParseRequestURI(peer)
@@ -148,7 +148,7 @@ func getTransport(opts TransportOptions, enc encoding.Encoding, tracer opentraci
 		return nil, err
 	}
 
-	if protocol == "unspecified" {
+	if protocol == "" {
 		// Before yab had grpc/protobuf support, peers that did not specify a
 		// protocol assumed tchannel. Keep that default but allow this to be
 		// overridden based on the encoding for saner defaults.

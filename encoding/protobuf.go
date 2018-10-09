@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/yarpc/yab/protobuf"
+	"github.com/yarpc/yab/transport"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/dynamic"
-	"github.com/yarpc/yab/protobuf"
-	"github.com/yarpc/yab/transport"
+	"go.uber.org/yarpc/pkg/procedure"
 )
 
 type protoSerializer struct {
@@ -20,26 +22,31 @@ type protoSerializer struct {
 
 // NewProtobuf returns a protobuf serializer.
 func NewProtobuf(fullMethodName string, source protobuf.DescriptorProvider) (Serializer, error) {
-	svc, mth, err := splitMethod(fullMethodName)
+	serviceName, methodName, err := splitMethod(fullMethodName)
 	if err != nil {
 		return nil, err
 	}
-	dsc, err := source.FindSymbol(svc)
+
+	service, err := source.FindSymbol(serviceName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query for service for symbol %q: %v", svc, err)
+		return nil, err
 	}
-	sd, ok := dsc.(*desc.ServiceDescriptor)
+
+	serviceDescriptor, ok := service.(*desc.ServiceDescriptor)
 	if !ok {
-		return nil, fmt.Errorf("target server does not expose service %q", svc)
+		return nil, fmt.Errorf("target server does not expose service %q", serviceName)
 	}
-	mtd := sd.FindMethodByName(mth)
-	if mtd == nil {
-		return nil, fmt.Errorf("service %q does not include a method named %q", svc, mth)
+
+	methodDescriptor := serviceDescriptor.FindMethodByName(methodName)
+	if methodDescriptor == nil {
+		//TODO: return a list of available methods
+		return nil, fmt.Errorf("service %q does not include a method named %q", serviceName, methodName)
 	}
+
 	return &protoSerializer{
-		serviceName: svc,
-		methodName:  mth,
-		method:      mtd,
+		serviceName: serviceName,
+		methodName:  methodName,
+		method:      methodDescriptor,
 	}, nil
 }
 
@@ -57,7 +64,7 @@ func (p protoSerializer) Request(body []byte) (*transport.Request, error) {
 		return nil, fmt.Errorf("could marshal message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
 	}
 	return &transport.Request{
-		Method: fmt.Sprintf("%s::%s", p.serviceName, p.methodName),
+		Method: procedure.ToName(p.serviceName, p.methodName),
 		Body:   bytes,
 	}, nil
 }
@@ -71,11 +78,11 @@ func (p protoSerializer) Response(body *transport.Response) (interface{}, error)
 	if err != nil {
 		return nil, err
 	}
-	var objmap map[string]*json.RawMessage
-	if err = json.Unmarshal(str, &objmap); err != nil {
+	var unmarshaledJSON json.RawMessage
+	if err = json.Unmarshal(str, &unmarshaledJSON); err != nil {
 		return nil, err
 	}
-	return objmap, nil
+	return unmarshaledJSON, nil
 }
 
 func (p protoSerializer) CheckSuccess(body *transport.Response) error {
@@ -86,8 +93,6 @@ func (p protoSerializer) CheckSuccess(body *transport.Response) error {
 func splitMethod(fullMethod string) (svc, method string, err error) {
 	parts := strings.Split(fullMethod, "/")
 	switch len(parts) {
-	case 1:
-		return parts[0], "", nil
 	case 2:
 		return parts[0], parts[1], nil
 	default:

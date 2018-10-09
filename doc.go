@@ -63,6 +63,15 @@ Or it can be loaded from a file using -f or --file:
 
 	$ yab -p localhost:9787 -t kv.thrift kv KeyValue::Get --file req.yaml
 
+To make a proto requrest, specify a compiled FileDescriptorSet and pass the
+fully qualified service an method name as procedure.
+
+	$ yab -p localhost:5435 --file-descriptor-set-bin proto.bin \
+	    service package.Service/Method -r '{"key": "value"}'
+
+A FileDescriptorSet can be generated using the --descriptor_set_out= flag
+in protoc.
+
 Request options can also be specified in a YAML file, e.g., get.yab:
 
 	service: kv

@@ -44,8 +44,8 @@ func TestParsePeer(t *testing.T) {
 		protocol string
 		host     string
 	}{
-		{"1.1.1.1:1", "unspecified", "1.1.1.1:1"},
-		{"some.host:1234", "unspecified", "some.host:1234"},
+		{"1.1.1.1:1", "", "1.1.1.1:1"},
+		{"some.host:1234", "", "some.host:1234"},
 		{"1.1.1.1", "unknown", ""},
 		{"ftp://1.1.1.1", "ftp", "1.1.1.1"},
 		{"http://1.1.1.1", "http", "1.1.1.1"},
@@ -64,13 +64,14 @@ func TestParsePeer(t *testing.T) {
 
 func TestEnsureSameProtocol(t *testing.T) {
 	tests := []struct {
-		peers []string
-		want  string // if want is empty, expect an error.
+		peers   []string
+		want    string
+		wantErr bool
 	}{
 		{
 			// tchannel host:ports
 			peers: []string{"1.1.1.1:1234", "2.2.2.2:1234"},
-			want:  "unspecified",
+			want:  "",
 		},
 		{
 			// only hosts without port
@@ -87,17 +88,19 @@ func TestEnsureSameProtocol(t *testing.T) {
 		},
 		{
 			// mix of http and https
-			peers: []string{"https://1.1.1.1", "http://2.2.2.2:8080"},
+			peers:   []string{"https://1.1.1.1", "http://2.2.2.2:8080"},
+			wantErr: true,
 		},
 		{
 			// mix of tchannel and unknown
-			peers: []string{"1.1.1.1:1234", "1.1.1.1"},
+			peers:   []string{"1.1.1.1:1234", "1.1.1.1"},
+			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		got, err := ensureSameProtocol(tt.peers)
-		if tt.want == "" {
+		if tt.wantErr {
 			assert.Error(t, err, "Expect error for %v", tt.peers)
 			continue
 		}
