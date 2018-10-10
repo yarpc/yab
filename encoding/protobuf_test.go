@@ -2,12 +2,14 @@ package encoding
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
+
+	"github.com/yarpc/yab/protobuf"
+	"github.com/yarpc/yab/transport"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/yarpc/yab/protobuf"
-	"github.com/yarpc/yab/transport"
 )
 
 func TestNewProtobuf(t *testing.T) {
@@ -23,12 +25,12 @@ func TestNewProtobuf(t *testing.T) {
 		{
 			desc:   "no method",
 			method: "Bar",
-			errMsg: "service \"Bar\" does not include a method named \"\", available methods:\n\tBar/Baz",
+			errMsg: "no proto method specified, specify --method package.Service/Method, available methods:\n\tBar/Baz",
 		},
 		{
 			desc:   "missing method for service",
 			method: "Bar/baq",
-			errMsg: "service \"Bar\" does not include a method named \"baq\", available methods:\n\tBar/Baz",
+			errMsg: fmt.Sprintf("service %q does not include a method named %q, available methods:\n\tBar/Baz", "Bar", "baq"),
 		},
 		{
 			desc:   "invalid method format",
