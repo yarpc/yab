@@ -37,10 +37,9 @@ func NewProtobuf(fullMethodName string, source protobuf.DescriptorProvider) (Ser
 		return nil, fmt.Errorf("target server does not expose service %q", serviceName)
 	}
 
-	methodDescriptor := serviceDescriptor.FindMethodByName(methodName)
-	if methodDescriptor == nil {
-		//TODO: return a list of available methods
-		return nil, fmt.Errorf("service %q does not include a method named %q", serviceName, methodName)
+	methodDescriptor, err := findProtoMethodDescriptor(serviceDescriptor, methodName)
+	if err != nil {
+		return nil, err
 	}
 
 	return &protoSerializer{
@@ -93,9 +92,27 @@ func (p protoSerializer) CheckSuccess(body *transport.Response) error {
 func splitMethod(fullMethod string) (svc, method string, err error) {
 	parts := strings.Split(fullMethod, "/")
 	switch len(parts) {
+	case 1:
+		return parts[0], "", nil
 	case 2:
 		return parts[0], parts[1], nil
 	default:
 		return "", "", fmt.Errorf("invalid proto method %q, expected form package.Service/Method", fullMethod)
 	}
+}
+
+func findProtoMethodDescriptor(s *desc.ServiceDescriptor, m string) (*desc.MethodDescriptor, error) {
+	methodDescriptor := s.FindMethodByName(m)
+	if methodDescriptor == nil {
+		available := make([]string, len(s.GetMethods()))
+		for i, method := range s.GetMethods() {
+			available[i] = s.GetFullyQualifiedName() + "/" + method.GetName()
+		}
+		errMsg := "no proto method specified, specify --method package.Service/Method"
+		if m != "" {
+			errMsg = fmt.Sprintf("service %q does not include a method named %q", s.GetFullyQualifiedName(), m)
+		}
+		return nil, notFoundError{errMsg + ", available methods:", available}
+	}
+	return methodDescriptor, nil
 }

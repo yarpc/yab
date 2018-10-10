@@ -2,12 +2,14 @@ package encoding
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
+
+	"github.com/yarpc/yab/protobuf"
+	"github.com/yarpc/yab/transport"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/yarpc/yab/protobuf"
-	"github.com/yarpc/yab/transport"
 )
 
 func TestNewProtobuf(t *testing.T) {
@@ -22,11 +24,16 @@ func TestNewProtobuf(t *testing.T) {
 		},
 		{
 			desc:   "no method",
-			method: "Bar/baq",
-			errMsg: `service "Bar" does not include a method named "baq"`,
+			method: "Bar",
+			errMsg: "no proto method specified, specify --method package.Service/Method, available methods:\n\tBar/Baz",
 		},
 		{
-			desc:   "invalid method",
+			desc:   "missing method for service",
+			method: "Bar/baq",
+			errMsg: fmt.Sprintf("service %q does not include a method named %q, available methods:\n\tBar/Baz", "Bar", "baq"),
+		},
+		{
+			desc:   "invalid method format",
 			method: "Bar/Baz/Foo",
 			errMsg: `invalid proto method "Bar/Baz/Foo", expected form package.Service/Method`,
 		},
@@ -53,7 +60,7 @@ func TestNewProtobuf(t *testing.T) {
 			} else {
 				require.Error(t, err, "%v", tt.desc)
 				require.Nil(t, serializer, "%v: Error cases should not return a serializer", tt.desc)
-				assert.Contains(t, err.Error(), tt.errMsg, "%v: invalid error", tt.desc)
+				assert.EqualError(t, err, tt.errMsg)
 			}
 		})
 	}
