@@ -31,7 +31,6 @@ import (
 	"time"
 
 	"github.com/yarpc/yab/encoding"
-	"github.com/yarpc/yab/protobuf"
 	"github.com/yarpc/yab/transport"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -291,7 +290,7 @@ func TestNewSerializer(t *testing.T) {
 				Timeout:   timeMillisFlag(time.Millisecond),
 			},
 			topts:   TransportOptions{Peers: []string{"127.0.0.1:0"}},
-			wantErr: protobuf.ErrorCouldNotDialReflectionServer.Error(),
+			wantErr: "could not reach reflection server:",
 		},
 		{
 			encoding: encoding.Protobuf,
@@ -320,8 +319,9 @@ func TestNewSerializer(t *testing.T) {
 }
 func TestNewSerializerProtobufReflection(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	defer ln.Close()
 	require.NoError(t, err)
+	defer ln.Close()
+
 	s := grpc.NewServer()
 	reflection.Register(s)
 	go s.Serve(ln)

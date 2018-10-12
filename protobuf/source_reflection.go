@@ -2,7 +2,7 @@ package protobuf
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jhump/protoreflect/desc"
@@ -14,11 +14,6 @@ import (
 	"google.golang.org/grpc/resolver/manual"
 )
 
-var (
-	// ErrorCouldNotDialReflectionServer is an error for when the reflection server could not be reached.
-	ErrorCouldNotDialReflectionServer = errors.New("could not reach reflection server")
-)
-
 // ReflectionArgs are args for constructing a DescriptorProvider that reaches out to a reflection server.
 type ReflectionArgs struct {
 	Caller  string
@@ -27,15 +22,9 @@ type ReflectionArgs struct {
 	Timeout time.Duration
 }
 
-// NewDescriptorProviderReflection returns a DescriptorProvider DescriptorProvider that reaches out to
-// a reflection server to access filedescriptors.
+// NewDescriptorProviderReflection returns a DescriptorProvider that reaches
+// out to a reflection server to access file descriptors.
 func NewDescriptorProviderReflection(args ReflectionArgs) (DescriptorProvider, error) {
-	metadataContext := metadata.NewOutgoingContext(context.Background(),
-		map[string][]string{
-			"rpc-caller":   []string{args.Caller},
-			"rpc-service":  []string{args.Service},
-			"rpc-encoding": []string{"proto"},
-		})
 	r, deregisterScheme := manual.GenerateAndRegisterManualResolver()
 	defer deregisterScheme()
 	peers := make([]resolver.Address, len(args.Peers))
@@ -45,14 +34,20 @@ func NewDescriptorProviderReflection(args ReflectionArgs) (DescriptorProvider, e
 	r.InitialAddrs(peers)
 
 	conn, err := grpc.DialContext(context.Background(),
-		r.Scheme()+":///any.peers.registered.for.this.scheme",
+		r.Scheme()+":///", // minimal target to dial registered host:port pairs
 		grpc.WithTimeout(args.Timeout),
 		grpc.WithBlock(),
 		grpc.WithInsecure())
 	if err != nil {
-		return nil, ErrorCouldNotDialReflectionServer
+		return nil, fmt.Errorf("could not reach reflection server: %s", err)
 	}
 	pbClient := rpb.NewServerReflectionClient(conn)
+	metadataContext := metadata.NewOutgoingContext(context.Background(),
+		map[string][]string{
+			"rpc-caller":   []string{args.Caller},
+			"rpc-service":  []string{args.Service},
+			"rpc-encoding": []string{"proto"},
+		})
 	return &grpcreflectSource{
 		client: grpcreflect.NewClient(metadataContext, pbClient),
 	}, nil

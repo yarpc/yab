@@ -13,8 +13,9 @@ import (
 
 func TestReflection(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	defer ln.Close()
 	require.NoError(t, err)
+	defer ln.Close()
+
 	s := grpc.NewServer()
 	reflection.Register(s)
 	go s.Serve(ln)
@@ -24,7 +25,7 @@ func TestReflection(t *testing.T) {
 		Peers:   []string{ln.Addr().String()},
 	})
 	assert.NoError(t, err)
-	assert.NotNil(t, source)
+	require.NotNil(t, source)
 
 	result, err := source.FindSymbol("grpc.reflection.v1alpha.ServerReflectionRequest")
 	assert.NoError(t, err)
@@ -39,6 +40,8 @@ func TestReflection(t *testing.T) {
 func TestReflectionMultiplePeers(t *testing.T) {
 	listenRefuser, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err, "failed to listen on a port")
+	defer listenRefuser.Close()
+
 	noListen, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err, "failed to listen on a port")
 	noListen.Close()
@@ -69,6 +72,6 @@ func TestReflectionClosedPort(t *testing.T) {
 		Peers:   []string{ln.Addr().String()},
 	})
 
-	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "could not reach reflection server")
 	assert.Nil(t, got)
 }

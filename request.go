@@ -124,19 +124,19 @@ func NewSerializer(opts Options) (encoding.Serializer, error) {
 	return nil, errUnrecognizedEncoding
 }
 
-func newProtoDescriptorProvider(ROpts RequestOptions, TOpts TransportOptions) (protobuf.DescriptorProvider, error) {
-	if len(ROpts.FileDescriptorSet) > 0 {
-		return protobuf.NewDescriptorProviderFileDescriptorSetBins(ROpts.FileDescriptorSet...)
+func newProtoDescriptorProvider(ropts RequestOptions, topts TransportOptions) (protobuf.DescriptorProvider, error) {
+	if len(ropts.FileDescriptorSet) > 0 {
+		return protobuf.NewDescriptorProviderFileDescriptorSetBins(ropts.FileDescriptorSet...)
 	}
-	TOpts, err := loadTransportPeers(TOpts)
+	topts, err := loadTransportPeers(topts)
 	if err != nil {
 		return nil, err
 	}
 	return protobuf.NewDescriptorProviderReflection(protobuf.ReflectionArgs{
-		Caller:  TOpts.CallerName,
-		Service: TOpts.ServiceName,
-		Peers:   TOpts.Peers,
-		Timeout: ROpts.Timeout.Duration(),
+		Caller:  topts.CallerName,
+		Service: topts.ServiceName,
+		Peers:   topts.Peers,
+		Timeout: ropts.Timeout.Duration(),
 	})
 }
 
