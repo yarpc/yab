@@ -852,7 +852,7 @@ func TestWithTransportSerializer(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		serializer, err := NewSerializer(tt.rOpts)
+		serializer, err := NewSerializer(Options{ROpts: tt.rOpts})
 		require.NoError(t, err, "Failed to create serializer for %+v", tt.rOpts)
 
 		serializer = withTransportSerializer(tt.protocol, serializer, tt.rOpts)

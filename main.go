@@ -297,11 +297,6 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 		out.Fatalf("Failed while loading headers input: %v\n", err)
 	}
 
-	serializer, err := NewSerializer(opts.ROpts)
-	if err != nil {
-		out.Fatalf("Failed while parsing input: %v\n", err)
-	}
-
 	if opts.TOpts.CallerName != "" {
 		if _, ok := warningCallerNames[opts.TOpts.CallerName]; ok {
 			// TODO: when logger is hooked up this should use the WARN level message
@@ -315,6 +310,11 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 		}
 	} else {
 		opts.TOpts.CallerName = "yab-" + os.Getenv("USER")
+	}
+
+	serializer, err := NewSerializer(opts)
+	if err != nil {
+		out.Fatalf("Failed while parsing input: %v\n", err)
 	}
 
 	tracer, closer := getTracer(opts, out)

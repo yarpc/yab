@@ -25,12 +25,15 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -185,6 +188,7 @@ func TestNewSerializer(t *testing.T) {
 	tests := []struct {
 		encoding encoding.Encoding
 		opts     RequestOptions
+		topts    TransportOptions
 		want     encoding.Encoding
 		wantErr  string
 	}{
@@ -279,12 +283,28 @@ func TestNewSerializer(t *testing.T) {
 			},
 			want: encoding.Protobuf,
 		},
+		{
+			encoding: encoding.Protobuf,
+			opts: RequestOptions{
+				Procedure: "Bar/Baz",
+				Timeout:   timeMillisFlag(time.Millisecond),
+			},
+			topts:   TransportOptions{Peers: []string{"127.0.0.1:0"}},
+			wantErr: "could not reach reflection server:",
+		},
+		{
+			encoding: encoding.Protobuf,
+			opts: RequestOptions{
+				Procedure: "Bar/Baz",
+			},
+			wantErr: "specify at least one peer using --peer or using --peer-list",
+		},
 	}
 
 	for _, tt := range tests {
 		tt.opts.Encoding = tt.encoding
 		t.Run(fmt.Sprintf("%+v", tt.opts), func(t *testing.T) {
-			got, err := NewSerializer(tt.opts)
+			got, err := NewSerializer(Options{ROpts: tt.opts, TOpts: tt.topts})
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.wantErr, "unexpected error")
@@ -296,6 +316,26 @@ func TestNewSerializer(t *testing.T) {
 			assert.Equal(t, tt.want, got.Encoding(), "NewSerializer(%+v) wrong encoding", tt.opts)
 		})
 	}
+}
+func TestNewSerializerProtobufReflection(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer ln.Close()
+
+	s := grpc.NewServer()
+	reflection.Register(s)
+	go s.Serve(ln)
+
+	serializer, err := NewSerializer(Options{
+		ROpts: RequestOptions{
+			Procedure: "grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo",
+			Timeout:   timeMillisFlag(time.Millisecond * 100),
+		},
+		TOpts: TransportOptions{Peers: []string{ln.Addr().String()}},
+	})
+	assert.NoError(t, err)
+	require.NotNil(t, serializer)
+	assert.Equal(t, encoding.Protobuf, serializer.Encoding())
 }
 
 func TestDetectEncoding(t *testing.T) {

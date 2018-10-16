@@ -42,7 +42,7 @@ func benchmarkMethodForTest(t *testing.T, procedure string, p transport.Protocol
 		ThriftFile: validThrift,
 		Procedure:  procedure,
 	}
-	serializer, err := NewSerializer(rOpts)
+	serializer, err := NewSerializer(Options{ROpts: rOpts})
 	require.NoError(t, err, "Failed to create Thrift serializer")
 
 	serializer = withTransportSerializer(p, serializer, rOpts)
