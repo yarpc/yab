@@ -1,6 +1,14 @@
 Changelog
 =========
 
+# 0.14.0 (2018-10-18)
+* Support protobuf encoding using:
+  - Precompiled FileDescriptorSets with flags `--file-descriptor-set-bin`
+    or `-F`.
+  - Using the grpc reflection API if no descriptor set is specified.
+* Encoding now defaults to `proto` if the method is of form
+  `package.Service/Method`.
+
 # 0.13.0 (2018-06-14)
 * Add Jaeger throttling config.
 

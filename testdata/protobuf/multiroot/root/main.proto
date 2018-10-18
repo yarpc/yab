@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+import "dep.proto";
+
+service Bar{
+    rpc Baz(Foo) returns (Foo);
+}

@@ -20,6 +20,9 @@ import:
   version: ^2.14
 - package: go.uber.org/yarpc
   version: ^1.21
+- package: github.com/jhump/protoreflect
+  version: a84568470d8add1307a0f1d8a3afcc4dfe7c4dd0
+- package: golang.org/x/sys
 testImport:
 - package: github.com/apache/thrift
-  version: ">=0.9.3, <0.11.0"
+  version: '>=0.9.3, <0.11.0'

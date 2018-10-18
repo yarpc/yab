@@ -59,9 +59,9 @@ func remapLocalHost(hostPorts []string) {
 }
 
 func parsePeer(peer string) (protocol, host string) {
-	// If we get a pure host:port, then we assume tchannel.
+	// If we get a pure host:port, we return empty protocol to determine based on encoding
 	if _, _, err := net.SplitHostPort(peer); err == nil && !strings.Contains(peer, "://") {
-		return "tchannel", peer
+		return "", peer
 	}
 
 	u, err := url.ParseRequestURI(peer)
@@ -125,7 +125,7 @@ func loadTransportPeers(opts TransportOptions) (TransportOptions, error) {
 	return opts, nil
 }
 
-func getTransport(opts TransportOptions, encoding encoding.Encoding, tracer opentracing.Tracer) (transport.Transport, error) {
+func getTransport(opts TransportOptions, enc encoding.Encoding, tracer opentracing.Tracer) (transport.Transport, error) {
 	if opts.ServiceName == "" {
 		return nil, errServiceRequired
 	}
@@ -148,6 +148,18 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding, tracer open
 		return nil, err
 	}
 
+	if protocol == "" {
+		// Before yab had grpc/protobuf support, peers that did not specify a
+		// protocol assumed tchannel. Keep that default but allow this to be
+		// overridden based on the encoding for saner defaults.
+		switch enc {
+		case encoding.Protobuf:
+			protocol = "grpc"
+		default:
+			protocol = "tchannel"
+		}
+	}
+
 	if protocol == "tchannel" {
 		hostPorts := getHosts(opts.Peers)
 		remapLocalHost(hostPorts)
@@ -159,7 +171,7 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding, tracer open
 			RoutingKey:      opts.RoutingKey,
 			ShardKey:        opts.ShardKey,
 			Peers:           hostPorts,
-			Encoding:        encoding.String(),
+			Encoding:        enc.String(),
 			TransportOpts:   opts.TransportHeaders,
 			Tracer:          tracer,
 		}
@@ -171,7 +183,7 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding, tracer open
 			Addresses:       getHosts(opts.Peers),
 			Tracer:          tracer,
 			Caller:          opts.CallerName,
-			Encoding:        encoding.String(),
+			Encoding:        enc.String(),
 			RoutingKey:      opts.RoutingKey,
 			RoutingDelegate: opts.RoutingDelegate,
 		})
@@ -183,7 +195,7 @@ func getTransport(opts TransportOptions, encoding encoding.Encoding, tracer open
 		RoutingDelegate: opts.RoutingDelegate,
 		RoutingKey:      opts.RoutingKey,
 		ShardKey:        opts.ShardKey,
-		Encoding:        encoding.String(),
+		Encoding:        enc.String(),
 		URLs:            opts.Peers,
 		Tracer:          tracer,
 	}
