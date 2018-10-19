@@ -3,6 +3,7 @@ package protobuf
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jhump/protoreflect/desc"
@@ -29,6 +30,9 @@ func NewDescriptorProviderReflection(args ReflectionArgs) (DescriptorProvider, e
 	defer deregisterScheme()
 	peers := make([]resolver.Address, len(args.Peers))
 	for i, p := range args.Peers {
+		if strings.Contains(p, "://") {
+			return nil, fmt.Errorf("peer contains scheme %q", p)
+		}
 		peers[i] = resolver.Address{Addr: p, Type: resolver.Backend}
 	}
 	r.InitialAddrs(peers)
