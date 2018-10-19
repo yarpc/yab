@@ -185,6 +185,15 @@ func TestGetHeaders(t *testing.T) {
 }
 
 func TestNewSerializer(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer ln.Close()
+
+	s := grpc.NewServer()
+	reflection.Register(s)
+	go s.Serve(ln)
+	defer s.Stop()
+
 	tests := []struct {
 		encoding encoding.Encoding
 		opts     RequestOptions
@@ -287,8 +296,53 @@ func TestNewSerializer(t *testing.T) {
 			encoding: encoding.Protobuf,
 			opts: RequestOptions{
 				Procedure: "Bar/Baz",
+				Timeout:   timeMillisFlag(time.Millisecond),
+			},
+			topts:   TransportOptions{Peers: []string{"127.0.0.1:0"}},
+			wantErr: "could not reach reflection server:",
+		},
+		{
+			encoding: encoding.Protobuf,
+			opts: RequestOptions{
+				Procedure: "Bar/Baz",
 			},
 			wantErr: "specify at least one peer using --peer or using --peer-list",
+		},
+		{
+			encoding: encoding.Protobuf,
+			opts: RequestOptions{
+				Procedure: "grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo",
+				Timeout:   timeMillisFlag(time.Millisecond * 500),
+			},
+			topts: TransportOptions{Peers: []string{"grpc://" + ln.Addr().String()}},
+			want:  encoding.Protobuf,
+		},
+		{
+			encoding: encoding.Protobuf,
+			opts: RequestOptions{
+				Procedure: "grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo",
+				Timeout:   timeMillisFlag(time.Millisecond * 500),
+			},
+			topts: TransportOptions{Peers: []string{ln.Addr().String()}},
+			want:  encoding.Protobuf,
+		},
+		{
+			encoding: encoding.Protobuf,
+			opts: RequestOptions{
+				Procedure: "Bar/Baz",
+				Timeout:   timeMillisFlag(time.Millisecond * 500),
+			},
+			topts:   TransportOptions{Peers: []string{"grpc://" + ln.Addr().String()}},
+			wantErr: "Symbol not found: Bar",
+		},
+		{
+			encoding: encoding.Protobuf,
+			opts: RequestOptions{
+				Procedure: "Bar/Baz",
+				Timeout:   timeMillisFlag(time.Millisecond * 500),
+			},
+			topts:   TransportOptions{Peers: []string{ln.Addr().String()}},
+			wantErr: "Symbol not found: Bar",
 		},
 	}
 
@@ -309,83 +363,6 @@ func TestNewSerializer(t *testing.T) {
 	}
 }
 
-func TestNewSerializerReflectionServer(t *testing.T) {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer ln.Close()
-
-	s := grpc.NewServer()
-	reflection.Register(s)
-	go s.Serve(ln)
-	defer s.Stop()
-
-	tests := []struct {
-		encoding encoding.Encoding
-		opts     RequestOptions
-		topts    TransportOptions
-		wantErr  string
-	}{
-		{
-			encoding: encoding.Protobuf,
-			opts: RequestOptions{
-				Procedure: "grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo",
-				Timeout:   timeMillisFlag(time.Millisecond * 500),
-			},
-			topts: TransportOptions{Peers: []string{"grpc://" + ln.Addr().String()}},
-		},
-		{
-			encoding: encoding.Protobuf,
-			opts: RequestOptions{
-				Procedure: "grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo",
-				Timeout:   timeMillisFlag(time.Millisecond * 500),
-			},
-			topts: TransportOptions{Peers: []string{ln.Addr().String()}},
-		},
-		{
-			encoding: encoding.Protobuf,
-			opts: RequestOptions{
-				Procedure: "Bar/Baz",
-				Timeout:   timeMillisFlag(time.Millisecond * 500),
-			},
-			topts:   TransportOptions{Peers: []string{"grpc://" + ln.Addr().String()}},
-			wantErr: "Symbol not found: Bar",
-		},
-		{
-			encoding: encoding.Protobuf,
-			opts: RequestOptions{
-				Procedure: "Bar/Baz",
-				Timeout:   timeMillisFlag(time.Millisecond * 500),
-			},
-			topts:   TransportOptions{Peers: []string{ln.Addr().String()}},
-			wantErr: "Symbol not found: Bar",
-		},
-		{
-			encoding: encoding.Protobuf,
-			opts: RequestOptions{
-				Procedure: "Bar/Baz",
-				Timeout:   timeMillisFlag(time.Nanosecond),
-			},
-			topts:   TransportOptions{Peers: []string{""}},
-			wantErr: "could not reach reflection server: context deadline exceeded",
-		},
-	}
-
-	for _, tt := range tests {
-		tt.opts.Encoding = tt.encoding
-		t.Run(fmt.Sprintf("%+v", tt.opts), func(t *testing.T) {
-			got, err := NewSerializer(Options{ROpts: tt.opts, TOpts: tt.topts})
-			if tt.wantErr != "" {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tt.wantErr, "unexpected error")
-				return
-			}
-
-			require.NoError(t, err)
-			require.NotNil(t, got, "missing serializer")
-			assert.Equal(t, encoding.Protobuf, got.Encoding(), "NewSerializer(%+v) wrong encoding", tt.opts)
-		})
-	}
-}
 func TestNewSerializerProtobufReflection(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
