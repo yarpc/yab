@@ -440,7 +440,6 @@ func TestGRPCReflectionSource(t *testing.T) {
 			gotOut, gotErr := runTestWithOpts(tt.opts)
 			assert.Contains(t, gotErr, tt.wantErr)
 			assert.Contains(t, gotOut, tt.wantRes)
-
 		})
 	}
 }

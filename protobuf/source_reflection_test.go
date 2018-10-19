@@ -43,8 +43,9 @@ func TestReflectionWithProtocolInPeer(t *testing.T) {
 		Timeout: time.Second,
 		Peers:   []string{"grpc://127.0.0.1:12345"},
 	})
-	assert.Contains(t, err.Error(), "peer contains scheme")
 	assert.Nil(t, source)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "peer contains scheme")
 }
 
 func TestReflectionMultiplePeers(t *testing.T) {
