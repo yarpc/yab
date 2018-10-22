@@ -19,6 +19,7 @@ func TestReflection(t *testing.T) {
 	s := grpc.NewServer()
 	reflection.Register(s)
 	go s.Serve(ln)
+	defer s.Stop()
 
 	source, err := NewDescriptorProviderReflection(ReflectionArgs{
 		Timeout: time.Second,
@@ -35,6 +36,16 @@ func TestReflection(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Symbol not found: wat")
 	assert.Nil(t, result)
+}
+
+func TestReflectionWithProtocolInPeer(t *testing.T) {
+	source, err := NewDescriptorProviderReflection(ReflectionArgs{
+		Timeout: time.Second,
+		Peers:   []string{"grpc://127.0.0.1:12345"},
+	})
+	assert.Nil(t, source)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "peer contains scheme")
 }
 
 func TestReflectionMultiplePeers(t *testing.T) {

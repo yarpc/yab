@@ -185,6 +185,15 @@ func TestGetHeaders(t *testing.T) {
 }
 
 func TestNewSerializer(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer ln.Close()
+
+	s := grpc.NewServer()
+	reflection.Register(s)
+	go s.Serve(ln)
+	defer s.Stop()
+
 	tests := []struct {
 		encoding encoding.Encoding
 		opts     RequestOptions
@@ -299,6 +308,42 @@ func TestNewSerializer(t *testing.T) {
 			},
 			wantErr: "specify at least one peer using --peer or using --peer-list",
 		},
+		{
+			encoding: encoding.Protobuf,
+			opts: RequestOptions{
+				Procedure: "grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo",
+				Timeout:   timeMillisFlag(time.Millisecond * 500),
+			},
+			topts: TransportOptions{Peers: []string{"grpc://" + ln.Addr().String()}},
+			want:  encoding.Protobuf,
+		},
+		{
+			encoding: encoding.Protobuf,
+			opts: RequestOptions{
+				Procedure: "grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo",
+				Timeout:   timeMillisFlag(time.Millisecond * 500),
+			},
+			topts: TransportOptions{Peers: []string{ln.Addr().String()}},
+			want:  encoding.Protobuf,
+		},
+		{
+			encoding: encoding.Protobuf,
+			opts: RequestOptions{
+				Procedure: "Bar/Baz",
+				Timeout:   timeMillisFlag(time.Millisecond * 500),
+			},
+			topts:   TransportOptions{Peers: []string{"grpc://" + ln.Addr().String()}},
+			wantErr: "Symbol not found: Bar",
+		},
+		{
+			encoding: encoding.Protobuf,
+			opts: RequestOptions{
+				Procedure: "Bar/Baz",
+				Timeout:   timeMillisFlag(time.Millisecond * 500),
+			},
+			topts:   TransportOptions{Peers: []string{ln.Addr().String()}},
+			wantErr: "Symbol not found: Bar",
+		},
 	}
 
 	for _, tt := range tests {
@@ -317,6 +362,7 @@ func TestNewSerializer(t *testing.T) {
 		})
 	}
 }
+
 func TestNewSerializerProtobufReflection(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)

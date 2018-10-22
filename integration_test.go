@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/yarpc/yab/testdata/gen-go/integration"
+	"github.com/yarpc/yab/testdata/protobuf/simple"
 	yintegration "github.com/yarpc/yab/testdata/yarpc/integration"
 	"github.com/yarpc/yab/testdata/yarpc/integration/fooserver"
 
@@ -49,9 +50,12 @@ import (
 	ygrpc "go.uber.org/yarpc/transport/grpc"
 	yhttp "go.uber.org/yarpc/transport/http"
 	ytchan "go.uber.org/yarpc/transport/tchannel"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 //go:generate thriftrw --plugin=yarpc --out ./testdata/yarpc ./testdata/integration.thrift
+//go:generate protoc --go_out=plugins=grpc:. ./testdata/protobuf/simple/simple.proto
 
 var integrationTests = []struct {
 	call    int32
@@ -353,4 +357,89 @@ func setupYARPCServer(t *testing.T, inbound ytransport.Inbound, opts ...ythrift.
 	dispatcher.Register(fooserver.New(&yarpcHandler{}, opts...))
 	require.NoError(t, dispatcher.Start(), "Failed to start Dispatcher")
 	return dispatcher
+}
+
+type simpleService struct{}
+
+func (s *simpleService) Baz(c context.Context, in *simple.Foo) (*simple.Foo, error) {
+	if in.Test > 0 {
+		return in, nil
+	}
+	return nil, fmt.Errorf("negative input")
+}
+
+func setupGRPCServer(t *testing.T) (net.Addr, *grpc.Server) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	s := grpc.NewServer()
+	simple.RegisterBarServer(s, &simpleService{})
+	reflection.Register(s)
+	go s.Serve(ln)
+	return ln.Addr(), s
+}
+
+func TestGRPCReflectionSource(t *testing.T) {
+	addr, server := setupGRPCServer(t)
+	defer server.Stop()
+
+	tests := []struct {
+		desc    string
+		opts    Options
+		wantRes string
+		wantErr string
+	}{
+		{
+			desc: "success",
+			opts: Options{
+				ROpts: RequestOptions{
+					Procedure:   "Bar/Baz",
+					Timeout:     timeMillisFlag(time.Second),
+					RequestJSON: `{"test":1}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+					Peers:       []string{"grpc://" + addr.String()},
+				},
+			},
+			wantRes: `"test": 1`,
+		},
+		{
+			desc: "success (no scheme in peer)",
+			opts: Options{
+				ROpts: RequestOptions{
+					Procedure:   "Bar/Baz",
+					Timeout:     timeMillisFlag(time.Second),
+					RequestJSON: `{"test":1}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+					Peers:       []string{addr.String()},
+				},
+			},
+			wantRes: `"test": 1`,
+		},
+		{
+			desc: "return error",
+			opts: Options{
+				ROpts: RequestOptions{
+					Procedure:   "Bar/Baz",
+					Timeout:     timeMillisFlag(time.Second),
+					RequestJSON: `{"test":0}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+					Peers:       []string{addr.String()},
+				},
+			},
+			wantErr: "negative input",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			gotOut, gotErr := runTestWithOpts(tt.opts)
+			assert.Contains(t, gotErr, tt.wantErr)
+			assert.Contains(t, gotOut, tt.wantRes)
+		})
+	}
 }
