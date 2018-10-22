@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 0.14.1 (2018-10-22)
+* Fix a bug for incorrectly dialing the reflection server when 
+  peers contain the `grpc://` scheme instead of just host:port pairs.
+
 # 0.14.0 (2018-10-18)
 * Support protobuf encoding using:
   - Precompiled FileDescriptorSets with flags `--file-descriptor-set-bin`
