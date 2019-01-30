@@ -19,14 +19,19 @@ func TestReflection(t *testing.T) {
 	s := grpc.NewServer()
 	reflection.Register(s)
 	go s.Serve(ln)
-	defer s.Stop()
+
+	// Ensure that all streams are closed by the end of the test.
+	defer s.GracefulStop()
 
 	source, err := NewDescriptorProviderReflection(ReflectionArgs{
 		Timeout: time.Second,
 		Peers:   []string{ln.Addr().String()},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, source)
+
+	// Close the streaming reflect call to ensure GracefulStop doesn't block.
+	defer source.Close()
 
 	result, err := source.FindSymbol("grpc.reflection.v1alpha.ServerReflectionRequest")
 	assert.NoError(t, err)

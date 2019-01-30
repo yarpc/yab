@@ -68,3 +68,7 @@ func (s *grpcreflectSource) FindSymbol(fullyQualifiedName string) (desc.Descript
 	}
 	return file.FindSymbol(fullyQualifiedName), nil
 }
+
+func (s *grpcreflectSource) Close() {
+	s.client.Reset()
+}
