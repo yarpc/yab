@@ -81,8 +81,12 @@ func TestNewDescriptorProviderFileDescriptorSetBins(t *testing.T) {
 				assert.Contains(t, err.Error(), tt.errMsg, "%v: invalid error", tt.name)
 				return
 			}
-			assert.NotNil(t, got)
-			assert.NoError(t, err)
+			require.NoError(t, err)
+			require.NotNil(t, got)
+
+			// Doesn't do anything, but is part of the API.
+			defer got.Close()
+
 			if tt.lookupSymbol != "" {
 				require.NotNil(t, got)
 				s, err := got.FindSymbol(tt.lookupSymbol)

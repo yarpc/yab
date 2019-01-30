@@ -381,7 +381,7 @@ func setupGRPCServer(t *testing.T) (net.Addr, *grpc.Server) {
 
 func TestGRPCReflectionSource(t *testing.T) {
 	addr, server := setupGRPCServer(t)
-	defer server.Stop()
+	defer server.GracefulStop()
 
 	tests := []struct {
 		desc    string
