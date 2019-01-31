@@ -107,6 +107,10 @@ func NewSerializer(opts Options) (encoding.Serializer, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		// The descriptor is only used in the New function, so it's safe to defer Close.
+		defer descSource.Close()
+
 		return encoding.NewProtobuf(opts.ROpts.Procedure, descSource)
 	}
 

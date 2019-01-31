@@ -8,4 +8,6 @@ import "github.com/jhump/protoreflect/desc"
 type DescriptorProvider interface {
 	// FindSymbol returns a descriptor for the given fully-qualified symbol name.
 	FindSymbol(fullyQualifiedName string) (desc.Descriptor, error)
+
+	Close()
 }
