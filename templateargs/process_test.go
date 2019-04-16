@@ -16,8 +16,11 @@ type (
 
 func TestProcessString(t *testing.T) {
 	args := map[string]string{
-		"user":  "prashant",
-		"count": "10",
+		"user":     "prashant",
+		"count":    "10",
+		"y":        "y",
+		"t":        "true",
+		"t_quoted": `"true"`,
 	}
 	tests := []struct {
 		v       string
@@ -27,6 +30,22 @@ func TestProcessString(t *testing.T) {
 		{
 			v:    "s",
 			want: "s",
+		},
+		{
+			v:    "y",
+			want: "y",
+		},
+		{
+			v:    "${y}",
+			want: "y",
+		},
+		{
+			v:    "${t}",
+			want: true,
+		},
+		{
+			v:    "${t_quoted}",
+			want: "true",
 		},
 		{
 			v:       "${unknown}",
