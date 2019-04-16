@@ -1,6 +1,8 @@
 package templateargs
 
 import (
+	"strconv"
+
 	"github.com/yarpc/yab/templateargs/interpolate"
 
 	"gopkg.in/yaml.v2"
@@ -29,10 +31,25 @@ func processString(v string, args map[string]string) (interface{}, error) {
 	if rendered == "" {
 		return "", nil
 	}
+	if rendered == v {
+		// Avoid unmarshalling if the value did not change.
+		return v, nil
+	}
 
 	// Otherwise, unmarshal the value and return that.
 	var unmarshalled interface{}
 	err = yaml.Unmarshal([]byte(rendered), &unmarshalled)
+
+	if _, isBool := unmarshalled.(bool); isBool {
+		// The Go YAML parser has some unfortunate handling of bools:
+		// https://github.com/go-yaml/yaml/issues/214
+		// Let's use a more strict-definition for booleans:
+		if _, err := strconv.ParseBool(rendered); err != nil {
+			// Go doesn't think this is a boolean, so use the value as a string
+			return rendered, nil
+		}
+	}
+
 	return unmarshalled, err
 }
 
