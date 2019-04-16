@@ -41,9 +41,9 @@ func processString(v string, args map[string]string) (interface{}, error) {
 	err = yaml.Unmarshal([]byte(rendered), &unmarshalled)
 
 	if _, isBool := unmarshalled.(bool); isBool {
-		// The Go YAML parser has some unfortunate handling of bools:
-		// https://github.com/go-yaml/yaml/issues/214
-		// Let's use a more strict-definition for booleans:
+		// The Go YAML parser has some unfortunate handling of strings that look
+		// like booleans: https://github.com/go-yaml/yaml/issues/214
+		// Let's use a more strict definition for booleans.
 		if _, err := strconv.ParseBool(rendered); err != nil {
 			// Go doesn't think this is a boolean, so use the value as a string
 			return rendered, nil
