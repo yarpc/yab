@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 0.14.3 (2019-04-16)
+* Fix bug where values specified in templates as `"y"` were being
+  converted to true.
+
 # 0.14.2 (2019-01-31)
 * Fix grpc reflection stream being closed abnormally causing
   the reflection server to see an unexpected client disconnect.
