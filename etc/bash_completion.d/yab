@@ -1,4 +1,8 @@
 # bash completion for yab executable
+# based on https://godoc.org/github.com/jessevdk/go-flags#hdr-Completion
+# depends on https://salsa.debian.org/debian/bash-completion
+
+
 have yab &&
 _yab()
 {
