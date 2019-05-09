@@ -91,6 +91,11 @@ func fieldGroupToValue(fieldsList compile.FieldGroup, request map[string]interfa
 			continue
 		}
 
+		if v == nil {
+			// If no value is provided, then ignore this field.
+			continue
+		}
+
 		userFields[field.ThriftName()] = v
 	}
 
