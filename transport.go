@@ -190,6 +190,7 @@ func getTransport(opts TransportOptions, enc encoding.Encoding, tracer opentraci
 	}
 
 	hopts := transport.HTTPOptions{
+		Method:          opts.HTTPMethod,
 		SourceService:   opts.CallerName,
 		TargetService:   opts.ServiceName,
 		RoutingDelegate: opts.RoutingDelegate,

@@ -83,6 +83,7 @@ type TransportOptions struct {
 	ShardKey         string            `long:"sk" description:"The shard key is a transport header that clues where to send a request within a clustered traffic group."`
 	Jaeger           bool              `long:"jaeger" description:"Use the Jaeger tracing client to send Uber style traces and baggage headers"`
 	TransportHeaders map[string]string `short:"T" long:"topt" description:"Transport options for TChannel, protocol headers for HTTP"`
+	HTTPMethod       string            `long:"http-method" description:"The HTTP method to use"`
 
 	// This is a hack to work around go-flags not allowing disabling flags:
 	// https://github.com/jessevdk/go-flags/issues/191
@@ -114,6 +115,7 @@ func newOptions() *Options {
 
 	// Defaults
 	opts.ROpts.Timeout = timeMillisFlag(time.Second)
+	opts.TOpts.HTTPMethod = "POST"
 
 	// Set flag aliases
 	opts.ROpts.MethodName.dest = &opts.ROpts.Procedure
