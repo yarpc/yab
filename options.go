@@ -174,10 +174,6 @@ func (s *stringAlias) UnmarshalFlag(value string) error {
 	return nil
 }
 
-func (s *stringAlias) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	return unmarshal(s.dest)
-}
-
 func setEncodingOptions(opts *Options) {
 	if opts.ROpts.Aliases.JSON {
 		opts.ROpts.Encoding = encoding.JSON
