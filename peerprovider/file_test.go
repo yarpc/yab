@@ -25,6 +25,14 @@ func TestParseHostFile(t *testing.T) {
 			want:     []string{"1.1.1.1:1", "2.2.2.2:2"},
 		},
 		{
+			filename: "valid_url_peerlist.yaml",
+			want:     []string{"http://1.1.1.1:1/foo", "tchannel://2.2.2.2:2"},
+		},
+		{
+			filename: "valid_url_peerlist.txt",
+			want:     []string{"http://1.1.1.1:1/foo", "tchannel://2.2.2.2:2"},
+		},
+		{
 			filename: "valid_peerlist.txt",
 			want:     []string{"1.1.1.1:1", "2.2.2.2:2"},
 		},
@@ -34,6 +42,10 @@ func TestParseHostFile(t *testing.T) {
 		},
 		{
 			filename: "invalid.json",
+			errMsg:   errPeerListFile.Error(),
+		},
+		{
+			filename: "invalid_url_peerlist.txt",
 			errMsg:   errPeerListFile.Error(),
 		},
 	}
