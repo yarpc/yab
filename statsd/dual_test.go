@@ -12,7 +12,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func TestDual(t *testing.T) {
+func TestMulti(t *testing.T) {
 	origUserEnv := os.Getenv("USER")
 	defer os.Setenv("USER", origUserEnv)
 	os.Setenv("USER", "tester")
@@ -26,7 +26,7 @@ func TestDual(t *testing.T) {
 	c2, err := NewClient(zap.NewNop(), s.Addr().String(), "c2", "foo")
 	require.NoError(t, err, "Failed to create client")
 
-	mc := MultiClient{c1, c2}
+	mc := MultiClient(c1, c2)
 	mc.Inc("c")
 	mc.Timing("t", time.Millisecond)
 

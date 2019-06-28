@@ -142,10 +142,10 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, m benchmarkMe
 			// If per-peer stats are enabled, dual emit metrics to the original value
 			// and the per-peer value.
 			prefix := fmt.Sprintf("peer.%v.", c.peerID)
-			statter = statsd.MultiClient{
-				globalStatter,
-				statsd.NewPrefixedClient(globalStatter, prefix),
-			}
+			statter = statsd.MultiClient(
+				statter,
+				statsd.NewPrefixedClient(statter, prefix),
+			)
 		}
 
 		for j := 0; j < opts.Concurrency; j++ {

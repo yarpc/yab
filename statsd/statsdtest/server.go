@@ -4,7 +4,6 @@ import (
 	"math"
 	"net"
 	"strconv"
-	"sync"
 	"testing"
 
 	"github.com/cactus/go-statsd-client/statsd/statsdtest"
@@ -17,7 +16,7 @@ type Server struct {
 	t       *testing.T
 	ln      net.PacketConn
 	sender  *statsdtest.RecordingSender
-	running sync.WaitGroup
+	running chan struct{}
 }
 
 // NewServer creates a new in-memory statsd server for testing.
@@ -28,18 +27,18 @@ func NewServer(t *testing.T) *Server {
 	require.NoError(t, err, "Failed to create UDP listener")
 
 	s := &Server{
-		t:      t,
-		ln:     ln,
-		sender: sender,
+		t:       t,
+		ln:      ln,
+		sender:  sender,
+		running: make(chan struct{}),
 	}
 
-	s.running.Add(1)
 	go s.run()
 	return s
 }
 
 func (s *Server) run() {
-	defer s.running.Done()
+	defer close(s.running)
 
 	// UDP uses 16 bits for the length, so this is the max packet size.
 	buf := make([]byte, math.MaxUint16)
@@ -63,7 +62,7 @@ func (s *Server) Addr() net.Addr {
 // Close stops the listener.
 func (s *Server) Close() {
 	s.ln.Close()
-	s.running.Wait()
+	<-s.running
 }
 
 // Stats returns all stats that have been received by this server, keeping only Stat and Value.

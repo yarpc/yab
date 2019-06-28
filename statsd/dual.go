@@ -2,20 +2,20 @@ package statsd
 
 import "time"
 
-// MultiClient is a client that emits to multiple underlying clients.
-type MultiClient []Client
+type multiClient []Client
 
-var _ Client = MultiClient(nil)
+// MultiClient combines multiple Clients into a single Client.
+func MultiClient(clients ...Client) Client {
+	return multiClient(clients)
+}
 
-// Inc imlements Client.Inc.
-func (mc MultiClient) Inc(stat string) {
+func (mc multiClient) Inc(stat string) {
 	for _, c := range mc {
 		c.Inc(stat)
 	}
 }
 
-// Timing imlements Client.Timing.
-func (mc MultiClient) Timing(stat string, d time.Duration) {
+func (mc multiClient) Timing(stat string, d time.Duration) {
 	for _, c := range mc {
 		c.Timing(stat, d)
 	}
