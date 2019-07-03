@@ -22,6 +22,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/signal"
 	"runtime"
@@ -126,15 +127,30 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, m benchmarkMe
 		out.Fatalf("Failed to warmup connections for benchmark: %v", err)
 	}
 
-	statter, err := statsd.NewClient(logger, opts.StatsdHostPort, allOpts.TOpts.ServiceName, allOpts.ROpts.Procedure)
+	globalStatter, err := statsd.NewClient(logger, opts.StatsdHostPort, allOpts.TOpts.ServiceName, allOpts.ROpts.Procedure)
 	if err != nil {
 		out.Fatalf("Failed to create statsd client for benchmark: %v", err)
 	}
 
 	var wg sync.WaitGroup
 	states := make([]*benchmarkState, len(connections)*opts.Concurrency)
-	for i := range states {
-		states[i] = newBenchmarkState(statter)
+
+	for i, c := range connections {
+		statter := globalStatter
+
+		if opts.PerPeerStats {
+			// If per-peer stats are enabled, dual emit metrics to the original value
+			// and the per-peer value.
+			prefix := fmt.Sprintf("peer.%v.", c.peerID)
+			statter = statsd.MultiClient(
+				statter,
+				statsd.NewPrefixedClient(statter, prefix),
+			)
+		}
+
+		for j := 0; j < opts.Concurrency; j++ {
+			states[i*opts.Concurrency+j] = newBenchmarkState(statter)
+		}
 	}
 
 	run := limiter.New(opts.MaxRequests, opts.RPS, opts.MaxDuration)
@@ -155,6 +171,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, m benchmarkMe
 	}
 
 	// TODO: Support streaming updates.
+	// TOOD: Aggregate per-backend state for JSON output in future.
 
 	// Wait for all the worker goroutines to end.
 	wg.Wait()

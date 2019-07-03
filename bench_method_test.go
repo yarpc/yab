@@ -197,8 +197,9 @@ func TestPeerBalancer(t *testing.T) {
 		rand.Seed(tt.seed)
 		peerFor := peerBalancer(tt.peers)
 		for i, want := range tt.want {
-			got := peerFor(i)
+			got, index := peerFor(i)
 			assert.Equal(t, want, got, "peerBalancer(%v) seed %v i %v failed", tt.peers, tt.seed, i)
+			assert.Equal(t, want, tt.peers[index], "peerBalancer(%v) seed %v i %v unexpected index %v", tt.peers, tt.seed, i, index)
 		}
 	}
 }
