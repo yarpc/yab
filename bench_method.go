@@ -70,6 +70,10 @@ func (m benchmarkMethod) call(t transport.Transport) (time.Duration, error) {
 	return duration, err
 }
 
+func (m benchmarkMethod) Method() string {
+	return m.req.Method
+}
+
 func peerBalancer(peers []string) func(i int) (string, int) {
 	numPeers := len(peers)
 	startOffset := rand.Intn(numPeers)
