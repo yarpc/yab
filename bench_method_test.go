@@ -37,11 +37,14 @@ import (
 )
 
 func benchmarkMethodForTest(t *testing.T, procedure string, p transport.Protocol) benchmarkMethod {
-	rOpts := RequestOptions{
+	return benchmarkMethodForROpts(t, RequestOptions{
 		Encoding:   encoding.Thrift,
 		ThriftFile: validThrift,
 		Procedure:  procedure,
-	}
+	}, p)
+}
+
+func benchmarkMethodForROpts(t *testing.T, rOpts RequestOptions, p transport.Protocol) benchmarkMethod {
 	serializer, err := NewSerializer(Options{ROpts: rOpts})
 	require.NoError(t, err, "Failed to create Thrift serializer")
 
@@ -292,4 +295,12 @@ func TestBenchmarkMethodWarmTransportsError(t *testing.T) {
 			assert.NoError(t, err, "%v: WarmTransports should succeed", msg)
 		}
 	}
+}
+
+func TestBenchmarkMethodHealth(t *testing.T) {
+	m := benchmarkMethodForROpts(t, RequestOptions{
+		Encoding: encoding.Thrift,
+		Health:   true,
+	}, transport.TChannel)
+	assert.Equal(t, "Meta::health", m.Method())
 }

@@ -1,6 +1,9 @@
 Changelog
 =========
 
+# Unreleased
+* Fix bug where benchmark stats were missing procedure if `--health` was used.
+
 # 0.14.3 (2019-04-16)
 * Fix bug where values specified in templates as `"y"` were being
   converted to true.
