@@ -37,11 +37,14 @@ import (
 )
 
 func benchmarkMethodForTest(t *testing.T, procedure string, p transport.Protocol) benchmarkMethod {
-	rOpts := RequestOptions{
+	return benchmarkMethodForROpts(t, RequestOptions{
 		Encoding:   encoding.Thrift,
 		ThriftFile: validThrift,
 		Procedure:  procedure,
-	}
+	}, p)
+}
+
+func benchmarkMethodForROpts(t *testing.T, rOpts RequestOptions, p transport.Protocol) benchmarkMethod {
 	serializer, err := NewSerializer(Options{ROpts: rOpts})
 	require.NoError(t, err, "Failed to create Thrift serializer")
 
@@ -197,8 +200,9 @@ func TestPeerBalancer(t *testing.T) {
 		rand.Seed(tt.seed)
 		peerFor := peerBalancer(tt.peers)
 		for i, want := range tt.want {
-			got := peerFor(i)
+			got, index := peerFor(i)
 			assert.Equal(t, want, got, "peerBalancer(%v) seed %v i %v failed", tt.peers, tt.seed, i)
+			assert.Equal(t, want, tt.peers[index], "peerBalancer(%v) seed %v i %v unexpected index %v", tt.peers, tt.seed, i, index)
 		}
 	}
 }
@@ -291,4 +295,12 @@ func TestBenchmarkMethodWarmTransportsError(t *testing.T) {
 			assert.NoError(t, err, "%v: WarmTransports should succeed", msg)
 		}
 	}
+}
+
+func TestBenchmarkMethodHealth(t *testing.T) {
+	m := benchmarkMethodForROpts(t, RequestOptions{
+		Encoding: encoding.Thrift,
+		Health:   true,
+	}, transport.TChannel)
+	assert.Equal(t, "Meta::health", m.Method())
 }

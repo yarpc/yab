@@ -75,73 +75,67 @@ func TestHTTPCall(t *testing.T) {
 	immediateTimeout, _ := context.WithTimeout(context.Background(), time.Nanosecond)
 
 	tests := []struct {
-		ctx      context.Context
-		hook     string
-		r        *Request
-		errMsg   string
-		ttlMin   time.Duration
-		ttlMax   time.Duration
-		wantCode int
-		wantBody []byte // If nil, uses the request body
+		msg         string
+		ctxOverride context.Context
+		hook        string
+		method      string
+		errMsg      string
+		ttlMin      time.Duration
+		ttlMax      time.Duration
+		wantCode    int
+		wantBody    []byte // If nil, uses the request body
 	}{
 		{
-			ctx:      context.Background(),
-			r:        &Request{Method: "method", Body: []byte{1, 2, 3}},
+			msg:      "ok",
 			ttlMin:   time.Second,
 			ttlMax:   time.Second,
 			wantCode: http.StatusOK,
 		},
 		{
-			ctx:      timeoutCtx,
-			r:        &Request{Method: "method", Body: []byte{1, 2, 3}},
-			ttlMin:   3*time.Second - 100*time.Millisecond,
-			ttlMax:   3 * time.Second,
-			wantCode: http.StatusOK,
+			msg:         "3 second timeout",
+			ctxOverride: timeoutCtx,
+			ttlMin:      3*time.Second - 100*time.Millisecond,
+			ttlMax:      3 * time.Second,
+			wantCode:    http.StatusOK,
 		},
 		{
-			ctx: immediateTimeout,
-			r:   &Request{Method: "method", Body: []byte{1, 2, 3}},
-			// "context deadline exceeded" after 1.7 support is dropped
-			errMsg: "Post ",
+			msg:         "timed out",
+			ctxOverride: immediateTimeout,
+			errMsg:      context.DeadlineExceeded.Error(),
 		},
 		{
-			ctx:  context.Background(),
-			hook: "kill_conn",
-			r: &Request{
-				Method: "method",
-				Body:   []byte{1, 2, 3},
-			},
+			msg:    "connection closed before data",
+			hook:   "kill_conn",
 			errMsg: "EOF",
 		},
 		{
-			ctx:  context.Background(),
-			hook: "bad_req",
-			r: &Request{
-				Method: "method",
-				Body:   []byte{1, 2, 3},
-			},
+			msg:    "bad request response",
+			hook:   "bad_req",
 			errMsg: "non-success response code: 400, body: bad request",
 		},
 		{
-			ctx:  context.Background(),
-			hook: "flush_and_kill",
-			r: &Request{
-				Method: "method",
-				Body:   []byte{1, 2, 3},
-			},
+			msg:    "connection closed after data",
+			hook:   "flush_and_kill",
 			errMsg: "unexpected EOF",
 		},
 		{
-			ctx:  context.Background(),
-			hook: "no_content",
-			r: &Request{
-				Method: "method",
-				Body:   []byte{1, 2, 3},
-			},
-			ttlMin:   time.Second,
-			ttlMax:   time.Second,
+			msg:      "no content",
+			hook:     "no_content",
 			wantCode: http.StatusNoContent,
 			wantBody: []byte{},
+		},
+		{
+			msg:      "default method to POST",
+			hook:     "method",
+			wantCode: http.StatusOK,
+			wantBody: []byte("POST"),
+		},
+		{
+			msg:      "override method to GET",
+			method:   "GET",
+			hook:     "method",
+			wantCode: http.StatusOK,
+			wantBody: []byte("GET"),
 		},
 	}
 
@@ -158,11 +152,15 @@ func TestHTTPCall(t *testing.T) {
 		lastReq.body, err = ioutil.ReadAll(r.Body)
 		require.NoError(t, err, "Failed to read body from request")
 
-		// Test hooks to change hthe request behaviour.
+		// Test hooks to change the request behaviour.
 		switch f := r.Header.Get("hook"); f {
 		case "no_content":
 			w.Header().Set("Custom-Header", "ok")
 			w.WriteHeader(http.StatusNoContent)
+			return
+		case "method":
+			w.Header().Set("Custom-Header", "ok")
+			io.WriteString(w, r.Method)
 			return
 		case "bad_req":
 			w.WriteHeader(http.StatusBadRequest)
@@ -188,59 +186,71 @@ func TestHTTPCall(t *testing.T) {
 	}))
 	defer svr.Close()
 
-	transport, err := NewHTTP(HTTPOptions{
-		URLs:            []string{svr.URL + "/rpc"},
-		SourceService:   "source",
-		TargetService:   "target",
-		ShardKey:        "sk",
-		RoutingKey:      "rk",
-		RoutingDelegate: "rd",
-		Encoding:        "raw",
-	})
-	require.NoError(t, err, "Failed to create HTTP transport")
-
 	for _, tt := range tests {
-		tt.r.TransportHeaders = map[string]string{"hook": tt.hook}
-		tt.r.Headers = map[string]string{"headerkey": "headervalue"}
-		got, err := transport.Call(tt.ctx, tt.r)
-		if tt.errMsg != "" {
-			if assert.Error(t, err, "Call(%v, %v) should fail", tt.ctx, tt.r) {
-				assert.Contains(t, err.Error(), tt.errMsg, "Unexpected error for Call(%v, %v)", tt.ctx, tt.r)
+		t.Run(tt.msg, func(t *testing.T) {
+			transport, err := NewHTTP(HTTPOptions{
+				Method:          tt.method,
+				URLs:            []string{svr.URL + "/rpc"},
+				SourceService:   "source",
+				TargetService:   "target",
+				ShardKey:        "sk",
+				RoutingKey:      "rk",
+				RoutingDelegate: "rd",
+				Encoding:        "raw",
+			})
+			require.NoError(t, err, "Failed to create HTTP transport")
+
+			ctx := context.Background()
+			if tt.ctxOverride != nil {
+				ctx = tt.ctxOverride
 			}
-			continue
-		}
 
-		if !assert.NoError(t, err, "Call(%v, %v) shouldn't fail", tt.ctx, tt.r) {
-			continue
-		}
+			r := &Request{Method: "method", Body: []byte{1, 2, 3}}
 
-		wantBody := tt.wantBody
-		if wantBody == nil {
-			wantBody = []byte("ok")
-		}
-		if !assert.Equal(t, wantBody, got.Body, "Response body mismatch") {
-			continue
-		}
+			r.TransportHeaders = map[string]string{"hook": tt.hook}
+			r.Headers = map[string]string{"headerkey": "headervalue"}
+			got, err := transport.Call(ctx, r)
+			if tt.errMsg != "" {
+				if assert.Error(t, err, "Call should fail") {
+					assert.Contains(t, err.Error(), tt.errMsg, "Unexpected error")
+				}
+				return
+			}
 
-		assert.Equal(t, lastReq.url.Path, "/rpc", "Path mismatch")
-		assert.Equal(t, lastReq.headers.Get("Rpc-Service"), "target", "Service header mismatch")
-		assert.Equal(t, lastReq.headers.Get("Rpc-Caller"), "source", "Caller header mismatch")
-		assert.Equal(t, lastReq.headers.Get("Rpc-Shard-Key"), "sk", "Shard key header mismatch")
-		assert.Equal(t, lastReq.headers.Get("Rpc-Routing-Key"), "rk", "Routing key header mismatch")
-		assert.Equal(t, lastReq.headers.Get("Rpc-Routing-Delegate"), "rd", "Routing delegate header mismatch")
-		assert.Equal(t, lastReq.headers.Get("Rpc-Procedure"), tt.r.Method, "Method header mismatch")
-		assert.Equal(t, lastReq.headers.Get("Rpc-Encoding"), "raw", "Encoding header mismatch")
-		assert.Equal(t, lastReq.headers.Get("Rpc-Header-Headerkey"), "headervalue", "Application header is sent with prefix")
+			if !assert.NoError(t, err, "Call shouldn't fail") {
+				return
+			}
 
-		ttlMS, err := strconv.Atoi(lastReq.headers.Get("Context-TTL-MS"))
-		if assert.NoError(t, err, "Failed to parse TTLms header: %v", lastReq.headers.Get("YARPC-TTLms")) {
-			gotTTL := time.Duration(ttlMS) * time.Millisecond
-			assert.True(t, gotTTL >= tt.ttlMin && gotTTL <= tt.ttlMax,
-				"Got TTL %v out of range [%v,%v]", gotTTL, tt.ttlMin, tt.ttlMax)
-		}
+			wantBody := tt.wantBody
+			if wantBody == nil {
+				wantBody = []byte("ok")
+			}
+			if !assert.Equal(t, wantBody, got.Body, "Response body mismatch") {
+				return
+			}
 
-		assert.Equal(t, "ok", got.Headers["Custom-Header"], "Header mismatch")
-		assert.Equal(t, tt.wantCode, got.TransportFields["statusCode"], "Status code mismatch")
-		assert.Equal(t, lastReq.body, tt.r.Body, "Body mismatch")
+			assert.Equal(t, "/rpc", lastReq.url.Path, "Path mismatch")
+			assert.Equal(t, "target", lastReq.headers.Get("Rpc-Service"), "Service header mismatch")
+			assert.Equal(t, "source", lastReq.headers.Get("Rpc-Caller"), "Caller header mismatch")
+			assert.Equal(t, "sk", lastReq.headers.Get("Rpc-Shard-Key"), "Shard key header mismatch")
+			assert.Equal(t, "rk", lastReq.headers.Get("Rpc-Routing-Key"), "Routing key header mismatch")
+			assert.Equal(t, "rd", lastReq.headers.Get("Rpc-Routing-Delegate"), "Routing delegate header mismatch")
+			assert.Equal(t, r.Method, lastReq.headers.Get("Rpc-Procedure"), "Method header mismatch")
+			assert.Equal(t, "raw", lastReq.headers.Get("Rpc-Encoding"), "Encoding header mismatch")
+			assert.Equal(t, "headervalue", lastReq.headers.Get("Rpc-Header-Headerkey"), "Application header is sent with prefix")
+
+			if tt.ttlMin != 0 && tt.ttlMax != 0 {
+				ttlMS, err := strconv.Atoi(lastReq.headers.Get("Context-TTL-MS"))
+				if assert.NoError(t, err, "Failed to parse TTLms header: %v", lastReq.headers.Get("YARPC-TTLms")) {
+					gotTTL := time.Duration(ttlMS) * time.Millisecond
+					assert.True(t, gotTTL >= tt.ttlMin && gotTTL <= tt.ttlMax,
+						"Got TTL %v out of range [%v,%v]", gotTTL, tt.ttlMin, tt.ttlMax)
+				}
+			}
+
+			assert.Equal(t, "ok", got.Headers["Custom-Header"], "Header mismatch")
+			assert.Equal(t, tt.wantCode, got.TransportFields["statusCode"], "Status code mismatch")
+			assert.Equal(t, lastReq.body, r.Body, "Body mismatch")
+		})
 	}
 }

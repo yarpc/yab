@@ -31,6 +31,11 @@ import (
 	"github.com/opentracing/opentracing-go"
 )
 
+type peerTransport struct {
+	transport.Transport
+	peerID int
+}
+
 type benchmarkMethod struct {
 	serializer encoding.Serializer
 	req        *transport.Request
@@ -65,25 +70,29 @@ func (m benchmarkMethod) call(t transport.Transport) (time.Duration, error) {
 	return duration, err
 }
 
-func peerBalancer(peers []string) func(i int) string {
+func (m benchmarkMethod) Method() string {
+	return m.req.Method
+}
+
+func peerBalancer(peers []string) func(i int) (string, int) {
 	numPeers := len(peers)
 	startOffset := rand.Intn(numPeers)
-	return func(i int) string {
+	return func(i int) (string, int) {
 		offset := (startOffset + i) % numPeers
-		return peers[offset]
+		return peers[offset], offset
 	}
 }
 
 // WarmTransports returns n transports that have been warmed up.
 // No requests may fail during the warmup period.
-func (m benchmarkMethod) WarmTransports(n int, tOpts TransportOptions, warmupRequests int) ([]transport.Transport, error) {
+func (m benchmarkMethod) WarmTransports(n int, tOpts TransportOptions, warmupRequests int) ([]peerTransport, error) {
 	tOpts, err := loadTransportPeers(tOpts)
 	if err != nil {
 		return nil, err
 	}
 
 	peerFor := peerBalancer(tOpts.Peers)
-	transports := make([]transport.Transport, n)
+	transports := make([]peerTransport, n)
 	errs := make([]error, n)
 
 	var wg sync.WaitGroup
@@ -91,8 +100,13 @@ func (m benchmarkMethod) WarmTransports(n int, tOpts TransportOptions, warmupReq
 		wg.Add(1)
 		go func(i int, tOpts TransportOptions) {
 			defer wg.Done()
-			tOpts.Peers = []string{peerFor(i)}
-			transports[i], errs[i] = m.WarmTransport(tOpts, warmupRequests)
+
+			peerHostPort, peerIndex := peerFor(i)
+			tOpts.Peers = []string{peerHostPort}
+
+			tp, err := m.WarmTransport(tOpts, warmupRequests)
+			transports[i] = peerTransport{tp, peerIndex}
+			errs[i] = err
 		}(i, tOpts)
 	}
 

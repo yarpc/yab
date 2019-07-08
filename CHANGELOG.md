@@ -1,6 +1,13 @@
 Changelog
 =========
 
+# 0.15.0 (2019-07-07)
+* Allow `null` in request templates to imply skipping the field.
+* Allow specifying HTTP method for HTTP requests using `--http-method`.
+* Add support for URLs in peer lists.
+* Add support for per-peer stats from benchmarks using `--per-peer-stats`.
+* Fix bug where benchmark stats were missing procedure if `--health` was used.
+
 # 0.14.3 (2019-04-16)
 * Fix bug where values specified in templates as `"y"` were being
   converted to true.

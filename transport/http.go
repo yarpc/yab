@@ -42,6 +42,7 @@ type httpTransport struct {
 
 // HTTPOptions are used to create a HTTP transport.
 type HTTPOptions struct {
+	Method          string
 	URLs            []string
 	SourceService   string
 	TargetService   string
@@ -65,6 +66,9 @@ func NewHTTP(opts HTTPOptions) (Transport, error) {
 	if opts.TargetService == "" {
 		return nil, errMissingTarget
 	}
+	if opts.Method == "" {
+		opts.Method = "POST"
+	}
 
 	return &httpTransport{
 		opts: opts,
@@ -83,8 +87,8 @@ func (h *httpTransport) Tracer() opentracing.Tracer {
 func (h *httpTransport) newReq(ctx context.Context, r *Request) (*http.Request, error) {
 	url := h.opts.URLs[rand.Intn(len(h.opts.URLs))]
 
-	// TODO: We should envelope Thrift paylods here.
-	req, err := http.NewRequest("POST", url, bytes.NewReader(r.Body))
+	// TODO: We should envelope Thrift payloads here.
+	req, err := http.NewRequest(h.opts.Method, url, bytes.NewReader(r.Body))
 	if err != nil {
 		return nil, err
 	}

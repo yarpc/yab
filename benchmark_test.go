@@ -22,10 +22,12 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/yarpc/yab/statsd/statsdtest"
 	"github.com/yarpc/yab/transport"
 
 	"github.com/stretchr/testify/assert"
@@ -148,4 +150,71 @@ func TestRunBenchmarkErrors(t *testing.T) {
 		wg.Wait()
 		assert.Contains(t, fatalMessage, tt.wantErr, "Missing error for %+v", tt.opts)
 	}
+}
+
+func TestBenchmarkStatsPerPeer(t *testing.T) {
+	origUserEnv := os.Getenv("USER")
+	defer os.Setenv("USER", origUserEnv)
+	os.Setenv("USER", "tester")
+
+	var r1, r2 atomic.Int32
+
+	statsServer := statsdtest.NewServer(t)
+	defer statsServer.Close()
+
+	s1 := newServer(t)
+	defer s1.shutdown()
+	s1.register(fooMethod, methods.errorIf(func() bool {
+		r1.Inc()
+		return false
+	}))
+
+	s2 := newServer(t)
+	defer s2.shutdown()
+	s2.register(fooMethod, methods.errorIf(func() bool {
+		r2.Inc()
+		return false
+	}))
+
+	m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
+
+	tOpts := s1.transportOpts()
+	tOpts.Peers = append(tOpts.Peers, s2.transportOpts().Peers...)
+
+	const totalCalls = 21 // odd so one server has to get more
+
+	_, _, out := getOutput(t)
+	runBenchmark(out, _testLogger, Options{
+		BOpts: BenchmarkOptions{
+			MaxRequests:    totalCalls,
+			Connections:    50,
+			Concurrency:    2,
+			StatsdHostPort: statsServer.Addr().String(),
+			PerPeerStats:   true,
+		},
+		TOpts: tOpts,
+		ROpts: RequestOptions{
+			Procedure: fooMethod,
+		},
+	}, m)
+
+	// Ensure one backend gets more calls than the other
+	want := map[string]int{
+		"yab.tester.foo.Simple--foo.latency": totalCalls,
+		"yab.tester.foo.Simple--foo.success": totalCalls,
+
+		// peer 0
+		"yab.tester.foo.Simple--foo.peer.0.latency": int(r1.Load()),
+		"yab.tester.foo.Simple--foo.peer.0.success": int(r1.Load()),
+
+		// peer 1
+		"yab.tester.foo.Simple--foo.peer.1.latency": int(r2.Load()),
+		"yab.tester.foo.Simple--foo.peer.1.success": int(r2.Load()),
+	}
+
+	// Wait for all metrics to be processed
+	testutils.WaitFor(time.Second, func() bool {
+		return statsServer.Aggregated()["yab.tester.foo.Simple--foo.latency"] >= totalCalls
+	})
+	assert.Equal(t, want, statsServer.Aggregated(), "unexpected stats")
 }

@@ -163,7 +163,7 @@ yab -t ~/keyvalue.thrift -p localhost:12345 keyvalue KeyValue::get -r '{"key": "
 ```
 
 [releases]: https://github.com/yarpc/yab/releases
-[ci-img]: https://travis-ci.org/yarpc/yab.svg?branch=master
-[ci]: https://travis-ci.org/yarpc/yab
+[ci-img]: https://travis-ci.com/yarpc/yab.svg?branch=master
+[ci]: https://travis-ci.com/yarpc/yab
 [cov-img]: https://codecov.io/gh/yarpc/yab/branch/master/graph/badge.svg
 [cov]: https://codecov.io/gh/yarpc/yab

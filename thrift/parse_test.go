@@ -481,6 +481,35 @@ func TestParseRequest(t *testing.T) {
 			},
 			errMsg: `unrecognized enum "Op(NaN)"`,
 		},
+		{
+			// nil field means ignore the field or map value.
+			request: map[string]interface{}{
+				"s": map[string]interface{}{
+					"f1": "f1v",
+					"ns": nil,
+				},
+				"s_i_map": map[string]interface{}{
+					"a": 1,
+					"b": nil,
+					"c": 3,
+				},
+			},
+			want: []wire.Field{
+				{ID: 5, Value: wire.NewValueStruct(wire.Struct{
+					Fields: []wire.Field{
+						{ID: 1, Value: wire.NewValueString("f1v")},
+					},
+				})},
+				{ID: 15, Value: wire.NewValueMap(wire.MapItemListFromSlice(
+					wire.TBinary,
+					wire.TI32,
+					[]wire.MapItem{
+						{wire.NewValueString("a"), wire.NewValueI32(1)},
+						{wire.NewValueString("c"), wire.NewValueI32(3)},
+					},
+				))},
+			},
+		},
 	}
 
 	for _, tt := range tests {

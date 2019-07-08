@@ -137,6 +137,11 @@ func mapToValue(keySpec, valueSpec compile.TypeSpec, value interface{}) (wire.Ma
 
 	items := make([]wire.MapItem, 0, len(valueMap))
 	for k, v := range valueMap {
+		if v == nil {
+			// If no value is provided, then ignore this key.
+			continue
+		}
+
 		keyValue := convertMapKey(keySpec, k)
 		kw, err := toWireValue(keySpec, keyValue)
 		if err != nil {

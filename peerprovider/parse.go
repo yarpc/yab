@@ -4,8 +4,10 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"net"
+	"net/url"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -50,12 +52,34 @@ func parseNewlineDelimitedPeers(r io.Reader) ([]string, error) {
 			continue
 		}
 
-		if _, _, err := net.SplitHostPort(line); err != nil {
-			return nil, err
+		// If the line is a host:port or a URL, then it's valid.
+		_, _, hostPortErr := net.SplitHostPort(line)
+		if hostPortErr == nil {
+			hosts = append(hosts, line)
+			continue
 		}
 
-		hosts = append(hosts, line)
+		urlParseErr := isValidURL(line)
+		if urlParseErr == nil {
+			hosts = append(hosts, line)
+			continue
+		}
+
+		return nil, fmt.Errorf("failed to parse line %q as host:port (%v) or URL (%v)", line, hostPortErr, urlParseErr)
 	}
 
 	return hosts, nil
+}
+
+func isValidURL(line string) error {
+	u, err := url.Parse(line)
+	if err != nil {
+		return err
+	}
+
+	if u.Host == "" {
+		return fmt.Errorf("url cannot have empty host: %v", line)
+	}
+
+	return nil
 }
