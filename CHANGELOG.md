@@ -1,7 +1,7 @@
 Changelog
 =========
 
-# 0.15.0 (2019-07-04)
+# 0.15.0 (2019-07-07)
 * Allow `null` in request templates to imply skipping the field.
 * Allow specifying HTTP method for HTTP requests using `--http-method`.
 * Add support for URLs in peer lists.
