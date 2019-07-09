@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -euo pipefail -o errtrace -o functrace
 IFS=$'\n\t'
 
 die() {
@@ -24,6 +24,15 @@ if [ -z "$VERSION" ]; then
   die "USAGE: $0 VERSION"
 fi
 
+# Make it easier to debug failures
+failure() {
+  local lineno=$1
+  local msg=$2
+  echo "Failed at $lineno: $msg"
+}
+trap 'failure ${LINENO} "$BASH_COMMAND"' ERR
+
+
 ./scripts/cross_build.sh "$VERSION"
 
 CHANGELOG=$(go run scripts/extract_changelog.go "$VERSION")
@@ -34,8 +43,7 @@ echo "CHANGELOG:"
 echo "$CHANGELOG"
 echo ""
 
-UPLOADS_URL=$( \
-  echo '{}' | \
+RELEASE_ARGS=$(echo '{}' | \
     jq -Mr \
       --arg version "$VERSION" \
       --arg changelog "$CHANGELOG" \
@@ -43,9 +51,14 @@ UPLOADS_URL=$( \
         tag_name: $version,
         name: $version,
         body: $changelog,
-      }' | \
-    curl --user "$GITHUB_USER:$GITHUB_TOKEN" -X POST --data @- \
-      "https://api.github.com/repos/$GITHUB_REPO/releases" | \
+      }')
+
+RELEASE_URL="https://api.github.com/repos/$GITHUB_REPO/releases"
+RELEASE_OUT=$(echo "$RELEASE_ARGS" | curl --user "$GITHUB_USER:$GITHUB_TOKEN" -X POST --data @- "$RELEASE_URL")
+
+echo "Release to $RELEASE_URL got:\n$RELEASE_OUT"
+
+UPLOADS_URL=$(echo "$RELEASE_OUT" | \
     jq -e -r '.upload_url' | \
 
     # The UPLOADS_URL has a strange {?name,label} as a suffix that we need to remove.
