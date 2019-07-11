@@ -56,7 +56,8 @@ RELEASE_ARGS=$(echo '{}' | \
 RELEASE_URL="https://api.github.com/repos/$GITHUB_REPO/releases"
 RELEASE_OUT=$(echo "$RELEASE_ARGS" | curl --user "$GITHUB_USER:$GITHUB_TOKEN" -X POST --data @- "$RELEASE_URL")
 
-echo "Release to $RELEASE_URL got:\n$RELEASE_OUT"
+echo "Release to $RELEASE_URL got:"
+echo "  $RELEASE_OUT"
 
 UPLOADS_URL=$(echo "$RELEASE_OUT" | \
     jq -e -r '.upload_url' | \
