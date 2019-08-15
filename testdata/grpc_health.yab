@@ -1,0 +1,4 @@
+service: yab-grpc-test
+peer: PEERHOSTPORT
+method: "grpc.health.v1.Health/Check"
+request: {"service": "yab-grpc-test"}
