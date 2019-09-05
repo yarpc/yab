@@ -76,7 +76,7 @@ func TestProtobufRequest(t *testing.T) {
 		{
 			desc:   "invalid json",
 			bsIn:   []byte("{"),
-			errMsg: `could not parse given request body as message of type "Foo"`,
+			errMsg: `did not find expected node content`,
 		},
 		{
 			desc:   "invalid field in request input",
@@ -96,6 +96,11 @@ func TestProtobufRequest(t *testing.T) {
 		{
 			desc:  "pass with field",
 			bsIn:  []byte(`{"test":10}`),
+			bsOut: []byte{0x8, 0xA},
+		},
+		{
+			desc:  "pass with yaml",
+			bsIn:  []byte(`test: 10`),
 			bsOut: []byte{0x8, 0xA},
 		},
 	}
