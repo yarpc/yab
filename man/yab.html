@@ -1,5 +1,5 @@
 <!-- Creator     : groff version 1.19.2 -->
-<!-- CreationDate: Wed Sep  6 07:19:56 2017 -->
+<!-- CreationDate: Thu Sep  5 16:51:11 2019 -->
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
 "http://www.w3.org/TR/html4/loose.dtd">
 <html>
@@ -156,6 +156,19 @@ loaded from a file using -f or --file:</p>
 localhost:9787 -t kv.thrift kv KeyValue::Get --file
 req.yaml</p>
 
+<p style="margin-left:11%; margin-top: 1em">To make a proto
+requrest, specify a compiled FileDescriptorSet and pass the
+fully qualified service an method name as procedure.</p>
+
+<p style="margin-left:22%; margin-top: 1em">$ yab -p
+localhost:5435 --file-descriptor-set-bin proto.bin \ <br>
+service package.Service/Method -r &rsquo;{&quot;key&quot;:
+&quot;value&quot;}&rsquo;</p>
+
+<p style="margin-left:11%; margin-top: 1em">A
+FileDescriptorSet can be generated using the
+--descriptor_set_out= flag in protoc.</p>
+
 <p style="margin-left:11%; margin-top: 1em">Request options
 can also be specified in a YAML file, e.g., get.yab:</p>
 
@@ -279,8 +292,10 @@ localhost:9787 -t kv.thrift kv KeyValue::Set \ <br>
 <b>&minus;&minus;encoding</b></p>
 
 <p style="margin-left:22%;">The encoding of the data,
-options are: Thrift, JSON, raw. Defaults to Thrift if the
-method contains &rsquo;::&rsquo; or a Thrift file is
+options are: Thrift, proto, JSON, raw. Defaults to Thrift if
+the method contains &rsquo;::&rsquo; or a Thrift file is
+specified. Defaults to proto if the method contains
+&rsquo;/&rsquo; or a proto filedescriptorset is
 specified</p>
 
 <p style="margin-left:11%;"><b>&minus;t</b>,
@@ -288,11 +303,17 @@ specified</p>
 
 <p style="margin-left:22%;">Path of the .thrift file</p>
 
+<p style="margin-left:11%;"><b>&minus;F</b>,
+<b>&minus;&minus;file-descriptor-set-bin</b></p>
+
+<p style="margin-left:22%;">A binary file containing a
+compiled protobuf FileDescriptorSet.</p>
+
 
 <p style="margin-left:11%;"><b>&minus;&minus;procedure</b></p>
 
-<p style="margin-left:22%;">The full Thrift method name
-(Svc::Method) to invoke</p>
+<p style="margin-left:22%;">The full method name to invoke
+(Thrift: Svc::Method, Proto: package.Service/Method).</p>
 
 <p style="margin-left:11%;"><b>&minus;m</b>,
 <b>&minus;&minus;method</b></p>
@@ -364,7 +385,7 @@ arguments, specified as -A foo:bar -A user:me</p>
 <p style="margin-left:11%;"><b>&minus;&minus;disable-thrift-envelope</b></p>
 
 <p style="margin-left:22%;">Disables Thrift envelopes
-(disabled by default for TChannel)</p>
+(disabled by default for TChannel and gRPC)</p>
 
 
 <p style="margin-left:11%;"><b>&minus;&minus;multiplexed-thrift</b></p>
@@ -490,6 +511,11 @@ to send Uber style traces and baggage headers</p>
 <p style="margin-left:22%;">Transport options for TChannel,
 protocol headers for HTTP</p>
 
+
+<p style="margin-left:11%;"><b>&minus;&minus;http-method</b></p>
+
+<p style="margin-left:22%;">The HTTP method to use</p>
+
 <p style="margin-left:11%; margin-top: 1em"><b>Benchmark
 Options</b> <br>
 Configures benchmarking, which is disabled by default.</p>
@@ -586,6 +612,12 @@ per second. The default (0) is no limit.</p>
 
 <p style="margin-left:22%;">Optional host:port of a StatsD
 server to report metrics</p>
+
+
+<p style="margin-left:11%;"><b>&minus;&minus;per-peer-stats</b></p>
+
+<p style="margin-left:22%;">Whether to emit stats by peer
+rather than aggregated</p>
 
 <p style="margin-left:11%; margin-top: 1em"><b>Help Options
 <br>

@@ -39,11 +39,16 @@ Application Options:
 
 Request Options:
   -e, --encoding=                The encoding of the data, options are: Thrift,
-                                 JSON, raw. Defaults to Thrift if the method
-                                 contains '::' or a Thrift file is specified
+                                 proto, JSON, raw. Defaults to Thrift if the
+                                 method contains '::' or a Thrift file is
+                                 specified. Defaults to proto if the method
+                                 contains '/' or a proto filedescriptorset is
+                                 specified
   -t, --thrift=                  Path of the .thrift file
-      --procedure=               The full Thrift method name (Svc::Method) to
-                                 invoke
+  -F, --file-descriptor-set-bin= A binary file containing a compiled protobuf
+                                 FileDescriptorSet.
+      --procedure=               The full method name to invoke (Thrift:
+                                 Svc::Method, Proto: package.Service/Method).
   -m, --method=                  Alias for procedure
   -r, --request=                 The request body, in JSON or YAML format
   -f, --file=                    Path of a file containing the request body in
@@ -64,7 +69,7 @@ Request Options:
   -A, --arg=                     A list of key-value template arguments,
                                  specified as -A foo:bar -A user:me
       --disable-thrift-envelope  Disables Thrift envelopes (disabled by default
-                                 for TChannel)
+                                 for TChannel and gRPC)
       --multiplexed-thrift       Enables the Thrift TMultiplexedProtocol used
                                  by services that host multiple Thrift services
                                  on a single endpoint.
@@ -88,6 +93,7 @@ Transport Options:
                                  style traces and baggage headers
   -T, --topt=                    Transport options for TChannel, protocol
                                  headers for HTTP
+      --http-method=             The HTTP method to use (default: POST)
 
 Benchmark Options:
   -n, --max-requests=            The maximum number of requests to make. 0
@@ -105,6 +111,8 @@ Benchmark Options:
                                  The default (0) is no limit. (default: 0)
       --statsd=                  Optional host:port of a StatsD server to
                                  report metrics
+      --per-peer-stats           Whether to emit stats by peer rather than
+                                 aggregated
 
 Help Options:
   -h, --help                     Show this help message
