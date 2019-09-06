@@ -92,7 +92,7 @@ func NewSerializer(opts Options) (encoding.Serializer, error) {
 			return nil, errHealthAndProcedure
 		}
 
-		return opts.ROpts.Encoding.GetHealth()
+		return opts.ROpts.Encoding.GetHealth(opts.TOpts.ServiceName)
 	}
 
 	// Thrift returns available methods if one is not specified, while the other

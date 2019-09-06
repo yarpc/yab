@@ -349,6 +349,46 @@ func TestGRPCHealthReflection(t *testing.T) {
 	main()
 }
 
+func TestHealthIntegrationProtobuf(t *testing.T) {
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+
+	// Create a server with the Meta::health endpoint.
+	server := newGRPCServer(t)
+	defer server.Stop()
+
+	os.Args = []string{
+		"yab",
+		"-p",
+		"grpc://" + server.HostPort(),
+		_grpcService,
+		"--health",
+	}
+
+	main()
+}
+
+func TestHealthIntegrationProtobufExplicitProtocol(t *testing.T) {
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+
+	// Create a server with the Meta::health endpoint.
+	server := newGRPCServer(t)
+	defer server.Stop()
+
+	os.Args = []string{
+		"yab",
+		"-e",
+		"proto",
+		"-p",
+		server.HostPort(),
+		_grpcService,
+		"--health",
+	}
+
+	main()
+}
+
 func TestBenchmarkIntegration(t *testing.T) {
 	origArgs := os.Args
 	defer func() { os.Args = origArgs }()

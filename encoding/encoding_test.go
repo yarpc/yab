@@ -85,10 +85,11 @@ func TestEncodingGetHealth(t *testing.T) {
 		{Thrift, true},
 		{Raw, false},
 		{JSON, false},
+		{Protobuf, true},
 	}
 
 	for _, tt := range tests {
-		health, err := tt.encoding.GetHealth()
+		health, err := tt.encoding.GetHealth("")
 		if tt.success {
 			assert.NoError(t, err, "%v.GetHealth should succeed", tt.encoding)
 			assert.NotNil(t, health, "%v.GetHealth should succeed")
@@ -188,4 +189,17 @@ func TestJSONEncodingResponse(t *testing.T) {
 			assert.Nil(t, got, "Failed response should not return result")
 		}
 	}
+}
+
+func TestUnspecifiedHealthSerializer(t *testing.T) {
+	s := unspecifiedHealthSerializer{}
+	assert.Equal(t, UnspecifiedEncoding, s.Encoding())
+	bytes, err := s.Request(nil)
+	assert.Nil(t, bytes)
+	assert.Error(t, err, errUnspecifiedHealthSerializer.Error())
+	obj, err := s.Response(nil)
+	assert.Nil(t, obj)
+	assert.Error(t, err, errUnspecifiedHealthSerializer.Error())
+	err = s.CheckSuccess(nil)
+	assert.Error(t, err, errUnspecifiedHealthSerializer.Error())
 }
