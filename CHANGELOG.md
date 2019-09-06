@@ -1,8 +1,11 @@
 Changelog
 =========
 
-# Unreleased
-* Support grpc/proto for `--health`.
+# 0.16.0 (2019-09-09)
+* Add support for grpc/proto when using `--health`.
+* Fix bug that prevented yab templates to work with proto. Simple YAML yab
+  templates now work with proto, though not all template substitutions are
+  supported yet.
 
 # 0.15.0 (2019-07-07)
 * Allow `null` in request templates to imply skipping the field.
