@@ -103,6 +103,11 @@ func TestProtobufRequest(t *testing.T) {
 			bsIn:  []byte(`test: 10`),
 			bsOut: []byte{0x8, 0xA},
 		},
+		{
+			desc:   "fail with unsupported yaml",
+			bsIn:   []byte(`yaml: {1: x, 2: y}`),
+			errMsg: "json: unsupported type",
+		},
 	}
 
 	source, err := protobuf.NewDescriptorProviderFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
