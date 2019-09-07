@@ -42,7 +42,6 @@ var (
 	errGRPCNoTracer    = errors.New("must specify grpc tracer")
 	errGRPCNoCaller    = errors.New("must specify grpc caller")
 	errGRPCNoService   = errors.New("must specify grpc service")
-	errGRPCNoEncoding  = errors.New("must specify grpc encoding")
 	errGRPCNoProcedure = errors.New("must specify grpc procedure")
 )
 
@@ -80,9 +79,6 @@ func newGRPC(options GRPCOptions) (*grpcTransport, error) {
 	}
 	if options.Caller == "" {
 		return nil, errGRPCNoCaller
-	}
-	if options.Encoding == "" {
-		return nil, errGRPCNoEncoding
 	}
 
 	transport := grpc.NewTransport(grpc.Tracer(options.Tracer))

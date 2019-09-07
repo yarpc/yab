@@ -1,6 +1,9 @@
 Changelog
 =========
 
+# Unreleased
+* Support grpc/proto for `--health`.
+
 # 0.15.0 (2019-07-07)
 * Allow `null` in request templates to imply skipping the field.
 * Allow specifying HTTP method for HTTP requests using `--http-method`.

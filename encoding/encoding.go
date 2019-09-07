@@ -60,9 +60,8 @@ const (
 )
 
 var (
-	errNilEncoding = errors.New("cannot Unmarshal into nil Encoding")
-	// ErrHealthThriftOnly is returned if the user specifies an unsupported encoding with --health.
-	ErrHealthThriftOnly = errors.New("--health can only be used with Thrift")
+	errNilEncoding                 = errors.New("cannot Unmarshal into nil Encoding")
+	errUnspecifiedHealthSerializer = errors.New("unspecifiedHealthSerializer should not be called directly")
 )
 
 func (e Encoding) String() string {
@@ -90,13 +89,17 @@ func (e *Encoding) UnmarshalFlag(s string) error {
 }
 
 // GetHealth returns a serializer for the Health endpoint.
-func (e Encoding) GetHealth() (Serializer, error) {
+func (e Encoding) GetHealth(serviceName string) (Serializer, error) {
 	switch e {
-	case UnspecifiedEncoding, Thrift:
+	case UnspecifiedEncoding:
+		return unspecifiedHealthSerializer{serviceName: serviceName}, nil
+	case Thrift:
 		method, spec := getHealthSpec()
 		return thriftSerializer{method, spec, defaultOpts}, nil
+	case Protobuf:
+		return protoHealthSerializer{serviceName: serviceName}, nil
 	default:
-		return nil, ErrHealthThriftOnly
+		return nil, fmt.Errorf("--health not supported with encoding %q", e.String())
 	}
 }
 
@@ -168,4 +171,34 @@ func (e rawSerializer) Response(res *transport.Response) (interface{}, error) {
 
 func (e rawSerializer) CheckSuccess(res *transport.Response) error {
 	return nil
+}
+
+// unspecifiedHealthSerializer is a lazy serializer that is used int the case of
+// unspecified encoding to determine the encoding type after transport
+// type has been determined.
+type unspecifiedHealthSerializer struct {
+	serviceName string
+}
+
+func (unspecifiedHealthSerializer) Encoding() Encoding { return UnspecifiedEncoding }
+
+func (unspecifiedHealthSerializer) Request(input []byte) (*transport.Request, error) {
+	return nil, errUnspecifiedHealthSerializer
+}
+
+func (unspecifiedHealthSerializer) Response(res *transport.Response) (interface{}, error) {
+	return nil, errUnspecifiedHealthSerializer
+}
+
+func (unspecifiedHealthSerializer) CheckSuccess(res *transport.Response) error {
+	return errUnspecifiedHealthSerializer
+}
+
+func (unspecifiedHealthSerializer) ThriftHealthSerializer() Serializer {
+	method, spec := getHealthSpec()
+	return &thriftSerializer{method, spec, defaultOpts}
+}
+
+func (u unspecifiedHealthSerializer) ProtoHealthSerializer() Serializer {
+	return &protoHealthSerializer{serviceName: u.serviceName}
 }
