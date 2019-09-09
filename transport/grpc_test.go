@@ -81,16 +81,6 @@ func TestGRPCConstructor(t *testing.T) {
 			},
 			wantErr: errGRPCNoCaller,
 		},
-		{
-			options: GRPCOptions{
-				Addresses: []string{
-					"1:1:1:1:2345",
-				},
-				Tracer: opentracing.NoopTracer{},
-				Caller: "example-caller",
-			},
-			wantErr: errGRPCNoEncoding,
-		},
 	}
 	for _, tt := range tests {
 		_, err := NewGRPC(tt.options)

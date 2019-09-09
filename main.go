@@ -396,9 +396,23 @@ func getTracer(opts Options, out output) (opentracing.Tracer, io.Closer) {
 	return opentracing.NoopTracer{}, nil
 }
 
+type healthSerializer interface {
+	ThriftHealthSerializer() encoding.Serializer
+	ProtoHealthSerializer() encoding.Serializer
+}
+
 // withTransportSerializer may modify the serializer for the transport used.
 // E.g. Thrift payloads are not enveloped when used with TChannel or gRPC.
 func withTransportSerializer(p transport.Protocol, s encoding.Serializer, rOpts RequestOptions) encoding.Serializer {
+	if hs, ok := s.(healthSerializer); ok {
+		switch p {
+		case transport.GRPC:
+			s = hs.ProtoHealthSerializer()
+		default:
+			s = hs.ThriftHealthSerializer()
+		}
+	}
+
 	switch {
 	case (p == transport.TChannel || p == transport.GRPC) && s.Encoding() == encoding.Thrift,
 		rOpts.ThriftDisableEnvelopes:

@@ -204,17 +204,22 @@ func TestNewSerializer(t *testing.T) {
 		{
 			encoding: encoding.JSON,
 			opts:     RequestOptions{Health: true},
-			wantErr:  encoding.ErrHealthThriftOnly.Error(),
+			wantErr:  `--health not supported with encoding "json"`,
 		},
 		{
 			encoding: encoding.Raw,
 			opts:     RequestOptions{Health: true},
-			wantErr:  encoding.ErrHealthThriftOnly.Error(),
+			wantErr:  `--health not supported with encoding "raw"`,
 		},
 		{
 			encoding: encoding.Thrift,
 			opts:     RequestOptions{Health: true},
 			want:     encoding.Thrift,
+		},
+		{
+			encoding: encoding.Protobuf,
+			opts:     RequestOptions{Health: true},
+			want:     encoding.Protobuf,
 		},
 		{
 			encoding: encoding.Thrift,
@@ -232,7 +237,7 @@ func TestNewSerializer(t *testing.T) {
 		{
 			encoding: encoding.UnspecifiedEncoding,
 			opts:     RequestOptions{Health: true},
-			want:     encoding.Thrift,
+			want:     encoding.UnspecifiedEncoding,
 		},
 		{
 			encoding: encoding.UnspecifiedEncoding,

@@ -299,6 +299,96 @@ func TestHealthIntegration(t *testing.T) {
 	main()
 }
 
+func TestGRPCHealthReflectionWithTemplate(t *testing.T) {
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+
+	// Create a server with the Meta::health endpoint.
+	server := newGRPCServer(t)
+	defer server.Stop()
+
+	templateContents, err := ioutil.ReadFile("./testdata/grpc_health.yab")
+	require.NoError(t, err, "failed to read template file")
+
+	templateContents = bytes.Replace(templateContents, []byte("PEERHOSTPORT"), []byte(server.HostPort()), -1)
+
+	templateFile, err := ioutil.TempFile("" /* dir */, "grpc_*_health.yab")
+	require.NoError(t, err, "Failed to create a temp file")
+
+	_, err = templateFile.Write(templateContents)
+	require.NoError(t, err, "failed to write replaced template")
+	require.NoError(t, templateFile.Close(), "failed to close template file")
+
+	os.Args = []string{
+		"yab",
+		"-y",
+		templateFile.Name(),
+	}
+
+	main()
+}
+
+func TestGRPCHealthReflection(t *testing.T) {
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+
+	// Create a server with the Meta::health endpoint.
+	server := newGRPCServer(t)
+	defer server.Stop()
+
+	os.Args = []string{
+		"yab",
+		"-p",
+		server.HostPort(),
+		_grpcService,
+		"grpc.health.v1.Health/Check",
+		"-r",
+		`{"service": "` + _grpcService + `"}`,
+	}
+
+	main()
+}
+
+func TestHealthIntegrationProtobuf(t *testing.T) {
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+
+	// Create a server with the Meta::health endpoint.
+	server := newGRPCServer(t)
+	defer server.Stop()
+
+	os.Args = []string{
+		"yab",
+		"-p",
+		"grpc://" + server.HostPort(),
+		_grpcService,
+		"--health",
+	}
+
+	main()
+}
+
+func TestHealthIntegrationProtobufExplicitProtocol(t *testing.T) {
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+
+	// Create a server with the Meta::health endpoint.
+	server := newGRPCServer(t)
+	defer server.Stop()
+
+	os.Args = []string{
+		"yab",
+		"-e",
+		"proto",
+		"-p",
+		server.HostPort(),
+		_grpcService,
+		"--health",
+	}
+
+	main()
+}
+
 func TestBenchmarkIntegration(t *testing.T) {
 	origArgs := os.Args
 	defer func() { os.Args = origArgs }()

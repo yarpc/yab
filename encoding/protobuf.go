@@ -7,6 +7,7 @@ import (
 
 	"github.com/yarpc/yab/protobuf"
 	"github.com/yarpc/yab/transport"
+	"github.com/yarpc/yab/unmarshal"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/jhump/protoreflect/desc"
@@ -54,8 +55,18 @@ func (p protoSerializer) Encoding() Encoding {
 }
 
 func (p protoSerializer) Request(body []byte) (*transport.Request, error) {
+	m, err := unmarshal.YAML(body)
+	if err != nil {
+		return nil, err
+	}
+
+	json, err := json.Marshal(m)
+	if err != nil {
+		return nil, err
+	}
+
 	req := dynamic.NewMessage(p.method.GetInputType())
-	if err := req.UnmarshalJSON(body); err != nil {
+	if err := req.UnmarshalJSON(json); err != nil {
 		return nil, fmt.Errorf("could not parse given request body as message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
 	}
 	bytes, err := proto.Marshal(req)
