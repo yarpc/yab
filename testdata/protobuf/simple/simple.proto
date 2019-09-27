@@ -1,7 +1,12 @@
 syntax = "proto3";
 
+message Nested {
+    int32 value = 1;
+}
+
 message Foo {
     int32 test = 1;
+    Nested nested = 2;
 }
 
 service Bar{

@@ -104,9 +104,14 @@ func TestProtobufRequest(t *testing.T) {
 			bsOut: []byte{0x8, 0xA},
 		},
 		{
-			desc:   "fail with unsupported yaml",
-			bsIn:   []byte(`yaml: {1: x, 2: y}`),
-			errMsg: "json: unsupported type",
+			desc:  "nested yaml",
+			bsIn:  []byte(`{test: 1, nested: {value: 1}}`),
+			bsOut: []byte{0x8, 0x1, 0x12, 0x2, 0x8, 0x1},
+		},
+		{
+			desc:  "nested json",
+			bsIn:  []byte(`{"test": 1, "nested": {"value": 1}}`),
+			bsOut: []byte{0x8, 0x1, 0x12, 0x2, 0x8, 0x1},
 		},
 	}
 
