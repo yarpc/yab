@@ -53,31 +53,6 @@ func TestReflectionWithProtocolInPeer(t *testing.T) {
 	assert.Contains(t, err.Error(), "peer contains scheme")
 }
 
-func TestReflectionMultiplePeers(t *testing.T) {
-	listenRefuser, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err, "failed to listen on a port")
-	defer listenRefuser.Close()
-
-	noListen, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err, "failed to listen on a port")
-	noListen.Close()
-
-	got, err := NewDescriptorProviderReflection(ReflectionArgs{
-		Timeout: time.Second,
-		Peers:   []string{noListen.Addr().String(), listenRefuser.Addr().String()},
-	})
-
-	require.NoError(t, err)
-	require.NotNil(t, got)
-
-	go func() {
-		conn, _ := listenRefuser.Accept()
-		conn.Close()
-	}()
-	_, err = got.FindSymbol("some-symbol")
-	require.Error(t, err)
-}
-
 func TestReflectionClosedPort(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err, "failed to listen on a port")

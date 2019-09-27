@@ -24,6 +24,8 @@ import:
   version: a84568470d8add1307a0f1d8a3afcc4dfe7c4dd0
 - package: google.golang.org/grpc
   version: ^1.14
+- package: github.com/prometheus/procfs
+  version: '>=0.0.1'
 - package: golang.org/x/sys
 testImport:
 - package: github.com/apache/thrift

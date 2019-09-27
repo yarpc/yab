@@ -40,7 +40,7 @@ func TestProtobufHealthRequest(t *testing.T) {
 		{
 			desc:        "fail",
 			serviceName: string([]byte{0xc3, 0x28}),
-			errMsg:      "proto: invalid UTF-8 string",
+			errMsg:      "invalid UTF-8",
 		},
 	}
 
