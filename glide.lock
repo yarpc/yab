@@ -1,5 +1,5 @@
-hash: f1a5f79e8de2c3e4cd01e48162825138799f83c93a456ea094b3423c89e20d7f
-updated: 2019-09-27T14:57:18.093679-07:00
+hash: 60f9b79605ed609f618305e67a3341e31c61df272871525e566f0c6dfaaeb062
+updated: 2019-09-27T16:38:16.846409-07:00
 imports:
 - name: github.com/anmitsu/go-shlex
   version: 648efa622239a2f6ff949fed78ee37b48d499ba4
@@ -26,6 +26,8 @@ imports:
   - spew
 - name: github.com/fatih/structtag
   version: 76ae1d6d2117609598c7d4e8f3e938145f204e8f
+- name: github.com/ghodss/yaml
+  version: 0ca9ea5df5451ffdf184b4428c902747c2c11cd7
 - name: github.com/gogo/googleapis
   version: b8d18e97a9a193c846d32143391f6033a9d69849
   subpackages:

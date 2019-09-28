@@ -27,6 +27,8 @@ import:
 - package: github.com/prometheus/procfs
   version: '>=0.0.1'
 - package: golang.org/x/sys
+- package: github.com/ghodss/yaml
+  version: ^1.0.0
 testImport:
 - package: github.com/apache/thrift
   version: '>=0.9.3, <0.11.0'
