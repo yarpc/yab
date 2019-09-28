@@ -35,7 +35,7 @@ func NewDescriptorProviderReflection(args ReflectionArgs) (DescriptorProvider, e
 		}
 		peers[i] = resolver.Address{Addr: p, Type: resolver.Backend}
 	}
-	r.InitialAddrs(peers)
+	r.InitialState(resolver.State{Addresses: peers})
 
 	conn, err := grpc.DialContext(context.Background(),
 		r.Scheme()+":///", // minimal target to dial registered host:port pairs
