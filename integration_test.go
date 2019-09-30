@@ -438,6 +438,7 @@ func TestGRPCReflectionSource(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			gotOut, gotErr := runTestWithOpts(tt.opts)
+			fmt.Println("got", gotErr)
 			assert.Contains(t, gotErr, tt.wantErr)
 			assert.Contains(t, gotOut, tt.wantRes)
 		})

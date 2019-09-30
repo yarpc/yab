@@ -904,6 +904,101 @@ end`,
 	}
 }
 
+func TestResolveProtocolEncoding(t *testing.T) {
+	tests := []struct {
+		msg            string
+		protocolScheme string
+		encoding       encoding.Encoding
+		health         bool
+		want           resolvedProtocolEncoding
+	}{
+		{
+			msg:            "tchannel with thrift",
+			protocolScheme: "tchannel",
+			encoding:       encoding.Thrift,
+			want:           resolvedProtocolEncoding{protocol: transport.TChannel, enc: encoding.Thrift},
+		},
+		{
+			msg:            "grpc with thrift",
+			protocolScheme: "grpc",
+			encoding:       encoding.Thrift,
+			want:           resolvedProtocolEncoding{protocol: transport.GRPC, enc: encoding.Thrift},
+		},
+		{
+			msg:            "http with thrift",
+			protocolScheme: "http",
+			encoding:       encoding.Thrift,
+			want:           resolvedProtocolEncoding{protocol: transport.HTTP, enc: encoding.Thrift},
+		},
+		{
+			msg:            "tchannel without encoding",
+			protocolScheme: "tchannel",
+			want:           resolvedProtocolEncoding{protocol: transport.TChannel, enc: encoding.Thrift},
+		},
+		{
+			msg:            "grpc without encoding",
+			protocolScheme: "grpc",
+			want:           resolvedProtocolEncoding{protocol: transport.GRPC, enc: encoding.Protobuf},
+		},
+		{
+			msg:            "http without encoding",
+			protocolScheme: "http",
+			want:           resolvedProtocolEncoding{protocol: transport.HTTP, enc: encoding.JSON},
+		},
+		{
+			msg:            "https without encoding",
+			protocolScheme: "https",
+			want:           resolvedProtocolEncoding{protocol: transport.HTTP, enc: encoding.JSON},
+		},
+		{
+			msg:      "unknown transport with thrift",
+			encoding: encoding.Thrift,
+			want:     resolvedProtocolEncoding{protocol: transport.TChannel, enc: encoding.Thrift},
+		},
+		{
+			msg:      "unknown transport with protobuf",
+			encoding: encoding.Protobuf,
+			want:     resolvedProtocolEncoding{protocol: transport.GRPC, enc: encoding.Protobuf},
+		},
+		{
+			msg:      "unknown transport with JSON",
+			encoding: encoding.JSON,
+			want:     resolvedProtocolEncoding{protocol: transport.HTTP, enc: encoding.JSON},
+		},
+		{
+			msg:      "unknown transport with raw",
+			encoding: encoding.Raw,
+			want:     resolvedProtocolEncoding{protocol: transport.HTTP, enc: encoding.Raw},
+		},
+		{
+			msg:    "unknown transport with unknown encoding and --health",
+			health: true,
+			want:   _resolvedTChannelThrift, // tcurl compatibility
+		},
+		{
+			msg:      "unknown transport with invalid encoding",
+			encoding: encoding.Encoding("foo"),
+			want:     resolvedProtocolEncoding{enc: encoding.Encoding("foo")},
+		},
+		{
+			msg:  "unknown transport with unknown encoding",
+			want: resolvedProtocolEncoding{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.msg, func(t *testing.T) {
+			// Note: We test detectEncoding separately, so we just set the encoding which
+			// determines the result of detectEncoding.
+			got := resolveProtocolEncoding(tt.protocolScheme, RequestOptions{
+				Encoding: tt.encoding,
+				Health:   tt.health,
+			})
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestWithTransportSerializer(t *testing.T) {
 	validRequestOpts := RequestOptions{
 		ThriftFile: validThrift,
@@ -913,11 +1008,13 @@ func TestWithTransportSerializer(t *testing.T) {
 	noEnvelopeOpts.ThriftDisableEnvelopes = true
 
 	tests := []struct {
+		msg      string
 		protocol transport.Protocol
 		rOpts    RequestOptions
 		want     []byte
 	}{
 		{
+			msg:      "HTTP enveloped by default",
 			protocol: transport.HTTP,
 			rOpts:    validRequestOpts,
 			want: encodeEnveloped(wire.Envelope{
@@ -927,26 +1024,31 @@ func TestWithTransportSerializer(t *testing.T) {
 			}),
 		},
 		{
+			msg:      "HTTP explicitly disables envelopes",
 			protocol: transport.HTTP,
 			rOpts:    noEnvelopeOpts,
 			want:     []byte{0},
 		},
 		{
+			msg:      "TChannel has no envelope by default",
 			protocol: transport.TChannel,
 			rOpts:    validRequestOpts,
 			want:     []byte{0},
 		},
 		{
+			msg:      "TChannel has no envelope when disabled",
 			protocol: transport.TChannel,
 			rOpts:    noEnvelopeOpts,
 			want:     []byte{0},
 		},
 		{
+			msg:      "gRPC has no envelope by default",
 			protocol: transport.GRPC,
 			rOpts:    validRequestOpts,
 			want:     []byte{0},
 		},
 		{
+			msg:      "gRPC has no envelope when disabled",
 			protocol: transport.GRPC,
 			rOpts:    noEnvelopeOpts,
 			want:     []byte{0},
@@ -954,16 +1056,21 @@ func TestWithTransportSerializer(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		serializer, err := NewSerializer(Options{ROpts: tt.rOpts})
-		require.NoError(t, err, "Failed to create serializer for %+v", tt.rOpts)
+		t.Run(tt.msg, func(t *testing.T) {
 
-		serializer = withTransportSerializer(tt.protocol, serializer, tt.rOpts)
-		req, err := serializer.Request(nil)
-		if !assert.NoError(t, err, "Failed to serialize request for %+v", tt.rOpts) {
-			continue
-		}
+			resolved := resolvedProtocolEncoding{
+				protocol: tt.protocol,
+				enc:      encoding.Thrift,
+			}
+			serializer, err := NewSerializer(Options{ROpts: tt.rOpts}, resolved)
+			require.NoError(t, err, "Failed to create serializer for %+v", tt.rOpts)
 
-		assert.Equal(t, tt.want, req.Body, "Body mismatch for %+v", tt.rOpts)
+			serializer = withTransportSerializer(tt.protocol, serializer, tt.rOpts)
+			req, err := serializer.Request(nil)
+			require.NoError(t, err, "Failed to serialize request for %+v", tt.rOpts)
+
+			assert.Equal(t, tt.want, req.Body, "Body mismatch for %+v", tt.rOpts)
+		})
 	}
 }
 

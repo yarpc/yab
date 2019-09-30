@@ -312,7 +312,17 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 		opts.TOpts.CallerName = "yab-" + os.Getenv("USER")
 	}
 
-	serializer, err := NewSerializer(opts)
+	protocolScheme, peers, err := loadTransportPeers(opts.TOpts)
+	if err != nil {
+		out.Fatalf("Failed to load peers: %v\n", err)
+	}
+
+	opts.TOpts.PeerList = ""
+	opts.TOpts.Peers = peers
+
+	resolved := resolveProtocolEncoding(protocolScheme, opts.ROpts)
+
+	serializer, err := NewSerializer(opts, resolved)
 	if err != nil {
 		out.Fatalf("Failed while parsing input: %v\n", err)
 	}
@@ -323,7 +333,7 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 	}
 
 	// transport abstracts the underlying wire protocol used to make the call.
-	transport, err := getTransport(opts.TOpts, serializer.Encoding(), tracer)
+	transport, err := getTransport(opts.TOpts, resolved, tracer)
 	if err != nil {
 		out.Fatalf("Failed while parsing options: %v\n", err)
 	}
@@ -345,7 +355,7 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 		makeInitialRequest(out, transport, serializer, req)
 	}
 
-	runBenchmark(out, logger, opts, benchmarkMethod{
+	runBenchmark(out, logger, opts, resolved, benchmarkMethod{
 		serializer: serializer,
 		req:        req,
 	})
@@ -396,29 +406,66 @@ func getTracer(opts Options, out output) (opentracing.Tracer, io.Closer) {
 	return opentracing.NoopTracer{}, nil
 }
 
-type healthSerializer interface {
-	ThriftHealthSerializer() encoding.Serializer
-	ProtoHealthSerializer() encoding.Serializer
-}
-
 // withTransportSerializer may modify the serializer for the transport used.
 // E.g. Thrift payloads are not enveloped when used with TChannel or gRPC.
 func withTransportSerializer(p transport.Protocol, s encoding.Serializer, rOpts RequestOptions) encoding.Serializer {
-	if hs, ok := s.(healthSerializer); ok {
-		switch p {
-		case transport.GRPC:
-			s = hs.ProtoHealthSerializer()
-		default:
-			s = hs.ThriftHealthSerializer()
-		}
-	}
-
+	// TODO: We can move this logic into NewSerializer as we resolved transport protocol and encoding together.
 	switch {
 	case (p == transport.TChannel || p == transport.GRPC) && s.Encoding() == encoding.Thrift,
 		rOpts.ThriftDisableEnvelopes:
 		s = s.(noEnveloper).WithoutEnvelopes()
 	}
 	return s
+}
+
+type resolvedProtocolEncoding struct {
+	protocol transport.Protocol
+	enc      encoding.Encoding
+}
+
+func resolveProtocolEncoding(protocolScheme string, rOpts RequestOptions) resolvedProtocolEncoding {
+	enc := rOpts.detectEncoding()
+
+	switch protocolScheme {
+	case "tchannel":
+		// TChannel is only really used with Thrift, so use that as the default.
+		if enc == encoding.UnspecifiedEncoding {
+			enc = encoding.Thrift
+		}
+		return resolvedProtocolEncoding{transport.TChannel, enc}
+	case "grpc":
+		// gRPC is expected to be used with protobuf, so use that as the default.
+		if enc == encoding.UnspecifiedEncoding {
+			enc = encoding.Protobuf
+		}
+		return resolvedProtocolEncoding{transport.GRPC, enc}
+	case "http", "https":
+		if enc == encoding.UnspecifiedEncoding {
+			enc = encoding.JSON
+		}
+		return resolvedProtocolEncoding{transport.HTTP, enc}
+	}
+
+	// Try to determine a transport based on the guessed encoding.
+	switch enc {
+	case encoding.Thrift:
+		return resolvedProtocolEncoding{transport.TChannel, encoding.Thrift}
+	case encoding.Protobuf:
+		return resolvedProtocolEncoding{transport.GRPC, encoding.Protobuf}
+	case encoding.JSON:
+		return resolvedProtocolEncoding{transport.HTTP, encoding.JSON}
+	case encoding.Raw:
+		return resolvedProtocolEncoding{transport.HTTP, encoding.Raw}
+	}
+
+	// Special case --health which is for TChannel + Thrift health calls.
+	// This is for compatibility with tcurl.
+	if rOpts.Health {
+		return resolvedProtocolEncoding{transport.TChannel, encoding.Thrift}
+	}
+
+	// unknown transport and unknown encoding
+	return resolvedProtocolEncoding{transport.Unknown, enc}
 }
 
 // makeRequest makes a request using the given transport.

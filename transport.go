@@ -29,7 +29,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/peerprovider"
 	"github.com/yarpc/yab/transport"
 
@@ -66,7 +65,7 @@ func parsePeer(peer string) (protocol, host string) {
 
 	u, err := url.ParseRequestURI(peer)
 	if err != nil {
-		return "unknown", ""
+		return "", peer
 	}
 
 	return u.Scheme, u.Host
@@ -91,16 +90,16 @@ func getHosts(peers []string) []string {
 	return hosts
 }
 
-func loadTransportPeers(opts TransportOptions) (TransportOptions, error) {
-	peers := opts.Peers
+func loadTransportPeers(opts TransportOptions) (scheme string, peers []string, _ error) {
+	peers = opts.Peers
 	if opts.PeerList != "" {
 		if len(peers) > 0 {
-			return opts, errPeerOptions
+			return "", nil, errPeerOptions
 		}
 
 		u, err := url.Parse(opts.PeerList)
 		if err != nil {
-			return opts, fmt.Errorf("could not parse peer provider URL: %v", err)
+			return "", nil, fmt.Errorf("could not parse peer provider URL: %v", err)
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -108,24 +107,32 @@ func loadTransportPeers(opts TransportOptions) (TransportOptions, error) {
 
 		peers, err = peerprovider.Resolve(ctx, u)
 		if err != nil {
-			return opts, err
+			return "", nil, err
 		}
 
 		if len(peers) == 0 {
-			return opts, fmt.Errorf("specified peer list is empty: %q", opts.PeerList)
+			return "", nil, fmt.Errorf("specified peer list is empty: %q", opts.PeerList)
 		}
 	}
 
 	if len(peers) == 0 {
-		return opts, errPeerRequired
+		return "", nil, errPeerRequired
 	}
 
-	opts.PeerList = ""
-	opts.Peers = peers
-	return opts, nil
+	protocolScheme, err := ensureSameProtocol(peers)
+	if err != nil {
+		return "", nil, err
+	}
+
+	return protocolScheme, peers, nil
 }
 
-func getTransport(opts TransportOptions, enc encoding.Encoding, tracer opentracing.Tracer) (transport.Transport, error) {
+type transportPeers struct {
+	protocolScheme string // empty if not specified
+	peers          []string
+}
+
+func getTransport(opts TransportOptions, resolved resolvedProtocolEncoding, tracer opentracing.Tracer) (transport.Transport, error) {
 	if opts.ServiceName == "" {
 		return nil, errServiceRequired
 	}
@@ -138,29 +145,7 @@ func getTransport(opts TransportOptions, enc encoding.Encoding, tracer opentraci
 		return nil, errTracerRequired
 	}
 
-	opts, err := loadTransportPeers(opts)
-	if err != nil {
-		return nil, err
-	}
-
-	protocol, err := ensureSameProtocol(opts.Peers)
-	if err != nil {
-		return nil, err
-	}
-
-	if protocol == "" {
-		// Before yab had grpc/protobuf support, peers that did not specify a
-		// protocol assumed tchannel. Keep that default but allow this to be
-		// overridden based on the encoding for saner defaults.
-		switch enc {
-		case encoding.Protobuf:
-			protocol = "grpc"
-		default:
-			protocol = "tchannel"
-		}
-	}
-
-	if protocol == "tchannel" {
+	if resolved.protocol == transport.TChannel {
 		hostPorts := getHosts(opts.Peers)
 		remapLocalHost(hostPorts)
 
@@ -171,19 +156,19 @@ func getTransport(opts TransportOptions, enc encoding.Encoding, tracer opentraci
 			RoutingKey:      opts.RoutingKey,
 			ShardKey:        opts.ShardKey,
 			Peers:           hostPorts,
-			Encoding:        enc.String(),
+			Encoding:        resolved.enc.String(),
 			TransportOpts:   opts.TransportHeaders,
 			Tracer:          tracer,
 		}
 		return transport.NewTChannel(topts)
 	}
 
-	if protocol == "grpc" {
+	if resolved.protocol == transport.GRPC {
 		return transport.NewGRPC(transport.GRPCOptions{
 			Addresses:       getHosts(opts.Peers),
 			Tracer:          tracer,
 			Caller:          opts.CallerName,
-			Encoding:        enc.String(),
+			Encoding:        resolved.enc.String(),
 			RoutingKey:      opts.RoutingKey,
 			RoutingDelegate: opts.RoutingDelegate,
 		})
@@ -196,7 +181,7 @@ func getTransport(opts TransportOptions, enc encoding.Encoding, tracer opentraci
 		RoutingDelegate: opts.RoutingDelegate,
 		RoutingKey:      opts.RoutingKey,
 		ShardKey:        opts.ShardKey,
-		Encoding:        enc.String(),
+		Encoding:        resolved.enc.String(),
 		URLs:            opts.Peers,
 		Tracer:          tracer,
 	}
