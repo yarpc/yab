@@ -40,12 +40,12 @@ func TestNewProtobuf(t *testing.T) {
 		{
 			desc:   "service not found",
 			method: "Baq/Foo",
-			errMsg: `symbol not found: "Baq"`,
+			errMsg: `could not find gRPC service "Baq". Available gRPC service:` + "\n\tBar",
 		},
 		{
 			desc:   "service not found but symbol is",
 			method: "Foo/Foo",
-			errMsg: `target server does not expose service "Foo"`,
+			errMsg: `could not find gRPC service "Foo". Available gRPC service:` + "\n\tBar",
 		},
 	}
 	source, err := protobuf.NewDescriptorProviderFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
