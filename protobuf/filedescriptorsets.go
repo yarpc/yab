@@ -7,6 +7,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"github.com/jhump/protoreflect/desc"
+	"github.com/yarpc/yab/encoding/encodingerror"
 )
 
 // NewDescriptorProviderFileDescriptorSetBins creates a DescriptorSource that is backed by the named files, whose contents
@@ -71,13 +72,26 @@ type fileSource struct {
 	files map[string]*desc.FileDescriptor
 }
 
-func (fs *fileSource) FindSymbol(fullyQualifiedName string) (desc.Descriptor, error) {
+func (fs *fileSource) FindService(fullyQualifiedName string) (*desc.ServiceDescriptor, error) {
+	// available := map[string][]string
+	var available []string
+
 	for _, fd := range fs.files {
-		if dsc := fd.FindSymbol(fullyQualifiedName); dsc != nil {
-			return dsc, nil
+		for _, svc := range fd.GetServices() {
+			if svc.GetFullyQualifiedName() == fullyQualifiedName {
+				return svc, nil
+			}
+
+			available = append(available, svc.GetFullyQualifiedName())
 		}
 	}
-	return nil, fmt.Errorf("symbol not found: %q", fullyQualifiedName)
+
+	return nil, encodingerror.NotFound{
+		Encoding:   "gRPC",
+		SearchType: "service",
+		Search:     fullyQualifiedName,
+		Available:  available,
+	}
 }
 
 func (fs *fileSource) Close() {}

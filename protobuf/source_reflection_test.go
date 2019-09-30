@@ -33,14 +33,25 @@ func TestReflection(t *testing.T) {
 	// Close the streaming reflect call to ensure GracefulStop doesn't block.
 	defer source.Close()
 
-	result, err := source.FindSymbol("grpc.reflection.v1alpha.ServerReflectionRequest")
-	assert.NoError(t, err)
-	assert.NotNil(t, result)
+	t.Run("valid service", func(t *testing.T) {
+		result, err := source.FindService("grpc.reflection.v1alpha.ServerReflection")
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+	})
 
-	result, err = source.FindSymbol("wat")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Symbol not found: wat")
-	assert.Nil(t, result)
+	t.Run("non-service symbol", func(t *testing.T) {
+		result, err := source.FindService("grpc.reflection.v1alpha.ServerReflectionRequest")
+		require.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), `could not find gRPC service`)
+	})
+
+	t.Run("no such symbol", func(t *testing.T) {
+		result, err := source.FindService("wat")
+		require.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), `could not find gRPC service "wat"`)
+	})
 }
 
 func TestReflectionWithProtocolInPeer(t *testing.T) {

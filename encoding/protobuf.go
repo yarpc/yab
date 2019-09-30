@@ -29,14 +29,9 @@ func NewProtobuf(fullMethodName string, source protobuf.DescriptorProvider) (Ser
 		return nil, err
 	}
 
-	service, err := source.FindSymbol(serviceName)
+	serviceDescriptor, err := source.FindService(serviceName)
 	if err != nil {
 		return nil, err
-	}
-
-	serviceDescriptor, ok := service.(*desc.ServiceDescriptor)
-	if !ok {
-		return nil, fmt.Errorf("target server does not expose service %q", serviceName)
 	}
 
 	methodDescriptor, err := findProtoMethodDescriptor(serviceDescriptor, methodName)
