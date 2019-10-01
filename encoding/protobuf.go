@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/yarpc/yab/encoding/encodingerror"
 	"github.com/yarpc/yab/protobuf"
 	"github.com/yarpc/yab/transport"
 
@@ -114,11 +115,21 @@ func findProtoMethodDescriptor(s *desc.ServiceDescriptor, m string) (*desc.Metho
 		for i, method := range s.GetMethods() {
 			available[i] = s.GetFullyQualifiedName() + "/" + method.GetName()
 		}
-		errMsg := "no proto method specified, specify --method package.Service/Method"
-		if m != "" {
-			errMsg = fmt.Sprintf("service %q does not include a method named %q", s.GetFullyQualifiedName(), m)
+
+		return nil, encodingerror.NotFound{
+			Encoding:  "gRPC",
+			Typ:       "method",
+			LookIn:    fmt.Sprintf("service %q", s.GetFullyQualifiedName()),
+			Search:    m,
+			Example:   "--method package.Service/Method",
+			Available: available,
 		}
-		return nil, notFoundError{errMsg + ", available methods:", available}
+
+		// errMsg := "no proto method specified, specify --method package.Service/Method"
+		// if m != "" {
+		// 	errMsg = fmt.Sprintf("service %q does not include a method named %q", s.GetFullyQualifiedName(), m)
+		// }
+		// return nil, notFoundError{errMsg + ", available methods:", available}
 	}
 	return methodDescriptor, nil
 }

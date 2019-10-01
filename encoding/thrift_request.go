@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/yarpc/yab/encoding/encodingerror"
 	"github.com/yarpc/yab/sorted"
 	"github.com/yarpc/yab/thrift"
 	"github.com/yarpc/yab/transport"
@@ -116,12 +117,13 @@ func findService(parsed *compile.Module, svcName string) (*compile.ServiceSpec, 
 		return service, nil
 	}
 
-	available := sorted.MapKeys(parsed.Services)
-	errMsg := "no Thrift service specified, specify --method Service::Method"
-	if svcName != "" {
-		errMsg = fmt.Sprintf("could not find service %q", svcName)
+	return nil, encodingerror.NotFound{
+		Encoding:  "Thrift",
+		Typ:       "service",
+		Search:    svcName,
+		Example:   "--method Service::Method",
+		Available: sorted.MapKeys(parsed.Services),
 	}
-	return nil, notFoundError{errMsg + ", available services:", available}
 }
 
 func (e thriftSerializer) CheckSuccess(res *transport.Response) error {
@@ -151,12 +153,14 @@ func findMethod(service *compile.ServiceSpec, methodName string) (*compile.Funct
 		return method, nil
 	}
 
-	available := sorted.MapKeys(functions)
-	errMsg := "no Thrift method specified, specify --method Service::Method"
-	if methodName != "" {
-		errMsg = fmt.Sprintf("could not find method %q in %q", methodName, service.Name)
+	return nil, encodingerror.NotFound{
+		Encoding:  "Thrift",
+		Typ:       "method",
+		LookIn:    fmt.Sprintf("service %q", service.Name),
+		Search:    methodName,
+		Example:   "--method Service::Method",
+		Available: sorted.MapKeys(functions),
 	}
-	return nil, notFoundError{errMsg + ", available methods:", available}
 }
 
 func isFileMissing(f string) bool {

@@ -283,7 +283,7 @@ func TestNewSerializer(t *testing.T) {
 			msg:      "thrift with file, without procedure lists services",
 			encoding: encoding.Thrift,
 			opts:     RequestOptions{ThriftFile: validThrift},
-			wantErr:  "available services",
+			wantErr:  "no Thrift service specified",
 		},
 		{
 			msg:      "json with procedure",
