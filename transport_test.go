@@ -56,58 +56,65 @@ func TestParsePeer(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		protocol, host := parsePeer(tt.peer)
-		assert.Equal(t, tt.protocol, protocol, "unexpected protocol for %q", tt.peer)
-		assert.Equal(t, tt.host, host, "unexpected host for %q", tt.peer)
+		t.Run(tt.peer, func(t *testing.T) {
+			protocol, host := parsePeer(tt.peer)
+			assert.Equal(t, tt.protocol, protocol, "unexpected protocol for %q", tt.peer)
+			assert.Equal(t, tt.host, host, "unexpected host for %q", tt.peer)
+		})
 	}
 }
 
 func TestEnsureSameProtocol(t *testing.T) {
 	tests := []struct {
+		msg     string
 		peers   []string
 		want    string
 		wantErr bool
 	}{
 		{
-			// tchannel host:ports
+			msg:   "host:ports without transport",
 			peers: []string{"1.1.1.1:1234", "2.2.2.2:1234"},
 			want:  "",
 		},
 		{
-			// only hosts without port
+			msg:   "only hosts",
 			peers: []string{"1.1.1.1", "2.2.2.2"},
 			want:  "unknown",
 		},
 		{
+			msg:   "http urls",
 			peers: []string{"http://1.1.1.1", "http://2.2.2.2:8080"},
 			want:  "http",
 		},
 		{
+			msg:   "grpc urls",
 			peers: []string{"grpc://1.1.1.1", "grpc://2.2.2.2:8080"},
 			want:  "grpc",
 		},
 		{
-			// mix of http and https
+			msg:     "mix of http and https",
 			peers:   []string{"https://1.1.1.1", "http://2.2.2.2:8080"},
 			wantErr: true,
 		},
 		{
-			// mix of tchannel and unknown
+			msg:     "mix of host:ports and hosts",
 			peers:   []string{"1.1.1.1:1234", "1.1.1.1"},
 			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
-		got, err := ensureSameProtocol(tt.peers)
-		if tt.wantErr {
-			assert.Error(t, err, "Expect error for %v", tt.peers)
-			continue
-		}
+		t.Run(tt.msg, func(t *testing.T) {
+			got, err := ensureSameProtocol(tt.peers)
+			if tt.wantErr {
+				assert.Error(t, err, "Expect error for %v", tt.peers)
+				return
+			}
 
-		if assert.NoError(t, err, "Expect no error for %v", tt.peers) {
-			assert.Equal(t, tt.want, got, "Wrong protocol for %v", tt.peers)
-		}
+			if assert.NoError(t, err, "Expect no error for %v", tt.peers) {
+				assert.Equal(t, tt.want, got, "Wrong protocol for %v", tt.peers)
+			}
+		})
 	}
 }
 
