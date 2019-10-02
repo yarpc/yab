@@ -45,7 +45,10 @@ func benchmarkMethodForTest(t *testing.T, procedure string, p transport.Protocol
 }
 
 func benchmarkMethodForROpts(t *testing.T, rOpts RequestOptions, p transport.Protocol) benchmarkMethod {
-	serializer, err := NewSerializer(Options{ROpts: rOpts})
+	serializer, err := NewSerializer(Options{ROpts: rOpts}, resolvedProtocolEncoding{
+		protocol: p,
+		enc:      encoding.Thrift,
+	})
 	require.NoError(t, err, "Failed to create Thrift serializer")
 
 	serializer = withTransportSerializer(p, serializer, rOpts)
@@ -95,7 +98,10 @@ func TestBenchmarkMethodWarmTransport(t *testing.T) {
 			Peers:       []string{tt.peer},
 		}
 
-		transport, err := m.WarmTransport(tOpts, 1 /* warmupRequests */)
+		transport, err := m.WarmTransport(tOpts, resolvedProtocolEncoding{
+			protocol: transport.TChannel,
+			enc:      encoding.JSON,
+		}, 1 /* warmupRequests */)
 		if tt.wantErr != "" {
 			if assert.Error(t, err, "WarmTransport should fail") {
 				assert.Contains(t, err.Error(), tt.wantErr, "Invalid error message")
@@ -146,7 +152,7 @@ func TestBenchmarkMethodCall(t *testing.T) {
 		ServiceName: "foo",
 		Peers:       []string{s.hostPort()},
 	}
-	tp, err := getTransport(tOpts, encoding.Thrift, opentracing.NoopTracer{})
+	tp, err := getTransport(tOpts, _resolvedTChannelThrift, opentracing.NoopTracer{})
 	require.NoError(t, err, "Failed to get transport")
 
 	for _, tt := range tests {
@@ -229,7 +235,7 @@ func TestBenchmarkMethodWarmTransportsSuccess(t *testing.T) {
 		ServiceName: "foo",
 		Peers:       serverHPs,
 	}
-	transports, err := m.WarmTransports(numServers, tOpts, 1 /* warmupRequests */)
+	transports, err := m.WarmTransports(numServers, tOpts, _resolvedTChannelThrift, 1 /* warmupRequests */)
 	assert.NoError(t, err, "WarmTransports should not fail")
 	assert.Equal(t, numServers, len(transports), "Got unexpected number of transports")
 	for i, transport := range transports {
@@ -288,7 +294,7 @@ func TestBenchmarkMethodWarmTransportsError(t *testing.T) {
 			ServiceName: "foo",
 			Peers:       []string{s.hostPort()},
 		}
-		_, err := m.WarmTransports(10, tOpts, tt.warmup)
+		_, err := m.WarmTransports(10, tOpts, _resolvedTChannelThrift, tt.warmup)
 		if tt.wantErr {
 			assert.Error(t, err, "%v: WarmTransports should fail", msg)
 		} else {

@@ -7,8 +7,8 @@ import (
 
 	"github.com/yarpc/yab/protobuf"
 	"github.com/yarpc/yab/transport"
-	"github.com/yarpc/yab/unmarshal"
 
+	"github.com/ghodss/yaml"
 	"github.com/golang/protobuf/proto"
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/dynamic"
@@ -55,12 +55,7 @@ func (p protoSerializer) Encoding() Encoding {
 }
 
 func (p protoSerializer) Request(body []byte) (*transport.Request, error) {
-	m, err := unmarshal.YAML(body)
-	if err != nil {
-		return nil, err
-	}
-
-	json, err := json.Marshal(m)
+	json, err := yaml.YAMLToJSON(body)
 	if err != nil {
 		return nil, err
 	}

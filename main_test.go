@@ -77,13 +77,22 @@ func TestRunWithOptions(t *testing.T) {
 		wants   []string
 	}{
 		{
-			desc:   "No thrift file, fail to get method spec",
+			desc: "No thrift file, fail to get method spec",
+			opts: Options{
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+					Peers:       []string{"1.1.1.1"},
+				},
+			},
 			errMsg: "while parsing input",
 		},
 		{
 			desc: "No service name, fail to get transport",
 			opts: Options{
 				ROpts: validRequestOpts,
+				TOpts: TransportOptions{
+					Peers: []string{"1.1.1.1"},
+				},
 			},
 			errMsg: "while parsing options",
 		},
@@ -91,9 +100,10 @@ func TestRunWithOptions(t *testing.T) {
 			desc: "Request has invalid field, fail to get request",
 			opts: Options{
 				ROpts: RequestOptions{
-					ThriftFile:  validThrift,
-					Procedure:   fooMethod,
-					RequestJSON: `{"f1": 1}`,
+					ThriftFile: validThrift,
+					Procedure:  fooMethod,
+					RequestJSON: `{"f1"
+					: 1}`,
 				},
 				TOpts: TransportOptions{
 					ServiceName: "foo",
@@ -215,36 +225,38 @@ func TestRunWithOptions(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		errBuf.Reset()
-		warnBuf.Reset()
-		outBuf.Reset()
+		t.Run(tt.desc, func(t *testing.T) {
+			errBuf.Reset()
+			warnBuf.Reset()
+			outBuf.Reset()
 
-		runComplete := make(chan struct{})
-		// runWithOptions expects Fatalf to kill the process, so we run it in a
-		// new goroutine and testoutput.Fatalf will only exit the goroutine.
-		go func() {
-			defer close(runComplete)
-			runWithOptions(tt.opts, out, _testLogger)
-		}()
+			runComplete := make(chan struct{})
+			// runWithOptions expects Fatalf to kill the process, so we run it in a
+			// new goroutine and testoutput.Fatalf will only exit the goroutine.
+			go func() {
+				defer close(runComplete)
+				runWithOptions(tt.opts, out, _testLogger)
+			}()
 
-		<-runComplete
+			<-runComplete
 
-		if tt.errMsg != "" {
-			assert.Empty(t, outBuf.String(), "%v: should have no output", tt.desc)
-			assert.Contains(t, errBuf.String(), tt.errMsg, "%v: Invalid error", tt.desc)
-			continue
-		}
+			if tt.errMsg != "" {
+				assert.Empty(t, outBuf.String(), "%v: should have no output", tt.desc)
+				assert.Contains(t, errBuf.String(), tt.errMsg, "%v: Invalid error", tt.desc)
+				return
+			}
 
-		if tt.warnMsg != "" {
-			assert.Contains(t, warnBuf.String(), tt.warnMsg)
-		} else {
-			assert.Empty(t, warnBuf.String(), "%v: should have no warnings", tt.desc)
-		}
+			if tt.warnMsg != "" {
+				assert.Contains(t, warnBuf.String(), tt.warnMsg)
+			} else {
+				assert.Empty(t, warnBuf.String(), "%v: should have no warnings", tt.desc)
+			}
 
-		assert.Empty(t, errBuf.String(), "%v: should not error", tt.desc)
-		for _, want := range tt.wants {
-			assert.Contains(t, outBuf.String(), want, "%v: expected output", tt.desc)
-		}
+			assert.Empty(t, errBuf.String(), "%v: should not error", tt.desc)
+			for _, want := range tt.wants {
+				assert.Contains(t, outBuf.String(), want, "%v: expected output", tt.desc)
+			}
+		})
 	}
 }
 
@@ -892,6 +904,101 @@ end`,
 	}
 }
 
+func TestResolveProtocolEncoding(t *testing.T) {
+	tests := []struct {
+		msg            string
+		protocolScheme string
+		encoding       encoding.Encoding
+		health         bool
+		want           resolvedProtocolEncoding
+	}{
+		{
+			msg:            "tchannel with thrift",
+			protocolScheme: "tchannel",
+			encoding:       encoding.Thrift,
+			want:           resolvedProtocolEncoding{protocol: transport.TChannel, enc: encoding.Thrift},
+		},
+		{
+			msg:            "grpc with thrift",
+			protocolScheme: "grpc",
+			encoding:       encoding.Thrift,
+			want:           resolvedProtocolEncoding{protocol: transport.GRPC, enc: encoding.Thrift},
+		},
+		{
+			msg:            "http with thrift",
+			protocolScheme: "http",
+			encoding:       encoding.Thrift,
+			want:           resolvedProtocolEncoding{protocol: transport.HTTP, enc: encoding.Thrift},
+		},
+		{
+			msg:            "tchannel without encoding",
+			protocolScheme: "tchannel",
+			want:           resolvedProtocolEncoding{protocol: transport.TChannel, enc: encoding.Thrift},
+		},
+		{
+			msg:            "grpc without encoding",
+			protocolScheme: "grpc",
+			want:           resolvedProtocolEncoding{protocol: transport.GRPC, enc: encoding.Protobuf},
+		},
+		{
+			msg:            "http without encoding",
+			protocolScheme: "http",
+			want:           resolvedProtocolEncoding{protocol: transport.HTTP, enc: encoding.JSON},
+		},
+		{
+			msg:            "https without encoding",
+			protocolScheme: "https",
+			want:           resolvedProtocolEncoding{protocol: transport.HTTP, enc: encoding.JSON},
+		},
+		{
+			msg:      "unknown transport with thrift",
+			encoding: encoding.Thrift,
+			want:     resolvedProtocolEncoding{protocol: transport.TChannel, enc: encoding.Thrift},
+		},
+		{
+			msg:      "unknown transport with protobuf",
+			encoding: encoding.Protobuf,
+			want:     resolvedProtocolEncoding{protocol: transport.GRPC, enc: encoding.Protobuf},
+		},
+		{
+			msg:      "unknown transport with JSON",
+			encoding: encoding.JSON,
+			want:     resolvedProtocolEncoding{protocol: transport.HTTP, enc: encoding.JSON},
+		},
+		{
+			msg:      "unknown transport with raw",
+			encoding: encoding.Raw,
+			want:     resolvedProtocolEncoding{protocol: transport.HTTP, enc: encoding.Raw},
+		},
+		{
+			msg:    "unknown transport with unknown encoding and --health",
+			health: true,
+			want:   _resolvedTChannelThrift, // tcurl compatibility
+		},
+		{
+			msg:      "unknown transport with invalid encoding",
+			encoding: encoding.Encoding("foo"),
+			want:     resolvedProtocolEncoding{enc: encoding.Encoding("foo")},
+		},
+		{
+			msg:  "unknown transport with unknown encoding",
+			want: resolvedProtocolEncoding{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.msg, func(t *testing.T) {
+			// Note: We test detectEncoding separately, so we just set the encoding which
+			// determines the result of detectEncoding.
+			got := resolveProtocolEncoding(tt.protocolScheme, RequestOptions{
+				Encoding: tt.encoding,
+				Health:   tt.health,
+			})
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestWithTransportSerializer(t *testing.T) {
 	validRequestOpts := RequestOptions{
 		ThriftFile: validThrift,
@@ -901,11 +1008,13 @@ func TestWithTransportSerializer(t *testing.T) {
 	noEnvelopeOpts.ThriftDisableEnvelopes = true
 
 	tests := []struct {
+		msg      string
 		protocol transport.Protocol
 		rOpts    RequestOptions
 		want     []byte
 	}{
 		{
+			msg:      "HTTP enveloped by default",
 			protocol: transport.HTTP,
 			rOpts:    validRequestOpts,
 			want: encodeEnveloped(wire.Envelope{
@@ -915,26 +1024,31 @@ func TestWithTransportSerializer(t *testing.T) {
 			}),
 		},
 		{
+			msg:      "HTTP explicitly disables envelopes",
 			protocol: transport.HTTP,
 			rOpts:    noEnvelopeOpts,
 			want:     []byte{0},
 		},
 		{
+			msg:      "TChannel has no envelope by default",
 			protocol: transport.TChannel,
 			rOpts:    validRequestOpts,
 			want:     []byte{0},
 		},
 		{
+			msg:      "TChannel has no envelope when disabled",
 			protocol: transport.TChannel,
 			rOpts:    noEnvelopeOpts,
 			want:     []byte{0},
 		},
 		{
+			msg:      "gRPC has no envelope by default",
 			protocol: transport.GRPC,
 			rOpts:    validRequestOpts,
 			want:     []byte{0},
 		},
 		{
+			msg:      "gRPC has no envelope when disabled",
 			protocol: transport.GRPC,
 			rOpts:    noEnvelopeOpts,
 			want:     []byte{0},
@@ -942,16 +1056,21 @@ func TestWithTransportSerializer(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		serializer, err := NewSerializer(Options{ROpts: tt.rOpts})
-		require.NoError(t, err, "Failed to create serializer for %+v", tt.rOpts)
+		t.Run(tt.msg, func(t *testing.T) {
 
-		serializer = withTransportSerializer(tt.protocol, serializer, tt.rOpts)
-		req, err := serializer.Request(nil)
-		if !assert.NoError(t, err, "Failed to serialize request for %+v", tt.rOpts) {
-			continue
-		}
+			resolved := resolvedProtocolEncoding{
+				protocol: tt.protocol,
+				enc:      encoding.Thrift,
+			}
+			serializer, err := NewSerializer(Options{ROpts: tt.rOpts}, resolved)
+			require.NoError(t, err, "Failed to create serializer for %+v", tt.rOpts)
 
-		assert.Equal(t, tt.want, req.Body, "Body mismatch for %+v", tt.rOpts)
+			serializer = withTransportSerializer(tt.protocol, serializer, tt.rOpts)
+			req, err := serializer.Request(nil)
+			require.NoError(t, err, "Failed to serialize request for %+v", tt.rOpts)
+
+			assert.Equal(t, tt.want, req.Body, "Body mismatch for %+v", tt.rOpts)
+		})
 	}
 }
 

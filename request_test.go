@@ -23,7 +23,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
@@ -195,33 +194,39 @@ func TestNewSerializer(t *testing.T) {
 	defer s.Stop()
 
 	tests := []struct {
+		msg      string
 		encoding encoding.Encoding
 		opts     RequestOptions
-		topts    TransportOptions
 		want     encoding.Encoding
+		peers    []string
 		wantErr  string
 	}{
 		{
+			msg:      "json with --health",
 			encoding: encoding.JSON,
 			opts:     RequestOptions{Health: true},
-			wantErr:  `--health not supported with encoding "json"`,
+			wantErr:  `--health not supported with encoding "json", please specify -e`,
 		},
 		{
+			msg:      "raw with --health",
 			encoding: encoding.Raw,
 			opts:     RequestOptions{Health: true},
-			wantErr:  `--health not supported with encoding "raw"`,
+			wantErr:  `--health not supported with encoding "raw", please specify -e`,
 		},
 		{
+			msg:      "thrift with --health",
 			encoding: encoding.Thrift,
 			opts:     RequestOptions{Health: true},
 			want:     encoding.Thrift,
 		},
 		{
+			msg:      "protobuf with --health",
 			encoding: encoding.Protobuf,
 			opts:     RequestOptions{Health: true},
 			want:     encoding.Protobuf,
 		},
 		{
+			msg:      "thrift with --health and procedure",
 			encoding: encoding.Thrift,
 			opts: RequestOptions{
 				Health:    true,
@@ -230,59 +235,70 @@ func TestNewSerializer(t *testing.T) {
 			wantErr: errHealthAndProcedure.Error(),
 		},
 		{
+			msg:      "unknown encoding",
 			encoding: encoding.Encoding("asd"),
 			opts:     RequestOptions{Procedure: "procedure"},
 			wantErr:  errUnrecognizedEncoding.Error(),
 		},
 		{
+			msg:      "unspecified encoding with --health",
 			encoding: encoding.UnspecifiedEncoding,
 			opts:     RequestOptions{Health: true},
-			want:     encoding.UnspecifiedEncoding,
+			want:     encoding.Thrift,
 		},
 		{
+			msg:      "unspecified encoding with thrift file",
 			encoding: encoding.UnspecifiedEncoding,
 			opts:     RequestOptions{ThriftFile: validThrift, Procedure: "Simple::foo"},
 			want:     encoding.Thrift,
 		},
 		{
+			msg:      "unspecified encoding with simple procedure",
 			encoding: encoding.UnspecifiedEncoding,
 			opts:     RequestOptions{Procedure: "hello"},
-			want:     encoding.JSON,
+			wantErr:  errUnrecognizedEncoding.Error(),
 		},
 		{
+			msg:      "json with thrift procedure",
 			encoding: encoding.JSON,
 			opts:     RequestOptions{Procedure: "Test::foo"},
-			want:     encoding.JSON,
+			want:     encoding.JSON, // explicitly set encoding always takes priority.
 		},
 		{
+			msg:      "json without procedure",
 			encoding: encoding.JSON,
 			wantErr:  errMissingProcedure.Error(),
 		},
 		{
+			msg:      "raw without procedure",
 			encoding: encoding.Raw,
 			wantErr:  errMissingProcedure.Error(),
 		},
 		{
+			msg:      "thrift without file",
 			encoding: encoding.Thrift,
 			wantErr:  encoding.ErrSpecifyThriftFile.Error(),
 		},
 		{
+			msg:      "thrift with file, without procedure lists services",
 			encoding: encoding.Thrift,
 			opts:     RequestOptions{ThriftFile: validThrift},
 			wantErr:  "available services",
 		},
 		{
+			msg:      "json with procedure",
 			encoding: encoding.JSON,
 			opts:     RequestOptions{Procedure: "procedure"},
 			want:     encoding.JSON,
 		},
 		{
+			msg:      "raw with procedure",
 			encoding: encoding.Raw,
 			opts:     RequestOptions{Procedure: "procedure"},
 			want:     encoding.Raw,
 		},
 		{
-			encoding: encoding.Protobuf,
+			msg: "unspecified with invalid descriptor",
 			opts: RequestOptions{
 				Procedure:         "Bar/Baz",
 				FileDescriptorSet: []string{"testdata/protobuf/simple/nonexisting.bin"},
@@ -290,7 +306,7 @@ func TestNewSerializer(t *testing.T) {
 			wantErr: "could not load protoset file",
 		},
 		{
-			encoding: encoding.Protobuf,
+			msg: "unspecified with valid descriptor",
 			opts: RequestOptions{
 				FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
 				Procedure:         "Bar/Baz",
@@ -298,63 +314,65 @@ func TestNewSerializer(t *testing.T) {
 			want: encoding.Protobuf,
 		},
 		{
-			encoding: encoding.Protobuf,
+			msg: "unspecified with grpc procedure invalid, peer for reflection",
 			opts: RequestOptions{
 				Procedure: "Bar/Baz",
 				Timeout:   timeMillisFlag(time.Millisecond),
 			},
-			topts:   TransportOptions{Peers: []string{"127.0.0.1:0"}},
+			peers:   []string{"127.0.0.1:0"},
 			wantErr: "could not reach reflection server:",
 		},
 		{
-			encoding: encoding.Protobuf,
+			msg: "unspecified encoding with grpc procedure and grpc peer",
 			opts: RequestOptions{
-				Procedure: "Bar/Baz",
+				Procedure: "grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo",
+				Timeout:   timeMillisFlag(time.Second),
 			},
-			wantErr: "specify at least one peer using --peer or using --peer-list",
+			peers: []string{"grpc://" + ln.Addr().String()},
+			want:  encoding.Protobuf,
 		},
 		{
-			encoding: encoding.Protobuf,
+			msg: "unspecified encoding with valid host:port peer",
 			opts: RequestOptions{
 				Procedure: "grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo",
 				Timeout:   timeMillisFlag(time.Millisecond * 500),
 			},
-			topts: TransportOptions{Peers: []string{"grpc://" + ln.Addr().String()}},
+			peers: []string{ln.Addr().String()},
 			want:  encoding.Protobuf,
 		},
 		{
-			encoding: encoding.Protobuf,
-			opts: RequestOptions{
-				Procedure: "grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo",
-				Timeout:   timeMillisFlag(time.Millisecond * 500),
-			},
-			topts: TransportOptions{Peers: []string{ln.Addr().String()}},
-			want:  encoding.Protobuf,
-		},
-		{
-			encoding: encoding.Protobuf,
+			msg: "unspecified encoding with valid grpc peer, unknown symbol",
 			opts: RequestOptions{
 				Procedure: "Bar/Baz",
 				Timeout:   timeMillisFlag(time.Millisecond * 500),
 			},
-			topts:   TransportOptions{Peers: []string{"grpc://" + ln.Addr().String()}},
+			peers:   []string{"grpc://" + ln.Addr().String()},
 			wantErr: "Symbol not found: Bar",
 		},
 		{
-			encoding: encoding.Protobuf,
+			msg: "unspecified encoding with valid host:port peer, unknown symbol",
 			opts: RequestOptions{
 				Procedure: "Bar/Baz",
 				Timeout:   timeMillisFlag(time.Millisecond * 500),
 			},
-			topts:   TransportOptions{Peers: []string{ln.Addr().String()}},
+			peers:   []string{ln.Addr().String()},
 			wantErr: "Symbol not found: Bar",
 		},
 	}
 
 	for _, tt := range tests {
 		tt.opts.Encoding = tt.encoding
-		t.Run(fmt.Sprintf("%+v", tt.opts), func(t *testing.T) {
-			got, err := NewSerializer(Options{ROpts: tt.opts, TOpts: tt.topts})
+
+		tOpts := TransportOptions{
+			Peers: tt.peers,
+		}
+		if tt.peers == nil {
+			tOpts.Peers = []string{"127.0.0.1:0"}
+		}
+
+		t.Run(tt.msg, func(t *testing.T) {
+			opts := Options{ROpts: tt.opts, TOpts: tOpts}
+			got, err := NewSerializer(resolveOpts(t, opts))
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.wantErr, "unexpected error")
@@ -377,13 +395,13 @@ func TestNewSerializerProtobufReflection(t *testing.T) {
 	reflection.Register(s)
 	go s.Serve(ln)
 
-	serializer, err := NewSerializer(Options{
+	serializer, err := NewSerializer(resolveOpts(t, Options{
 		ROpts: RequestOptions{
 			Procedure: "grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo",
 			Timeout:   timeMillisFlag(time.Millisecond * 100),
 		},
 		TOpts: TransportOptions{Peers: []string{ln.Addr().String()}},
-	})
+	}))
 	assert.NoError(t, err)
 	require.NotNil(t, serializer)
 	assert.Equal(t, encoding.Protobuf, serializer.Encoding())
@@ -391,30 +409,37 @@ func TestNewSerializerProtobufReflection(t *testing.T) {
 
 func TestDetectEncoding(t *testing.T) {
 	tests := []struct {
+		msg  string
 		opts RequestOptions
 		want encoding.Encoding
 	}{
 		{
+			msg:  "explicit raw",
 			opts: RequestOptions{Encoding: encoding.Raw, Procedure: "procedure"},
 			want: encoding.Raw,
 		},
 		{
+			msg:  "unspecified with simple procedure",
 			opts: RequestOptions{Procedure: "procedure"},
-			want: encoding.JSON,
+			want: encoding.UnspecifiedEncoding,
 		},
 		{
+			msg:  "unspecified with Thrift procedure",
 			opts: RequestOptions{Procedure: "Svc::foo"},
 			want: encoding.Thrift,
 		},
 		{
+			msg:  "unspecified with Thrift file and simple procedure",
 			opts: RequestOptions{ThriftFile: validThrift, Procedure: "procedure"},
 			want: encoding.Thrift,
 		},
 		{
+			msg:  "unspecified with gRPC procedure",
 			opts: RequestOptions{Procedure: "package.Service/Method"},
 			want: encoding.Protobuf,
 		},
 		{
+			msg: "unspecified with gRPC file descriptor and simple procedure",
 			opts: RequestOptions{
 				FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
 				Procedure:         "procedure",
@@ -424,8 +449,10 @@ func TestDetectEncoding(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := detectEncoding(tt.opts)
-		assert.Equal(t, tt.want, got, "detectEncoding(%+v)", tt.opts)
+		t.Run(tt.msg, func(t *testing.T) {
+			got := tt.opts.detectEncoding()
+			assert.Equal(t, tt.want, got)
+		})
 	}
 }
 
@@ -519,4 +546,14 @@ func TestPrepareRequestErr(t *testing.T) {
 	req, err := prepareRequest(req, nil /* headers */, Options{})
 	assert.Error(t, err)
 	assert.Nil(t, req)
+}
+
+func resolveOpts(t *testing.T, opts Options) (Options, resolvedProtocolEncoding) {
+	scheme, peers, err := loadTransportPeers(opts.TOpts)
+	require.NoError(t, err, "failed to load peers")
+
+	opts.TOpts.Peers = peers
+
+	resolved := resolveProtocolEncoding(scheme, opts.ROpts)
+	return opts, resolved
 }

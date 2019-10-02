@@ -81,7 +81,7 @@ func TestEncodingGetHealth(t *testing.T) {
 		encoding Encoding
 		success  bool
 	}{
-		{UnspecifiedEncoding, true},
+		{UnspecifiedEncoding, false},
 		{Thrift, true},
 		{Raw, false},
 		{JSON, false},
@@ -189,17 +189,4 @@ func TestJSONEncodingResponse(t *testing.T) {
 			assert.Nil(t, got, "Failed response should not return result")
 		}
 	}
-}
-
-func TestUnspecifiedHealthSerializer(t *testing.T) {
-	s := unspecifiedHealthSerializer{}
-	assert.Equal(t, UnspecifiedEncoding, s.Encoding())
-	bytes, err := s.Request(nil)
-	assert.Nil(t, bytes)
-	assert.Error(t, err, errUnspecifiedHealthSerializer.Error())
-	obj, err := s.Response(nil)
-	assert.Nil(t, obj)
-	assert.Error(t, err, errUnspecifiedHealthSerializer.Error())
-	err = s.CheckSuccess(nil)
-	assert.Error(t, err, errUnspecifiedHealthSerializer.Error())
 }
