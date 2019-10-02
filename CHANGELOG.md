@@ -1,6 +1,13 @@
 Changelog
 =========
 
+# 0.16.1 (2019-10-02)
+* Fix bug that prevented nested JSON to be marshalled into Proto encoded
+  requests.
+* Fix bug that required users to explictly specify encoding using `-e` when
+  making health requests. Now health requests default to Proto when using gRPC
+  and Thrift when using TChannel.
+
 # 0.16.0 (2019-09-09)
 * Add support for grpc/proto when using `--health`.
 * Fix bug that prevented yab templates to work with proto. Simple YAML yab
