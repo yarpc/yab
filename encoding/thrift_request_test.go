@@ -23,6 +23,7 @@ package encoding
 import (
 	"testing"
 
+	"github.com/yarpc/yab/encoding/encodingerror"
 	"github.com/yarpc/yab/internal/thrifttest"
 
 	"github.com/stretchr/testify/assert"
@@ -228,9 +229,15 @@ func TestFindMethod(t *testing.T) {
 			errMsg: `no Thrift method specified`,
 		},
 		{
-			svc:    "Foo",
-			f:      "f3",
-			errMsg: `Thrift service "Foo" does not contain method "f3"`,
+			svc: "Foo",
+			f:   "f3",
+			errMsg: encodingerror.NotFound{
+				Encoding:   "Thrift",
+				SearchType: "method",
+				LookIn:     `service "Foo"`,
+				Search:     "f3",
+				Available:  []string{"Foo::f1", "Foo::f2"},
+			}.Error(),
 		},
 		{
 			svc:    "S1",
@@ -238,9 +245,15 @@ func TestFindMethod(t *testing.T) {
 			errMsg: "does not contain method",
 		},
 		{
-			svc:    "S3",
-			f:      "m4",
-			errMsg: "does not contain method",
+			svc: "S3",
+			f:   "m4",
+			errMsg: encodingerror.NotFound{
+				Encoding:   "Thrift",
+				SearchType: "method",
+				LookIn:     `service "S3"`,
+				Search:     "m4",
+				Available:  []string{"S3::m1", "S3::m2", "S3::m3"},
+			}.Error(),
 		},
 	}
 
