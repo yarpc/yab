@@ -32,6 +32,8 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/require"
 	"github.com/uber/jaeger-client-go"
+	"github.com/yarpc/yab/encoding"
+	"github.com/yarpc/yab/transport"
 	"go.uber.org/zap"
 )
 
@@ -43,6 +45,11 @@ const (
 )
 
 var _testLogger = zap.NewNop()
+
+var (
+	_resolvedTChannelThrift = resolvedProtocolEncoding{protocol: transport.TChannel, enc: encoding.Thrift}
+	_resolvedTChannelRaw    = resolvedProtocolEncoding{protocol: transport.TChannel, enc: encoding.Raw}
+)
 
 type testOutput struct {
 	*bytes.Buffer

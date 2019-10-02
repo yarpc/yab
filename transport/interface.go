@@ -54,7 +54,8 @@ type Protocol int
 
 // The list of protocols supported by YAB.
 const (
-	TChannel Protocol = iota + 1
+	Unknown Protocol = iota
+	TChannel
 	HTTP
 	GRPC
 )

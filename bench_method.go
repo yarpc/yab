@@ -43,8 +43,8 @@ type benchmarkMethod struct {
 
 // WarmTransport warms up a transport and returns it. The transport is warmed
 // up by making some number of requests through it.
-func (m benchmarkMethod) WarmTransport(opts TransportOptions, warmupRequests int) (transport.Transport, error) {
-	transport, err := getTransport(opts, m.serializer.Encoding(), opentracing.NoopTracer{})
+func (m benchmarkMethod) WarmTransport(opts TransportOptions, resolved resolvedProtocolEncoding, warmupRequests int) (transport.Transport, error) {
+	transport, err := getTransport(opts, resolved, opentracing.NoopTracer{})
 	if err != nil {
 		return nil, err
 	}
@@ -85,12 +85,7 @@ func peerBalancer(peers []string) func(i int) (string, int) {
 
 // WarmTransports returns n transports that have been warmed up.
 // No requests may fail during the warmup period.
-func (m benchmarkMethod) WarmTransports(n int, tOpts TransportOptions, warmupRequests int) ([]peerTransport, error) {
-	tOpts, err := loadTransportPeers(tOpts)
-	if err != nil {
-		return nil, err
-	}
-
+func (m benchmarkMethod) WarmTransports(n int, tOpts TransportOptions, resolved resolvedProtocolEncoding, warmupRequests int) ([]peerTransport, error) {
 	peerFor := peerBalancer(tOpts.Peers)
 	transports := make([]peerTransport, n)
 	errs := make([]error, n)
@@ -104,7 +99,7 @@ func (m benchmarkMethod) WarmTransports(n int, tOpts TransportOptions, warmupReq
 			peerHostPort, peerIndex := peerFor(i)
 			tOpts.Peers = []string{peerHostPort}
 
-			tp, err := m.WarmTransport(tOpts, warmupRequests)
+			tp, err := m.WarmTransport(tOpts, resolved, warmupRequests)
 			transports[i] = peerTransport{tp, peerIndex}
 			errs[i] = err
 		}(i, tOpts)

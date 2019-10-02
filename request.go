@@ -86,24 +86,23 @@ func getHeaders(inline, file string, override map[string]string) (map[string]str
 }
 
 // NewSerializer creates a Serializer for the specific encoding.
-func NewSerializer(opts Options) (encoding.Serializer, error) {
+func NewSerializer(opts Options, resolved resolvedProtocolEncoding) (encoding.Serializer, error) {
 	if opts.ROpts.Health {
 		if opts.ROpts.Procedure != "" {
 			return nil, errHealthAndProcedure
 		}
 
-		return opts.ROpts.Encoding.GetHealth(opts.TOpts.ServiceName)
+		return resolved.enc.GetHealth(opts.TOpts.ServiceName)
 	}
 
-	// Thrift returns available methods if one is not specified, while the other
-	// encodings will just return an error, so only do the empty procedure check
-	// for non-Thrift encodings.
-	e := detectEncoding(opts.ROpts)
-	switch e {
+	// Thrift & Protobuf return available methods if one is not specified, while
+	// the other encodings will just return an error, so only do the empty
+	// procedure check for non-Thrift encodings.
+	switch resolved.enc {
 	case encoding.Thrift:
 		return encoding.NewThrift(opts.ROpts.ThriftFile, opts.ROpts.Procedure, opts.ROpts.ThriftMultiplexed)
 	case encoding.Protobuf:
-		descSource, err := newProtoDescriptorProvider(opts.ROpts, opts.TOpts)
+		descSource, err := newProtoDescriptorProvider(opts.ROpts, opts.TOpts, resolved)
 		if err != nil {
 			return nil, err
 		}
@@ -118,7 +117,7 @@ func NewSerializer(opts Options) (encoding.Serializer, error) {
 		return nil, errMissingProcedure
 	}
 
-	switch e {
+	switch resolved.enc {
 	case encoding.JSON:
 		return encoding.NewJSON(opts.ROpts.Procedure), nil
 	case encoding.Raw:
@@ -128,14 +127,11 @@ func NewSerializer(opts Options) (encoding.Serializer, error) {
 	return nil, errUnrecognizedEncoding
 }
 
-func newProtoDescriptorProvider(ropts RequestOptions, topts TransportOptions) (protobuf.DescriptorProvider, error) {
+func newProtoDescriptorProvider(ropts RequestOptions, topts TransportOptions, resolved resolvedProtocolEncoding) (protobuf.DescriptorProvider, error) {
 	if len(ropts.FileDescriptorSet) > 0 {
 		return protobuf.NewDescriptorProviderFileDescriptorSetBins(ropts.FileDescriptorSet...)
 	}
-	topts, err := loadTransportPeers(topts)
-	if err != nil {
-		return nil, err
-	}
+
 	return protobuf.NewDescriptorProviderReflection(protobuf.ReflectionArgs{
 		Caller:  topts.CallerName,
 		Service: topts.ServiceName,
@@ -144,7 +140,7 @@ func newProtoDescriptorProvider(ropts RequestOptions, topts TransportOptions) (p
 	})
 }
 
-func detectEncoding(opts RequestOptions) encoding.Encoding {
+func (opts RequestOptions) detectEncoding() encoding.Encoding {
 	if opts.Encoding != encoding.UnspecifiedEncoding {
 		return opts.Encoding
 	}
@@ -157,7 +153,7 @@ func detectEncoding(opts RequestOptions) encoding.Encoding {
 		return encoding.Protobuf
 	}
 
-	return encoding.JSON
+	return encoding.UnspecifiedEncoding
 }
 
 // prepares the request by injecting metadata, applying plugin-based transport middleware,

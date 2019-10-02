@@ -59,10 +59,7 @@ const (
 	Protobuf            Encoding = "proto"
 )
 
-var (
-	errNilEncoding                 = errors.New("cannot Unmarshal into nil Encoding")
-	errUnspecifiedHealthSerializer = errors.New("unspecifiedHealthSerializer should not be called directly")
-)
+var errNilEncoding = errors.New("cannot Unmarshal into nil Encoding")
 
 func (e Encoding) String() string {
 	return string(e)
@@ -91,8 +88,6 @@ func (e *Encoding) UnmarshalFlag(s string) error {
 // GetHealth returns a serializer for the Health endpoint.
 func (e Encoding) GetHealth(serviceName string) (Serializer, error) {
 	switch e {
-	case UnspecifiedEncoding:
-		return unspecifiedHealthSerializer{serviceName: serviceName}, nil
 	case Thrift:
 		method, spec := getHealthSpec()
 		return thriftSerializer{method, spec, defaultOpts}, nil
@@ -171,34 +166,4 @@ func (e rawSerializer) Response(res *transport.Response) (interface{}, error) {
 
 func (e rawSerializer) CheckSuccess(res *transport.Response) error {
 	return nil
-}
-
-// unspecifiedHealthSerializer is a lazy serializer that is used int the case of
-// unspecified encoding to determine the encoding type after transport
-// type has been determined.
-type unspecifiedHealthSerializer struct {
-	serviceName string
-}
-
-func (unspecifiedHealthSerializer) Encoding() Encoding { return UnspecifiedEncoding }
-
-func (unspecifiedHealthSerializer) Request(input []byte) (*transport.Request, error) {
-	return nil, errUnspecifiedHealthSerializer
-}
-
-func (unspecifiedHealthSerializer) Response(res *transport.Response) (interface{}, error) {
-	return nil, errUnspecifiedHealthSerializer
-}
-
-func (unspecifiedHealthSerializer) CheckSuccess(res *transport.Response) error {
-	return errUnspecifiedHealthSerializer
-}
-
-func (unspecifiedHealthSerializer) ThriftHealthSerializer() Serializer {
-	method, spec := getHealthSpec()
-	return &thriftSerializer{method, spec, defaultOpts}
-}
-
-func (u unspecifiedHealthSerializer) ProtoHealthSerializer() Serializer {
-	return &protoHealthSerializer{serviceName: u.serviceName}
 }

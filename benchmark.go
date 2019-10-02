@@ -92,7 +92,7 @@ func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run 
 	}
 }
 
-func runBenchmark(out output, logger *zap.Logger, allOpts Options, m benchmarkMethod) {
+func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved resolvedProtocolEncoding, m benchmarkMethod) {
 	opts := allOpts.BOpts
 
 	if err := opts.validate(); err != nil {
@@ -122,7 +122,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, m benchmarkMe
 
 	// Warm up number of connections.
 	logger.Debug("Warming up connections.", zap.Int("numConns", numConns))
-	connections, err := m.WarmTransports(numConns, allOpts.TOpts, opts.WarmupRequests)
+	connections, err := m.WarmTransports(numConns, allOpts.TOpts, resolved, opts.WarmupRequests)
 	if err != nil {
 		out.Fatalf("Failed to warmup connections for benchmark: %v", err)
 	}
