@@ -205,13 +205,13 @@ func TestNewSerializer(t *testing.T) {
 			msg:      "json with --health",
 			encoding: encoding.JSON,
 			opts:     RequestOptions{Health: true},
-			wantErr:  `--health not supported with encoding "json"`,
+			wantErr:  `--health not supported with encoding "json", please specify -e`,
 		},
 		{
 			msg:      "raw with --health",
 			encoding: encoding.Raw,
 			opts:     RequestOptions{Health: true},
-			wantErr:  `--health not supported with encoding "raw"`,
+			wantErr:  `--health not supported with encoding "raw", please specify -e`,
 		},
 		{
 			msg:      "thrift with --health",
