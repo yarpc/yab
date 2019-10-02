@@ -94,7 +94,7 @@ func (e Encoding) GetHealth(serviceName string) (Serializer, error) {
 	case Protobuf:
 		return protoHealthSerializer{serviceName: serviceName}, nil
 	default:
-		return nil, fmt.Errorf("--health not supported with encoding %q", e.String())
+		return nil, fmt.Errorf("--health not supported with encoding %q, please specify -e (thrift|proto)", e.String())
 	}
 }
 
