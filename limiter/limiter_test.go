@@ -52,10 +52,10 @@ func TestParallel(t *testing.T) {
 }
 
 func TestStop(t *testing.T) {
-	run := New(1000 /* maxRequests */, 1000000 /* rps */, time.Millisecond)
+	run := New(0 /* maxRequests */, 0 /* rps */, 0 /* maxDuration */)
 
 	for i := 0; i < 100; i++ {
-		assert.True(t, run.More(), "Before Stop() should succeed", i)
+		assert.True(t, run.More(), "Before Stop() should succeed, iteration %v", i)
 	}
 	run.Stop()
 	for i := 0; i < 1000; i++ {
