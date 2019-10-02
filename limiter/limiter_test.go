@@ -61,6 +61,11 @@ func TestStop(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		assert.False(t, run.More(), "After Stop() should fail")
 	}
+
+	// Make sure we can stop multiple times
+	run.Stop()
+	run.Stop()
+	assert.False(t, run.More(), "After Stop() should fail")
 }
 
 func TestTimeout(t *testing.T) {
