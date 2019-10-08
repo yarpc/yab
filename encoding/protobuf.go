@@ -117,12 +117,12 @@ func findProtoMethodDescriptor(s *desc.ServiceDescriptor, m string) (*desc.Metho
 		}
 
 		return nil, encodingerror.NotFound{
-			Encoding:  "gRPC",
-			Typ:       "method",
-			LookIn:    fmt.Sprintf("service %q", s.GetFullyQualifiedName()),
-			Search:    m,
-			Example:   "--method package.Service/Method",
-			Available: available,
+			Encoding:   "gRPC",
+			SearchType: "method",
+			Search:     m,
+			LookIn:     fmt.Sprintf("service %q", s.GetFullyQualifiedName()),
+			Example:    "--method package.Service/Method",
+			Available:  available,
 		}
 
 		// errMsg := "no proto method specified, specify --method package.Service/Method"

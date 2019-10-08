@@ -118,11 +118,11 @@ func findService(parsed *compile.Module, svcName string) (*compile.ServiceSpec, 
 	}
 
 	return nil, encodingerror.NotFound{
-		Encoding:  "Thrift",
-		Typ:       "service",
-		Search:    svcName,
-		Example:   "--method Service::Method",
-		Available: sorted.MapKeys(parsed.Services),
+		Encoding:   "Thrift",
+		SearchType: "service",
+		Search:     svcName,
+		Example:    "--method Service::Method",
+		Available:  sorted.MapKeys(parsed.Services),
 	}
 }
 
@@ -154,12 +154,12 @@ func findMethod(service *compile.ServiceSpec, methodName string) (*compile.Funct
 	}
 
 	return nil, encodingerror.NotFound{
-		Encoding:  "Thrift",
-		Typ:       "method",
-		LookIn:    fmt.Sprintf("service %q", service.Name),
-		Search:    methodName,
-		Example:   "--method Service::Method",
-		Available: sorted.MapKeys(functions),
+		Encoding:   "Thrift",
+		SearchType: "method",
+		Search:     methodName,
+		LookIn:     fmt.Sprintf("service %q", service.Name),
+		Example:    "--method Service::Method",
+		Available:  sorted.MapKeys(functions),
 	}
 }
 

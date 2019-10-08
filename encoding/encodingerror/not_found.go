@@ -29,16 +29,16 @@ import (
 // NotFound error is used when a symbol isn't found (or isn't specified)
 // and there is a list of available symbols.
 type NotFound struct {
-	Encoding  string
-	Typ       string
-	Example   string
-	LookIn    string
-	Search    string
-	Available []string
+	Encoding   string
+	SearchType string
+	Search     string
+	Example    string
+	LookIn     string
+	Available  []string
 }
 
 func (e NotFound) qualifiedType() string {
-	return e.Encoding + " " + e.Typ
+	return e.Encoding + " " + e.SearchType
 }
 
 func (e NotFound) Error() string {
@@ -51,7 +51,7 @@ func (e NotFound) Error() string {
 			fmt.Fprintf(msg, "could not find %v %q", e.qualifiedType(), e.Search)
 		} else {
 			msg.Reset()
-			fmt.Fprintf(msg, "%v %v does not contain %v %q", e.Encoding, e.LookIn, e.Typ, e.Search)
+			fmt.Fprintf(msg, "%v %v does not contain %v %q", e.Encoding, e.LookIn, e.SearchType, e.Search)
 		}
 	}
 	msg.WriteString(". ")
@@ -66,7 +66,7 @@ func (e NotFound) Error() string {
 		return msg.String()
 	}
 
-	availablSuffix := e.Typ
+	availablSuffix := e.SearchType
 	if len(e.Available) > 1 {
 		// "pluralize" the type.
 		availablSuffix += "s"
