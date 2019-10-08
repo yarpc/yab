@@ -77,3 +77,25 @@ func TestReflectionClosedPort(t *testing.T) {
 	assert.Contains(t, err.Error(), "could not reach reflection server")
 	assert.Nil(t, got)
 }
+
+func TestReflectionNotRegistered(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer ln.Close()
+
+	s := grpc.NewServer()
+	go s.Serve(ln)
+
+	// Ensure that all streams are closed by the end of the test.
+	defer s.GracefulStop()
+
+	got, err := NewDescriptorProviderReflection(ReflectionArgs{
+		Timeout: time.Second,
+		Peers:   []string{ln.Addr().String()},
+	})
+	require.NoError(t, err, "failed to create reflection provider")
+
+	_, err = got.FindService("foo")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown service grpc.reflection.v1alpha.ServerReflection", "unexpected error")
+}
