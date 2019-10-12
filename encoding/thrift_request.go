@@ -137,20 +137,20 @@ func (e thriftSerializer) WithoutEnvelopes() Serializer {
 }
 
 func findMethod(service *compile.ServiceSpec, methodName string) (*compile.FunctionSpec, error) {
-	functions := service.Functions
-
-	if service.Parent != nil {
-		// Generate a list of functions that includes the inherited functions.
-		functions = make(map[string]*compile.FunctionSpec)
-		for cur := service; cur != nil; cur = cur.Parent {
-			for name, f := range cur.Functions {
-				functions[name] = f
-			}
+	// Try to find the function in the service or any of the inherited services.
+	for cur := service; cur != nil; cur = cur.Parent {
+		if f, ok := cur.Functions[methodName]; ok {
+			return f, nil
 		}
 	}
 
-	if method, found := functions[methodName]; found {
-		return method, nil
+	// If we can't find the service, let's build a list of fully qualified methods.
+	var available []string
+	for cur := service; cur != nil; cur = cur.Parent {
+		for fName := range cur.Functions {
+			fullyQualified := fmt.Sprintf("%v::%v", service.Name, fName)
+			available = append(available, fullyQualified)
+		}
 	}
 
 	return nil, encodingerror.NotFound{
@@ -159,7 +159,7 @@ func findMethod(service *compile.ServiceSpec, methodName string) (*compile.Funct
 		Search:     methodName,
 		LookIn:     fmt.Sprintf("service %q", service.Name),
 		Example:    "--method Service::Method",
-		Available:  sorted.MapKeys(functions),
+		Available:  available,
 	}
 }
 
