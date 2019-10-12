@@ -119,12 +119,6 @@ func findProtoMethodDescriptor(s *desc.ServiceDescriptor, m string) (*desc.Metho
 			Example:    "--method package.Service/Method",
 			Available:  available,
 		}
-
-		// errMsg := "no proto method specified, specify --method package.Service/Method"
-		// if m != "" {
-		// 	errMsg = fmt.Sprintf("service %q does not include a method named %q", s.GetFullyQualifiedName(), m)
-		// }
-		// return nil, notFoundError{errMsg + ", available methods:", available}
 	}
 	return methodDescriptor, nil
 }

@@ -73,7 +73,6 @@ type fileSource struct {
 }
 
 func (fs *fileSource) FindService(fullyQualifiedName string) (*desc.ServiceDescriptor, error) {
-	// available := map[string][]string
 	var available []string
 
 	for _, fd := range fs.files {
