@@ -8,6 +8,7 @@ import (
 
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/grpcreflect"
+	"github.com/yarpc/yab/encoding/encodingerror"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	rpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
@@ -61,12 +62,28 @@ type grpcreflectSource struct {
 	client *grpcreflect.Client
 }
 
-func (s *grpcreflectSource) FindSymbol(fullyQualifiedName string) (desc.Descriptor, error) {
-	file, err := s.client.FileContainingSymbol(fullyQualifiedName)
+func (s *grpcreflectSource) FindService(fullyQualifiedName string) (*desc.ServiceDescriptor, error) {
+	service, err := s.client.ResolveService(fullyQualifiedName)
 	if err != nil {
-		return nil, err
+		available, availableErr := s.client.ListServices()
+		if availableErr != nil {
+			err = availableErr
+		}
+
+		if !grpcreflect.IsElementNotFoundError(err) {
+			return nil, err
+		}
+
+		return nil, encodingerror.NotFound{
+			Encoding:   "gRPC",
+			SearchType: "service",
+			Search:     fullyQualifiedName,
+			Example:    "--method Service/Method",
+			Available:  available,
+		}
 	}
-	return file.FindSymbol(fullyQualifiedName), nil
+
+	return service, nil
 }
 
 func (s *grpcreflectSource) Close() {

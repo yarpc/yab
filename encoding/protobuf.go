@@ -29,14 +29,9 @@ func NewProtobuf(fullMethodName string, source protobuf.DescriptorProvider) (Ser
 		return nil, err
 	}
 
-	service, err := source.FindSymbol(serviceName)
+	serviceDescriptor, err := source.FindService(serviceName)
 	if err != nil {
 		return nil, err
-	}
-
-	serviceDescriptor, ok := service.(*desc.ServiceDescriptor)
-	if !ok {
-		return nil, fmt.Errorf("target server does not expose service %q", serviceName)
 	}
 
 	methodDescriptor, err := findProtoMethodDescriptor(serviceDescriptor, methodName)
@@ -124,12 +119,6 @@ func findProtoMethodDescriptor(s *desc.ServiceDescriptor, m string) (*desc.Metho
 			Example:    "--method package.Service/Method",
 			Available:  available,
 		}
-
-		// errMsg := "no proto method specified, specify --method package.Service/Method"
-		// if m != "" {
-		// 	errMsg = fmt.Sprintf("service %q does not include a method named %q", s.GetFullyQualifiedName(), m)
-		// }
-		// return nil, notFoundError{errMsg + ", available methods:", available}
 	}
 	return methodDescriptor, nil
 }

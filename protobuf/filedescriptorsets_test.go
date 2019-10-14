@@ -18,22 +18,22 @@ func TestNewDescriptorProviderFileDescriptorSetBins(t *testing.T) {
 		{
 			name:         "pass",
 			fileNames:    []string{"../testdata/protobuf/simple/simple.proto.bin"},
-			lookupSymbol: "Bar.Baz",
+			lookupSymbol: "Bar",
 		},
 		{
 			name:         "pass combined dependencies",
 			fileNames:    []string{"../testdata/protobuf/dependencies/combined.bin"},
-			lookupSymbol: `Foo`,
+			lookupSymbol: "Bar",
 		},
 		{
 			name:         "pass combined dependencies (multiroot)",
 			fileNames:    []string{"../testdata/protobuf/multiroot/root/combined.bin"},
-			lookupSymbol: `Foo`,
+			lookupSymbol: "Bar",
 		},
 		{
 			name:         "pass combined dependencies (nested)",
 			fileNames:    []string{"../testdata/protobuf/nested/combined.bin"},
-			lookupSymbol: `Foo`,
+			lookupSymbol: "Bar",
 		},
 		{
 			name: "pass multiple dependencies",
@@ -41,13 +41,13 @@ func TestNewDescriptorProviderFileDescriptorSetBins(t *testing.T) {
 				"../testdata/protobuf/dependencies/main.proto.bin",
 				"../testdata/protobuf/dependencies/dep.proto.bin",
 			},
-			lookupSymbol: `Foo`,
+			lookupSymbol: "Bar",
 		},
 		{
 			name:         "pass parsing fail finding symbol",
 			fileNames:    []string{"../testdata/protobuf/simple/simple.proto.bin"},
 			lookupSymbol: "Bar.Baq",
-			symbolErrMsg: `symbol not found: "Bar.Baq"`,
+			symbolErrMsg: `could not find gRPC service "Bar.Baq"`,
 		},
 		{
 			name:      "fail is not protoset",
@@ -89,7 +89,7 @@ func TestNewDescriptorProviderFileDescriptorSetBins(t *testing.T) {
 
 			if tt.lookupSymbol != "" {
 				require.NotNil(t, got)
-				s, err := got.FindSymbol(tt.lookupSymbol)
+				s, err := got.FindService(tt.lookupSymbol)
 				if tt.symbolErrMsg != "" {
 					require.Error(t, err)
 					assert.Contains(t, err.Error(), tt.symbolErrMsg, "%v: invalid error", tt.name)
