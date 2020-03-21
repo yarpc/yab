@@ -109,13 +109,12 @@ func TestReflectionRoutingHeaders(t *testing.T) {
 	defer ln.Close()
 
 	s := grpc.NewServer()
+	drs := &dummyReflectionServer{}
+	rpb.RegisterServerReflectionServer(s, drs)
 	go s.Serve(ln)
 
 	// Ensure that all streams are closed by the end of the test.
 	defer s.GracefulStop()
-
-	drs := &dummyReflectionServer{}
-	rpb.RegisterServerReflectionServer(s, drs)
 
 	baseMD := metadata.Pairs(
 		ygrpc.CallerHeader, "test-caller",

@@ -9,6 +9,7 @@ import (
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/grpcreflect"
 	"github.com/yarpc/yab/encoding/encodingerror"
+	yproto "go.uber.org/yarpc/encoding/protobuf"
 	ygrpc "go.uber.org/yarpc/transport/grpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -54,7 +55,7 @@ func NewDescriptorProviderReflection(args ReflectionArgs) (DescriptorProvider, e
 	routingHeaders := metadata.Pairs(
 		ygrpc.CallerHeader, args.Caller,
 		ygrpc.ServiceHeader, args.Service,
-		ygrpc.EncodingHeader, "proto",
+		ygrpc.EncodingHeader, string(yproto.Encoding),
 	)
 	if args.RoutingDelegate != "" {
 		routingHeaders.Append(ygrpc.RoutingDelegateHeader, args.RoutingDelegate)
