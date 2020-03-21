@@ -40,6 +40,30 @@ func UnmarshalStrict(in []byte, out interface{}) error {
 // addAliases generates a new struct that contains all exported fields
 // from the passed in struct, but adds additional fields for any
 // aliases.
+//
+// Given a struct such as:
+//
+//   type Config struct {
+//     UserName string `yaml:"username" yaml-aliases:"userName,user-name"`
+//   }
+//
+// It will create a new struct with fields for each alias:
+//
+//   struct {
+//     UserName string `yaml:"username" yaml-aliases:"userName,user-name"`
+//     UserNameYamlAlias1 *string `yaml:"userName"`
+//     UserNameYamlAlias2 *string `yaml:"user-name"`
+//   }
+//
+// A value of that struct is returned, with the new pointer fields pointing
+// to the original field that defined the aliases:
+//
+// s.UserNameYamlAlias1 = &UserName
+// s.UserNameYamlAlias2 = &UserName
+//
+// The YAML library respects existing pointers when unmarshalling, and
+// does not replace them:
+// https://gist.github.com/prashantv/fa4f92b4b95f936d68495be250ed3506
 func addAliases(v interface{}) interface{} {
 	rv := reflect.ValueOf(v).Elem()
 	rt := rv.Type()
