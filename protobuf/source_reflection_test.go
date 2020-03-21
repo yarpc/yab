@@ -7,8 +7,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	ygrpc "go.uber.org/yarpc/transport/grpc"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
+	rpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
 )
 
 func TestReflection(t *testing.T) {
@@ -98,4 +101,97 @@ func TestReflectionNotRegistered(t *testing.T) {
 	_, err = got.FindService("foo")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown service grpc.reflection.v1alpha.ServerReflection", "unexpected error")
+}
+
+func TestReflectionRoutingHeaders(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer ln.Close()
+
+	s := grpc.NewServer()
+	drs := &dummyReflectionServer{}
+	rpb.RegisterServerReflectionServer(s, drs)
+	go s.Serve(ln)
+
+	// Ensure that all streams are closed by the end of the test.
+	defer s.GracefulStop()
+
+	baseMD := metadata.Pairs(
+		ygrpc.CallerHeader, "test-caller",
+		ygrpc.ServiceHeader, "test-service",
+		ygrpc.EncodingHeader, "proto",
+	)
+	tests := []struct {
+		msg  string
+		rd   string
+		rk   string
+		want map[string]string
+	}{
+		{
+			msg:  "no routing delegate or key",
+			want: nil,
+		},
+		{
+			msg:  "only routing delegate",
+			rd:   "test-rd",
+			want: map[string]string{ygrpc.RoutingDelegateHeader: "test-rd"},
+		},
+		{
+			msg:  "only routing key",
+			rk:   "test-rk",
+			want: map[string]string{ygrpc.RoutingKeyHeader: "test-rk"},
+		},
+		{
+			msg: "routing delegate & key",
+			rd:  "test-rd",
+			rk:  "test-rk",
+			want: map[string]string{
+				ygrpc.RoutingDelegateHeader: "test-rd",
+				ygrpc.RoutingKeyHeader:      "test-rk",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.msg, func(t *testing.T) {
+			drs.Reset()
+
+			source, err := NewDescriptorProviderReflection(ReflectionArgs{
+				Timeout:         time.Second,
+				Peers:           []string{ln.Addr().String()},
+				Caller:          "test-caller",
+				Service:         "test-service",
+				RoutingDelegate: tt.rd,
+				RoutingKey:      tt.rk,
+			})
+			require.NoError(t, err)
+			defer source.Close()
+
+			_, err = source.FindService("foo")
+			require.Error(t, err, "expected error from stub server")
+			assert.Contains(t, err.Error(), assert.AnError.Error(), "unexpected error")
+
+			for k := range baseMD {
+				assert.Equal(t, baseMD.Get(k), drs.md.Get(k), "unexpected values for header %v", k)
+			}
+			for k := range tt.want {
+				assert.Equal(t, []string{tt.want[k]}, drs.md.Get(k), "unexpected values for header %v", k)
+			}
+		})
+	}
+}
+
+type dummyReflectionServer struct {
+	md metadata.MD
+}
+
+func (s *dummyReflectionServer) Reset() {
+	s.md = nil
+}
+
+func (s *dummyReflectionServer) ServerReflectionInfo(r rpb.ServerReflection_ServerReflectionInfoServer) error {
+	if md, ok := metadata.FromIncomingContext(r.Context()); ok {
+		s.md = md
+	}
+	return assert.AnError
 }

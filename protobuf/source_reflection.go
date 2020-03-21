@@ -9,6 +9,8 @@ import (
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/grpcreflect"
 	"github.com/yarpc/yab/encoding/encodingerror"
+	yproto "go.uber.org/yarpc/encoding/protobuf"
+	ygrpc "go.uber.org/yarpc/transport/grpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	rpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
@@ -18,10 +20,12 @@ import (
 
 // ReflectionArgs are args for constructing a DescriptorProvider that reaches out to a reflection server.
 type ReflectionArgs struct {
-	Caller  string
-	Service string
-	Peers   []string
-	Timeout time.Duration
+	Caller          string
+	Service         string
+	RoutingDelegate string
+	RoutingKey      string
+	Peers           []string
+	Timeout         time.Duration
 }
 
 // NewDescriptorProviderReflection returns a DescriptorProvider that reaches
@@ -47,12 +51,20 @@ func NewDescriptorProviderReflection(args ReflectionArgs) (DescriptorProvider, e
 		return nil, fmt.Errorf("could not reach reflection server: %s", err)
 	}
 	pbClient := rpb.NewServerReflectionClient(conn)
-	metadataContext := metadata.NewOutgoingContext(context.Background(),
-		map[string][]string{
-			"rpc-caller":   []string{args.Caller},
-			"rpc-service":  []string{args.Service},
-			"rpc-encoding": []string{"proto"},
-		})
+
+	routingHeaders := metadata.Pairs(
+		ygrpc.CallerHeader, args.Caller,
+		ygrpc.ServiceHeader, args.Service,
+		ygrpc.EncodingHeader, string(yproto.Encoding),
+	)
+	if args.RoutingDelegate != "" {
+		routingHeaders.Append(ygrpc.RoutingDelegateHeader, args.RoutingDelegate)
+	}
+	if args.RoutingKey != "" {
+		routingHeaders.Append(ygrpc.RoutingKeyHeader, args.RoutingKey)
+	}
+
+	metadataContext := metadata.NewOutgoingContext(context.Background(), routingHeaders)
 	return &grpcreflectSource{
 		client: grpcreflect.NewClient(metadataContext, pbClient),
 	}, nil

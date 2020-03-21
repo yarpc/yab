@@ -133,10 +133,12 @@ func newProtoDescriptorProvider(ropts RequestOptions, topts TransportOptions, re
 	}
 
 	return protobuf.NewDescriptorProviderReflection(protobuf.ReflectionArgs{
-		Caller:  topts.CallerName,
-		Service: topts.ServiceName,
-		Peers:   getHosts(topts.Peers),
-		Timeout: ropts.Timeout.Duration(),
+		Caller:          topts.CallerName,
+		Service:         topts.ServiceName,
+		RoutingDelegate: topts.RoutingDelegate,
+		RoutingKey:      topts.RoutingKey,
+		Peers:           getHosts(topts.Peers),
+		Timeout:         ropts.Timeout.Duration(),
 	})
 }
 
