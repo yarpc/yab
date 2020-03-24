@@ -23,6 +23,7 @@ package encoding
 import (
 	"testing"
 
+	"github.com/yarpc/yab/encoding/encodingerror"
 	"github.com/yarpc/yab/internal/thrifttest"
 
 	"github.com/stretchr/testify/assert"
@@ -66,13 +67,13 @@ func TestNewThriftSerializer(t *testing.T) {
 			desc:   "Invalid service name",
 			file:   validThrift,
 			method: "UnknownSvc::foo",
-			errMsg: "could not find service",
+			errMsg: `could not find Thrift service "UnknownSvc"`,
 		},
 		{
 			desc:   "Invalid method name",
 			file:   validThrift,
 			method: "Simple::unknownMethod",
-			errMsg: "could not find method",
+			errMsg: "does not contain method",
 		},
 		{
 			desc:   "Valid Thrift file and method name",
@@ -88,19 +89,19 @@ func TestNewThriftSerializer(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got, err := NewThrift(tt.file, tt.method, tt.multiplexed)
-		if tt.errMsg == "" {
-			assert.NoError(t, err, "%v", tt.desc)
-			if assert.NotNil(t, got, "%v: Invalid request") {
+		t.Run(tt.desc, func(t *testing.T) {
+			got, err := NewThrift(tt.file, tt.method, tt.multiplexed)
+			if tt.errMsg == "" {
+				require.NoError(t, err)
+				require.NotNil(t, got, "successful case should return Serializer")
 				assert.Equal(t, Thrift, got.Encoding(), "Encoding mismatch")
+				return
 			}
-			continue
-		}
 
-		if assert.Error(t, err, "%v", tt.desc) {
-			assert.Nil(t, got, "%v: Error cases should not return any bytes", tt.desc)
-			assert.Contains(t, err.Error(), tt.errMsg, "%v: invalid error", tt.desc)
-		}
+			require.Error(t, err, "%v", tt.desc)
+			require.Nil(t, got, "Error cases should not return Serializer")
+			assert.Contains(t, err.Error(), tt.errMsg, "unexpected error")
+		})
 	}
 }
 
@@ -155,7 +156,7 @@ func TestRequest(t *testing.T) {
 	}
 }
 
-func TestFindServiceFound(t *testing.T) {
+func TestFindService(t *testing.T) {
 	parsed := thrifttest.Parse(t, `
     service Foo {}
     service Bar {}
@@ -172,22 +173,22 @@ func TestFindServiceFound(t *testing.T) {
 		},
 		{
 			svc:    "F",
-			errMsg: `could not find service "F"`,
+			errMsg: `could not find Thrift service "F"`,
 		},
 	}
 
 	for _, tt := range tests {
-		got, err := findService(parsed, tt.svc)
-		if tt.errMsg != "" {
-			if assert.Error(t, err, "findService(%v) should fail", tt.svc) {
-				assert.Contains(t, err.Error(), tt.errMsg, "findService(%v) got unexpected error", tt.svc)
+		t.Run(tt.svc, func(t *testing.T) {
+			got, err := findService(parsed, tt.svc)
+			if tt.errMsg != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errMsg, "unexpected error")
+				return
 			}
-			continue
-		}
 
-		if assert.NoError(t, err, "findService(%v) should not fail", tt.svc) {
+			require.NoError(t, err)
 			assert.Equal(t, tt.svc, got.Name, "Service name mismatch")
-		}
+		})
 	}
 }
 
@@ -228,19 +229,31 @@ func TestFindMethod(t *testing.T) {
 			errMsg: `no Thrift method specified`,
 		},
 		{
-			svc:    "Foo",
-			f:      "f3",
-			errMsg: `could not find method "f3" in "Foo"`,
+			svc: "Foo",
+			f:   "f3",
+			errMsg: encodingerror.NotFound{
+				Encoding:   "Thrift",
+				SearchType: "method",
+				LookIn:     `service "Foo"`,
+				Search:     "f3",
+				Available:  []string{"Foo::f1", "Foo::f2"},
+			}.Error(),
 		},
 		{
 			svc:    "S1",
 			f:      "m2",
-			errMsg: "could not find method",
+			errMsg: "does not contain method",
 		},
 		{
-			svc:    "S3",
-			f:      "m4",
-			errMsg: "could not find method",
+			svc: "S3",
+			f:   "m4",
+			errMsg: encodingerror.NotFound{
+				Encoding:   "Thrift",
+				SearchType: "method",
+				LookIn:     `service "S3"`,
+				Search:     "m4",
+				Available:  []string{"S3::m1", "S3::m2", "S3::m3"},
+			}.Error(),
 		},
 	}
 

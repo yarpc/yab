@@ -283,7 +283,7 @@ func TestNewSerializer(t *testing.T) {
 			msg:      "thrift with file, without procedure lists services",
 			encoding: encoding.Thrift,
 			opts:     RequestOptions{ThriftFile: validThrift},
-			wantErr:  "available services",
+			wantErr:  "no Thrift service specified",
 		},
 		{
 			msg:      "json with procedure",
@@ -347,7 +347,7 @@ func TestNewSerializer(t *testing.T) {
 				Timeout:   timeMillisFlag(time.Millisecond * 500),
 			},
 			peers:   []string{"grpc://" + ln.Addr().String()},
-			wantErr: "Symbol not found: Bar",
+			wantErr: `could not find gRPC service "Bar"`,
 		},
 		{
 			msg: "unspecified encoding with valid host:port peer, unknown symbol",
@@ -356,7 +356,7 @@ func TestNewSerializer(t *testing.T) {
 				Timeout:   timeMillisFlag(time.Millisecond * 500),
 			},
 			peers:   []string{ln.Addr().String()},
-			wantErr: "Symbol not found: Bar",
+			wantErr: `could not find gRPC service "Bar"`,
 		},
 	}
 

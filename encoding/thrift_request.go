@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/yarpc/yab/encoding/encodingerror"
 	"github.com/yarpc/yab/sorted"
 	"github.com/yarpc/yab/thrift"
 	"github.com/yarpc/yab/transport"
@@ -116,12 +117,13 @@ func findService(parsed *compile.Module, svcName string) (*compile.ServiceSpec, 
 		return service, nil
 	}
 
-	available := sorted.MapKeys(parsed.Services)
-	errMsg := "no Thrift service specified, specify --method Service::Method"
-	if svcName != "" {
-		errMsg = fmt.Sprintf("could not find service %q", svcName)
+	return nil, encodingerror.NotFound{
+		Encoding:   "Thrift",
+		SearchType: "service",
+		Search:     svcName,
+		Example:    "--method Service::Method",
+		Available:  sorted.MapKeys(parsed.Services),
 	}
-	return nil, notFoundError{errMsg + ", available services:", available}
 }
 
 func (e thriftSerializer) CheckSuccess(res *transport.Response) error {
@@ -135,28 +137,30 @@ func (e thriftSerializer) WithoutEnvelopes() Serializer {
 }
 
 func findMethod(service *compile.ServiceSpec, methodName string) (*compile.FunctionSpec, error) {
-	functions := service.Functions
-
-	if service.Parent != nil {
-		// Generate a list of functions that includes the inherited functions.
-		functions = make(map[string]*compile.FunctionSpec)
-		for cur := service; cur != nil; cur = cur.Parent {
-			for name, f := range cur.Functions {
-				functions[name] = f
-			}
+	// Try to find the function in the service or any of the inherited services.
+	for cur := service; cur != nil; cur = cur.Parent {
+		if f, ok := cur.Functions[methodName]; ok {
+			return f, nil
 		}
 	}
 
-	if method, found := functions[methodName]; found {
-		return method, nil
+	// If we can't find the service, let's build a list of fully qualified methods.
+	var available []string
+	for cur := service; cur != nil; cur = cur.Parent {
+		for fName := range cur.Functions {
+			fullyQualified := fmt.Sprintf("%v::%v", service.Name, fName)
+			available = append(available, fullyQualified)
+		}
 	}
 
-	available := sorted.MapKeys(functions)
-	errMsg := "no Thrift method specified, specify --method Service::Method"
-	if methodName != "" {
-		errMsg = fmt.Sprintf("could not find method %q in %q", methodName, service.Name)
+	return nil, encodingerror.NotFound{
+		Encoding:   "Thrift",
+		SearchType: "method",
+		Search:     methodName,
+		LookIn:     fmt.Sprintf("service %q", service.Name),
+		Example:    "--method Service::Method",
+		Available:  available,
 	}
-	return nil, notFoundError{errMsg + ", available methods:", available}
 }
 
 func isFileMissing(f string) bool {

@@ -25,12 +25,12 @@ func TestNewProtobuf(t *testing.T) {
 		{
 			desc:   "no method",
 			method: "Bar",
-			errMsg: "no proto method specified, specify --method package.Service/Method, available methods:\n\tBar/Baz",
+			errMsg: "no gRPC method specified, specify --method package.Service/Method. Available gRPC method in service \"Bar\":\n\tBar/Baz",
 		},
 		{
 			desc:   "missing method for service",
 			method: "Bar/baq",
-			errMsg: fmt.Sprintf("service %q does not include a method named %q, available methods:\n\tBar/Baz", "Bar", "baq"),
+			errMsg: fmt.Sprintf("gRPC service %q does not contain method %q. Available gRPC method in service %q:\n\tBar/Baz", "Bar", "baq", "Bar"),
 		},
 		{
 			desc:   "invalid method format",
@@ -40,12 +40,12 @@ func TestNewProtobuf(t *testing.T) {
 		{
 			desc:   "service not found",
 			method: "Baq/Foo",
-			errMsg: `symbol not found: "Baq"`,
+			errMsg: `could not find gRPC service "Baq". Available gRPC service:` + "\n\tBar",
 		},
 		{
 			desc:   "service not found but symbol is",
 			method: "Foo/Foo",
-			errMsg: `target server does not expose service "Foo"`,
+			errMsg: `could not find gRPC service "Foo". Available gRPC service:` + "\n\tBar",
 		},
 	}
 	source, err := protobuf.NewDescriptorProviderFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
