@@ -37,8 +37,8 @@ func UnmarshalStrict(in []byte, out interface{}) error {
 	return yaml.UnmarshalStrict(in, addAliases(out))
 }
 
-// addAliases generates a new struct that contains all exported fields
-// from the passed in struct, but adds additional fields for any
+// addAliases generates a new struct for unmarshalling that contains all exported
+// fields from the passed in struct, but also adds additional fields for any
 // aliases.
 //
 // Given a struct such as:
@@ -65,12 +65,13 @@ func UnmarshalStrict(in []byte, out interface{}) error {
 // out.UserNameYamlAlias1 = &dest.UserName
 // out.UserNameYamlAlias2 = &dest.UserName
 // out.TTL = &dest.TTL
+// return out
 //
 // The YAML library respects existing pointers when unmarshalling, and
 // does not replace them:
 // https://gist.github.com/prashantv/fa4f92b4b95f936d68495be250ed3506
-func addAliases(v interface{}) interface{} {
-	rv := reflect.ValueOf(v).Elem()
+func addAliases(dest interface{}) interface{} {
+	rv := reflect.ValueOf(dest).Elem()
 	rt := rv.Type()
 
 	fields := make([]reflect.StructField, 0, rt.NumField())
@@ -113,10 +114,10 @@ func addAliases(v interface{}) interface{} {
 	// The struct we generated has pointers to the original fields.
 	// Set all the pointers to the fields in the original struct.
 	generated := reflect.StructOf(fields)
-	generatedV := reflect.New(generated)
+	out := reflect.New(generated)
 	for i, dest := range dests {
-		generatedV.Elem().Field(i).Set(dest)
+		out.Elem().Field(i).Set(dest)
 	}
 
-	return generatedV.Interface()
+	return out.Interface()
 }
