@@ -45,21 +45,26 @@ func UnmarshalStrict(in []byte, out interface{}) error {
 //
 //   type Config struct {
 //     UserName string `yaml:"username" yaml-aliases:"userName,user-name"`
+//     TTL time.Duration `yaml:"ttl"`
 //   }
 //
-// It will create a new struct with fields for each alias:
+// It will create a new struct with a pointer field for each field in the
+// original struct and a new field for each alias.
 //
 //   struct {
 //     UserName string `yaml:"username" yaml-aliases:"userName,user-name"`
 //     UserNameYamlAlias1 *string `yaml:"userName"`
 //     UserNameYamlAlias2 *string `yaml:"user-name"`
+//     TTL *time.Duration `yaml:"ttl"`
 //   }
 //
-// A value of that struct is returned, with the new pointer fields pointing
-// to the original field that defined the aliases:
+// A value of that struct is returned with the pointer fields pointing to
+// fields of the original struct.
 //
-// s.UserNameYamlAlias1 = &UserName
-// s.UserNameYamlAlias2 = &UserName
+// out.UserName = &dest.UserName
+// out.UserNameYamlAlias1 = &dest.UserName
+// out.UserNameYamlAlias2 = &dest.UserName
+// out.TTL = &dest.TTL
 //
 // The YAML library respects existing pointers when unmarshalling, and
 // does not replace them:
@@ -109,8 +114,8 @@ func addAliases(v interface{}) interface{} {
 	// Set all the pointers to the fields in the original struct.
 	generated := reflect.StructOf(fields)
 	generatedV := reflect.New(generated)
-	for i := range fields {
-		generatedV.Elem().Field(i).Set(dests[i])
+	for i, dest := range dests {
+		generatedV.Elem().Field(i).Set(dest)
 	}
 
 	return generatedV.Interface()
