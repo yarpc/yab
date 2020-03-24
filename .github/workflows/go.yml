@@ -21,6 +21,15 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
+    - name: Load cached dependencies
+      uses: actions/cache@v1
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+
     - name: Install
       run: make install_ci
 
@@ -46,6 +55,14 @@ jobs:
 
     - name: Checkout code
       uses: actions/checkout@v2
+
+    - name: Load cached dependencies
+      uses: actions/cache@v1
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
 
     - name: Release
       env:
