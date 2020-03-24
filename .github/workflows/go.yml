@@ -31,7 +31,7 @@ jobs:
 
 
     - name: Install
-      run: make install_ci
+      run: make install
 
     - name: Test
       run: make test_ci
@@ -63,6 +63,9 @@ jobs:
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           ${{ runner.os }}-go-
+
+    - name: Install
+      run: make install
 
     - name: Release
       env:
