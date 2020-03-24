@@ -1,6 +1,9 @@
 Changelog
 =========
 
+# 0.16.2 (2020-03-24)
+* Fix gRPC reflection requests not propogating routing key and routing delegate.
+
 # 0.16.1 (2019-10-02)
 * Fix bug that prevented nested JSON to be marshalled into Proto encoded
   requests.
