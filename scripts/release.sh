@@ -7,10 +7,6 @@ die() {
     exit 1
 }
 
-if [ -z "${GITHUB_USER:-}" ]; then
-  die "GITHUB_USER is not set."
-fi
-
 if [ -z "${GITHUB_REPO:-}" ]; then
   die "GITHUB_REPO is not set."
 fi
@@ -23,6 +19,7 @@ VERSION="${1:-}"
 if [ -z "$VERSION" ]; then
   die "USAGE: $0 VERSION"
 fi
+VERSION="${VERSION#refs/tags/}"
 
 # Make it easier to debug failures
 failure() {
@@ -54,7 +51,7 @@ RELEASE_ARGS=$(echo '{}' | \
       }')
 
 RELEASE_URL="https://api.github.com/repos/$GITHUB_REPO/releases"
-RELEASE_OUT=$(echo "$RELEASE_ARGS" | curl --user "$GITHUB_USER:$GITHUB_TOKEN" -X POST --data @- "$RELEASE_URL")
+RELEASE_OUT=$(echo "$RELEASE_ARGS" | curl --header "authorization: Bearer $GITHUB_TOKEN" -X POST --data @- "$RELEASE_URL")
 
 echo "Release to $RELEASE_URL got:"
 echo "  $RELEASE_OUT"
@@ -77,7 +74,7 @@ for FILE in build/yab-"$VERSION"-*.zip; do
 
   # See https://developer.github.com/v3/repos/releases/#upload-a-release-asset
   UPLOAD_URL="${UPLOADS_URL}?name=$(basename "$FILE")"
-  curl --user "$GITHUB_USER:$GITHUB_TOKEN" -X POST \
+  curl --header "authorization: Bearer $GITHUB_TOKEN" -X POST \
     --data-binary @"$FILE" -H 'Content-Type: application/zip' \
     "$UPLOAD_URL"
 done
