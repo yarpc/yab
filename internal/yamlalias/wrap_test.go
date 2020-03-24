@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v2"
 )
 
 func stringPtr(s string) *string {
@@ -116,6 +117,20 @@ func TestWrap(t *testing.T) {
 			assert.Equal(t, tt.want, v)
 		})
 	}
+}
+
+func TestWrapPointerField(t *testing.T) {
+	var dest string
+	type StructWithPointer struct {
+		Foo *string `yaml:"foo" yaml-aliases:"bar"`
+	}
+
+	s := StructWithPointer{Foo: &dest}
+	require.NoError(t, yaml.Unmarshal([]byte(`{"foo": "initial"}`), &s), "failed to unmarshal")
+	assert.Equal(t, "initial", dest, "dest expected to be updated")
+
+	require.NoError(t, Unmarshal([]byte(`{"bar": "updated"}`), &s), "failed to unmarshal with alias")
+	assert.Equal(t, "updated", dest, "expected dest to be updated via alias")
 }
 
 func TestWrapInvalid(t *testing.T) {
