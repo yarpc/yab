@@ -52,7 +52,7 @@ func UnmarshalStrict(in []byte, out interface{}) error {
 // original struct and a new field for each alias.
 //
 //   struct {
-//     UserName string `yaml:"username" yaml-aliases:"userName,user-name"`
+//     UserName *string `yaml:"username" yaml-aliases:"userName,user-name"`
 //     UserNameYamlAlias1 *string `yaml:"userName"`
 //     UserNameYamlAlias2 *string `yaml:"user-name"`
 //     TTL *time.Duration `yaml:"ttl"`
