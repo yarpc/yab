@@ -29,6 +29,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/yarpc/yab/internal/yamlalias"
 )
 
 func mustReadYAMLFile(t *testing.T, yamlTemplate string, opts *Options) {
@@ -292,9 +293,10 @@ func TestTemplateAlias(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		for _, template := range tt.templates {
-			t.Run(template, func(t *testing.T) {
-				templ, err := unmarshalTemplate([]byte(template))
+		for _, in := range tt.templates {
+			t.Run(in, func(t *testing.T) {
+				var templ template
+				err := yamlalias.Unmarshal([]byte(in), &templ)
 				require.NoError(t, err)
 				assert.Equal(t, tt.wantShardKey, templ.ShardKey, "shard key aliases expanded")
 				assert.Equal(t, tt.wantRoutingKey, templ.RoutingKey, "routing key aliases expanded")
@@ -312,23 +314,23 @@ func TestDisableThriftEnvelopeOverride(t *testing.T) {
 		wantDisableThriftEnvelope bool
 	}{
 		{
-			initial: false,
-			yaml:    "method: foo",
+			initial:                   false,
+			yaml:                      "method: foo",
 			wantDisableThriftEnvelope: false,
 		},
 		{
-			initial: true,
-			yaml:    "method: foo",
+			initial:                   true,
+			yaml:                      "method: foo",
 			wantDisableThriftEnvelope: true,
 		},
 		{
-			initial: false,
-			yaml:    "disable-thrift-envelope: true",
+			initial:                   false,
+			yaml:                      "disable-thrift-envelope: true",
 			wantDisableThriftEnvelope: true,
 		},
 		{
-			initial: true,
-			yaml:    "disable-thrift-envelope: true",
+			initial:                   true,
+			yaml:                      "disable-thrift-envelope: true",
 			wantDisableThriftEnvelope: true,
 		},
 	}
