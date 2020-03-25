@@ -92,5 +92,6 @@ func getMetaService() *compile.ServiceSpec {
 }
 
 func getHealthSpec() (string, *compile.FunctionSpec) {
-	return metaService + "::" + healthMethod, getMetaService().Functions[healthMethod]
+	healthSpec := getMetaService().Functions[healthMethod]
+	return metaService + "::" + healthMethod, healthSpec
 }

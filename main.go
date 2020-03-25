@@ -338,8 +338,6 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 		out.Fatalf("Failed while parsing options: %v\n", err)
 	}
 
-	serializer = withTransportSerializer(transport.Protocol(), serializer, opts.ROpts)
-
 	// req is the transport.Request that will be used to make a call.
 	req, err := serializer.Request(reqInput)
 	if err != nil {
@@ -359,10 +357,6 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 		serializer: serializer,
 		req:        req,
 	})
-}
-
-type noEnveloper interface {
-	WithoutEnvelopes() encoding.Serializer
 }
 
 func createJaegerTracer(opts Options, out output) (opentracing.Tracer, io.Closer) {
@@ -404,18 +398,6 @@ func getTracer(opts Options, out output) (opentracing.Tracer, io.Closer) {
 		out.Fatalf("To propagate baggage, you must opt-into a tracing client, i.e., --jaeger")
 	}
 	return opentracing.NoopTracer{}, nil
-}
-
-// withTransportSerializer may modify the serializer for the transport used.
-// E.g. Thrift payloads are not enveloped when used with TChannel or gRPC.
-func withTransportSerializer(p transport.Protocol, s encoding.Serializer, rOpts RequestOptions) encoding.Serializer {
-	// TODO: We can move this logic into NewSerializer as we resolved transport protocol and encoding together.
-	switch {
-	case (p == transport.TChannel || p == transport.GRPC) && s.Encoding() == encoding.Thrift,
-		rOpts.ThriftDisableEnvelopes:
-		s = s.(noEnveloper).WithoutEnvelopes()
-	}
-	return s
 }
 
 type resolvedProtocolEncoding struct {
