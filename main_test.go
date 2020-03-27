@@ -567,7 +567,7 @@ func TestGetOptionsPrintsPluginErrors(t *testing.T) {
 	require.Contains(t, warnBuf.String(), "WARNING: Error adding plugin-based custom flags")
 }
 
-func TestAlises(t *testing.T) {
+func TestAliases(t *testing.T) {
 	type cmdArgs []string
 
 	tests := []struct {
@@ -577,12 +577,11 @@ func TestAlises(t *testing.T) {
 	}{
 		{
 			args: []cmdArgs{
-				{"--timeout", "1s"},
-				{"--timeout", "1000"},
-				{"-t", "1000"},
+				{"--timeout", "5s"},
+				{"--timeout", "5000"},
 			},
 			validate: func(args cmdArgs, opts *Options) {
-				assert.Equal(t, time.Second, opts.ROpts.Timeout.Duration(), "Args: %v", args)
+				assert.Equal(t, 5*time.Second, opts.ROpts.Timeout.Duration(), "Args: %v", args)
 			},
 		},
 		{
