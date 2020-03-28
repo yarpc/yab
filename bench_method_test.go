@@ -51,8 +51,6 @@ func benchmarkMethodForROpts(t *testing.T, rOpts RequestOptions, p transport.Pro
 	})
 	require.NoError(t, err, "Failed to create Thrift serializer")
 
-	serializer = withTransportSerializer(p, serializer, rOpts)
-
 	req, err := serializer.Request(nil)
 	require.NoError(t, err, "Failed to serialize Thrift body")
 

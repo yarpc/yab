@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/yarpc/yab/thrift"
 	"github.com/yarpc/yab/transport"
 	"github.com/yarpc/yab/unmarshal"
 )
@@ -90,7 +91,8 @@ func (e Encoding) GetHealth(serviceName string) (Serializer, error) {
 	switch e {
 	case Thrift:
 		method, spec := getHealthSpec()
-		return thriftSerializer{method, spec, defaultOpts}, nil
+		opts := thrift.Options{} // Meta::health is TChannel-specific, which doesn't use envelopes.
+		return thriftSerializer{method, spec, opts}, nil
 	case Protobuf:
 		return protoHealthSerializer{serviceName: serviceName}, nil
 	default:

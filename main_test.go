@@ -998,7 +998,7 @@ func TestResolveProtocolEncoding(t *testing.T) {
 	}
 }
 
-func TestWithTransportSerializer(t *testing.T) {
+func TestDetectThriftEnvelopes(t *testing.T) {
 	validRequestOpts := RequestOptions{
 		ThriftFile: validThrift,
 		Procedure:  fooMethod,
@@ -1056,7 +1056,6 @@ func TestWithTransportSerializer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.msg, func(t *testing.T) {
-
 			resolved := resolvedProtocolEncoding{
 				protocol: tt.protocol,
 				enc:      encoding.Thrift,
@@ -1064,7 +1063,6 @@ func TestWithTransportSerializer(t *testing.T) {
 			serializer, err := NewSerializer(Options{ROpts: tt.rOpts}, resolved)
 			require.NoError(t, err, "Failed to create serializer for %+v", tt.rOpts)
 
-			serializer = withTransportSerializer(tt.protocol, serializer, tt.rOpts)
 			req, err := serializer.Request(nil)
 			require.NoError(t, err, "Failed to serialize request for %+v", tt.rOpts)
 
