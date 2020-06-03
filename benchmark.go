@@ -110,29 +110,32 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 			opts.MaxRequests = rpsMax
 		}
 	}
+    // Creating struct to store JSON output
+    type BenchmarkParameters struct {
+        CPUs int `json:"CPUs"`
+        Concurrency int `json:"Concurrency"`
+        Connections int `json:"Connections"`
+        MaxRequests int `json:Max-requests`
+        MaxDuration time.Duration `json:"Max-duration"`
+        MaxRPS int `json:"Max-RPS"`
+    }
+    type Latencies struct {
+        first string `json:"0.5000"`
+        second string `json:"0.9000"`
+        third string `json:"0.9500"`
+        fourth string `json:"0.9900"`
+        fifth string `json:"0.9990"`
+        sixth string `json:"0.9995"`
+        seventh string `json:"1.0000"`
+    }
+    type output struct {
+        BenchmarkParameters BenchmarkParameters `json:"Benchmark-parameters"`
+        Latencies Latencies `json:"Latencies"`
+    }
     // Creating JSON output for Benchmark Parameters
     goMaxProcs := opts.setGoMaxProcs()
 	numConns := opts.getNumConnections(goMaxProcs)
-    benchmarkOutput := make(map[string]interface{})
-    keys := [6]string{"CPUs", "Connections", "Concurrency", "Max-requests", "Max-duration", "Max-RPS"}
-    values := [6]interface{}{goMaxProcs, numConns, opts.Concurrency, opts.MaxRequests, opts.MaxDuration.String(), opts.RPS}
-    parameters := make(map[string]interface{})
-    for i := 0; i < 6; i++ {
-		parameters[keys[i]] = values[i]
-	}
-    benchmarkOutput["Benchmark-parameters"] = parameters
-    output, err := json.MarshalIndent(benchmarkOutput, "", "  ")
-    if err != nil {
-		out.Fatalf("Failed to convert map to JSON")
-	}
-	out.Printf("%s\n\n", output)
-	// out.Printf("Benchmark parameters:\n")
-	// out.Printf("  CPUs:            %v\n", goMaxProcs)
-	// out.Printf("  Connections:     %v\n", numConns)
-	// out.Printf("  Concurrency:     %v\n", opts.Concurrency)
-	// out.Printf("  Max requests:    %v\n", opts.MaxRequests)
-	// out.Printf("  Max duration:    %v\n", opts.MaxDuration)
-	// out.Printf("  Max RPS:         %v\n", opts.RPS)
+    benchmark_params := BenchmarkParameters{CPUs: goMaxProcs, Connections: numConns, Concurrency: opts.Concurrency, MaxRequests: opts.MaxRequests, MaxDuration: opts.MaxDuration, MaxRPS: opts.RPS}
 
 	// Warm up number of connections.
 	logger.Debug("Warming up connections.", zap.Int("numConns", numConns))
@@ -204,7 +207,15 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 	)
 
 	overall.printErrors(out)
-	overall.printLatencies(out)
+	latency_values := overall.printLatencies(out)
+    latencies_output := Latencies{first: latency_values[0], second: latency_values[1], third: latency_values[2], fourth: latency_values[3], fifth: latency_values[4], sixth: latency_values[5], seventh: latency_values[6]}
+    o := output{BenchmarkParameters: benchmark_params, Latencies: latencies_output}
+    function_output, err := json.MarshalIndent(&o, "", "  ")
+	if err != nil {
+		out.Fatalf("Failed to convert map to JSON: %v\n", err)
+	}
+	out.Printf("%s\n\n", function_output)
+
 
 	out.Printf("Elapsed time:      %v\n", (total / time.Millisecond * time.Millisecond))
 	out.Printf("Total requests:    %v\n", overall.totalRequests)
