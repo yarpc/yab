@@ -20,6 +20,8 @@ require (
 	github.com/jessevdk/go-flags v1.4.1-0.20180331124232-1c38ed7ad0cc
 	github.com/jhump/protoreflect v0.0.0-20180908113807-a84568470d8a
 	github.com/kr/pretty v0.2.0 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pkg/errors v0.8.1 // indirect
 	github.com/prashantv/protectmem v0.0.0-20171002184600-e20412882b3a // indirect

@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"sort"
 	"time"
+    "encoding/json"
 
 	"github.com/yarpc/yab/sorted"
 	"github.com/yarpc/yab/statsd"
@@ -82,10 +83,24 @@ func (s *benchmarkState) recordLatency(d time.Duration) {
 func (s *benchmarkState) printLatencies(out output) {
 	// TODO JSON output?
 	sort.Sort(byDuration(s.latencies))
-	out.Printf("Latencies:\n")
-	for _, quantile := range []float64{0.5, 0.9, 0.95, 0.99, 0.999, 0.9995, 1.0} {
-		out.Printf("  %.4f: %v\n", quantile, s.getQuantile(quantile))
+    quantiles := []float64{0.5, 0.9, 0.95, 0.99, 0.999, 0.9995, 1.0}
+    latency_values := make(map[string]string)
+    for _, quantile := range quantiles {
+        q := fmt.Sprintf("%f", quantile)
+        latency_values[q] = s.getQuantile(quantile).String()
+    }
+    latencies := make(map[string]interface{})
+    latencies["Latencies"] = latency_values
+    output, err := json.MarshalIndent(latencies, "", "  ")
+    if err != nil {
+		out.Fatalf("Failed to convert map to JSON")
 	}
+    out.Printf("%s\n\n", output)
+
+	// out.Printf("Latencies:\n")
+	// for _, quantile := range []float64{0.5, 0.9, 0.95, 0.99, 0.999, 0.9995, 1.0} {
+	// 	out.Printf("  %.4f: %v\n", quantile, s.getQuantile(quantile))
+	// }
 }
 
 func (s *benchmarkState) printErrors(out output) {

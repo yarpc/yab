@@ -28,6 +28,7 @@ import (
 	"runtime"
 	"sync"
 	"time"
+    "encoding/json"
 
 	"github.com/yarpc/yab/limiter"
 	"github.com/yarpc/yab/statsd"
@@ -109,16 +110,29 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 			opts.MaxRequests = rpsMax
 		}
 	}
-
-	goMaxProcs := opts.setGoMaxProcs()
+    // Creating JSON output for Benchmark Parameters
+    goMaxProcs := opts.setGoMaxProcs()
 	numConns := opts.getNumConnections(goMaxProcs)
-	out.Printf("Benchmark parameters:\n")
-	out.Printf("  CPUs:            %v\n", goMaxProcs)
-	out.Printf("  Connections:     %v\n", numConns)
-	out.Printf("  Concurrency:     %v\n", opts.Concurrency)
-	out.Printf("  Max requests:    %v\n", opts.MaxRequests)
-	out.Printf("  Max duration:    %v\n", opts.MaxDuration)
-	out.Printf("  Max RPS:         %v\n", opts.RPS)
+    benchmarkOutput := make(map[string]interface{})
+    keys := [6]string{"CPUs", "Connections", "Concurrency", "Max-requests", "Max-duration", "Max-RPS"}
+    values := [6]interface{}{goMaxProcs, numConns, opts.Concurrency, opts.MaxRequests, opts.MaxDuration.String(), opts.RPS}
+    parameters := make(map[string]interface{})
+    for i := 0; i < 6; i++ {
+		parameters[keys[i]] = values[i]
+	}
+    benchmarkOutput["Benchmark-parameters"] = parameters
+    output, err := json.MarshalIndent(benchmarkOutput, "", "  ")
+    if err != nil {
+		out.Fatalf("Failed to convert map to JSON")
+	}
+	out.Printf("%s\n\n", output)
+	// out.Printf("Benchmark parameters:\n")
+	// out.Printf("  CPUs:            %v\n", goMaxProcs)
+	// out.Printf("  Connections:     %v\n", numConns)
+	// out.Printf("  Concurrency:     %v\n", opts.Concurrency)
+	// out.Printf("  Max requests:    %v\n", opts.MaxRequests)
+	// out.Printf("  Max duration:    %v\n", opts.MaxDuration)
+	// out.Printf("  Max RPS:         %v\n", opts.RPS)
 
 	// Warm up number of connections.
 	logger.Debug("Warming up connections.", zap.Int("numConns", numConns))
@@ -169,6 +183,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 			}(c)
 		}
 	}
+
 
 	// TODO: Support streaming updates.
 	// TOOD: Aggregate per-backend state for JSON output in future.
