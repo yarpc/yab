@@ -109,6 +109,7 @@ type BenchmarkOptions struct {
 	// Benchmark metrics can optionally be reported via statsd.
 	StatsdHostPort string `long:"statsd" description:"Optional host:port of a StatsD server to report metrics"`
 	PerPeerStats   bool   `long:"per-peer-stats" description:"Whether to emit stats by peer rather than aggregated"`
+    JSON bool `long:"json" description:"Prints benchmark output as a JSON"`
 }
 
 func newOptions() *Options {

@@ -115,7 +115,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
         CPUs int `json:"CPUs"`
         Concurrency int `json:"Concurrency"`
         Connections int `json:"Connections"`
-        MaxRequests int `json:Max-requests`
+        MaxRequests int `json:"Max-requests"`
         MaxDuration string `json:"Max-duration"`
         MaxRPS int `json:"Max-RPS"`
     }
@@ -128,9 +128,15 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
         P9995 string `json:"0.9995"`
         P1000 string `json:"1.0000"`
     }
+    type Summary struct{
+        ElapsedTime string `json:"Elapsed-time"`
+        TotalRequests int `json:"Total-requests"`
+        RPS float64 `json:"RPS"`
+    }
     type output struct {
         BenchmarkParameters BenchmarkParameters `json:"Benchmark-parameters"`
         Latencies Latencies `json:"Latencies"`
+        Summary Summary `json:"Summary"`
     }
     // Creating JSON output for Benchmark Parameters
     goMaxProcs := opts.setGoMaxProcs()
@@ -209,7 +215,8 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 	overall.printErrors(out)
 	latency_values := overall.printLatencies(out)
     latencies_output := Latencies{P5000: latency_values[0], P9000: latency_values[1], P9500: latency_values[2], P9900: latency_values[3], P9990: latency_values[4], P9995: latency_values[5], P1000: latency_values[6]}
-    o := output{BenchmarkParameters: benchmark_params, Latencies: latencies_output}
+    summary := Summary{ElapsedTime: (total / time.Millisecond * time.Millisecond).String(), TotalRequests: overall.totalRequests, RPS: float64(overall.totalRequests)/total.Seconds()}
+    o := output{BenchmarkParameters: benchmark_params, Latencies: latencies_output, Summary: summary}
     function_output, err := json.MarshalIndent(&o, "", "  ")
 	if err != nil {
 		out.Fatalf("Failed to convert map to JSON: %v\n", err)
@@ -217,9 +224,9 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 	out.Printf("%s\n\n", function_output)
 
 
-	out.Printf("Elapsed time:      %v\n", (total / time.Millisecond * time.Millisecond))
-	out.Printf("Total requests:    %v\n", overall.totalRequests)
-	out.Printf("RPS:               %.2f\n", float64(overall.totalRequests)/total.Seconds())
+	// out.Printf("Elapsed time:      %v\n", (total / time.Millisecond * time.Millisecond))
+	// out.Printf("Total requests:    %v\n", overall.totalRequests)
+	// out.Printf("RPS:               %.2f\n", float64(overall.totalRequests)/total.Seconds())
 }
 
 // stopOnInterrupt sets up a signal that will trigger the run to stop.
