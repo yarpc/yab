@@ -116,17 +116,17 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
         Concurrency int `json:"Concurrency"`
         Connections int `json:"Connections"`
         MaxRequests int `json:Max-requests`
-        MaxDuration time.Duration `json:"Max-duration"`
+        MaxDuration string `json:"Max-duration"`
         MaxRPS int `json:"Max-RPS"`
     }
     type Latencies struct {
-        first string `json:"0.5000"`
-        second string `json:"0.9000"`
-        third string `json:"0.9500"`
-        fourth string `json:"0.9900"`
-        fifth string `json:"0.9990"`
-        sixth string `json:"0.9995"`
-        seventh string `json:"1.0000"`
+        P5000 string `json:"0.5000"`
+        P9000 string `json:"0.9000"`
+        P9500 string `json:"0.9500"`
+        P9900 string `json:"0.9900"`
+        P9990 string `json:"0.9990"`
+        P9995 string `json:"0.9995"`
+        P1000 string `json:"1.0000"`
     }
     type output struct {
         BenchmarkParameters BenchmarkParameters `json:"Benchmark-parameters"`
@@ -135,7 +135,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
     // Creating JSON output for Benchmark Parameters
     goMaxProcs := opts.setGoMaxProcs()
 	numConns := opts.getNumConnections(goMaxProcs)
-    benchmark_params := BenchmarkParameters{CPUs: goMaxProcs, Connections: numConns, Concurrency: opts.Concurrency, MaxRequests: opts.MaxRequests, MaxDuration: opts.MaxDuration, MaxRPS: opts.RPS}
+    benchmark_params := BenchmarkParameters{CPUs: goMaxProcs, Connections: numConns, Concurrency: opts.Concurrency, MaxRequests: opts.MaxRequests, MaxDuration: opts.MaxDuration.String(), MaxRPS: opts.RPS}
 
 	// Warm up number of connections.
 	logger.Debug("Warming up connections.", zap.Int("numConns", numConns))
@@ -208,7 +208,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 
 	overall.printErrors(out)
 	latency_values := overall.printLatencies(out)
-    latencies_output := Latencies{first: latency_values[0], second: latency_values[1], third: latency_values[2], fourth: latency_values[3], fifth: latency_values[4], sixth: latency_values[5], seventh: latency_values[6]}
+    latencies_output := Latencies{P5000: latency_values[0], P9000: latency_values[1], P9500: latency_values[2], P9900: latency_values[3], P9990: latency_values[4], P9995: latency_values[5], P1000: latency_values[6]}
     o := output{BenchmarkParameters: benchmark_params, Latencies: latencies_output}
     function_output, err := json.MarshalIndent(&o, "", "  ")
 	if err != nil {
