@@ -42,6 +42,7 @@ var (
 	errNegativeMaxReqs  = errors.New("max requests cannot be negative")
 )
 
+// Struct to hold values of benchmark parameters
 type BenchmarkParameters struct {
     CPUs int `json:"CPUs"`
     Concurrency int `json:"Concurrency"`
@@ -50,7 +51,7 @@ type BenchmarkParameters struct {
     MaxDuration string `json:"Max-duration"`
     MaxRPS int `json:"Max-RPS"`
 }
-// Creating struct to store latency output
+// Struct to store latencies output
 type Latencies struct {
     P5000 string `json:"0.5000"`
     P9000 string `json:"0.9000"`
@@ -60,12 +61,16 @@ type Latencies struct {
     P9995 string `json:"0.9995"`
     P1000 string `json:"1.0000"`
 }
+
+// Struct that stores benchmarkign summary
 type Summary struct{
     ElapsedTime string `json:"Elapsed-time"`
     TotalRequests int `json:"Total-requests"`
     RPS float64 `json:"RPS"`
 }
-type benchmarkOutput struct {
+
+// Struct to store above defined structs
+type BenchmarkOutput struct {
     BenchmarkParameters BenchmarkParameters `json:"Benchmark-parameters"`
     Latencies Latencies `json:"Latencies"`
     Summary Summary `json:"Summary"`
@@ -224,7 +229,7 @@ func outputJSON(opts BenchmarkOptions, overall *benchmarkState, out output, goMa
     benchmark_params := BenchmarkParameters{CPUs: goMaxProcs, Connections: numConns, Concurrency: opts.Concurrency, MaxRequests: opts.MaxRequests, MaxDuration: opts.MaxDuration.String(), MaxRPS: opts.RPS}
     latencies_output := Latencies{P5000: latency_values[0], P9000: latency_values[1], P9500: latency_values[2], P9900: latency_values[3], P9990: latency_values[4], P9995: latency_values[5], P1000: latency_values[6]}
     summary := Summary{ElapsedTime: (total / time.Millisecond * time.Millisecond).String(), TotalRequests: overall.totalRequests, RPS: float64(overall.totalRequests)/total.Seconds()}
-    o := benchmarkOutput{BenchmarkParameters: benchmark_params, Latencies: latencies_output, Summary: summary}
+    o := BenchmarkOutput{BenchmarkParameters: benchmark_params, Latencies: latencies_output, Summary: summary}
     function_output, err := json.MarshalIndent(&o, "", "  ")
     if err != nil {
         out.Fatalf("Failed to convert map to JSON: %v\n", err)
