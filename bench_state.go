@@ -79,8 +79,8 @@ func (s *benchmarkState) recordLatency(d time.Duration) {
 	s.statter.Timing("latency", d)
 }
 
+// Prints an array of latency values
 func (s *benchmarkState) getLatencies(out output) []string {
-	// TODO JSON output?
 	sort.Sort(byDuration(s.latencies))
     quantiles := []float64{0.5, 0.9, 0.95, 0.99, 0.999, 0.9995, 1.0}
     latency_values := make([]string, 7)

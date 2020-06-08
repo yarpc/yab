@@ -42,6 +42,35 @@ var (
 	errNegativeMaxReqs  = errors.New("max requests cannot be negative")
 )
 
+type BenchmarkParameters struct {
+    CPUs int `json:"CPUs"`
+    Concurrency int `json:"Concurrency"`
+    Connections int `json:"Connections"`
+    MaxRequests int `json:"Max-requests"`
+    MaxDuration string `json:"Max-duration"`
+    MaxRPS int `json:"Max-RPS"`
+}
+// Creating struct to store latency output
+type Latencies struct {
+    P5000 string `json:"0.5000"`
+    P9000 string `json:"0.9000"`
+    P9500 string `json:"0.9500"`
+    P9900 string `json:"0.9900"`
+    P9990 string `json:"0.9990"`
+    P9995 string `json:"0.9995"`
+    P1000 string `json:"1.0000"`
+}
+type Summary struct{
+    ElapsedTime string `json:"Elapsed-time"`
+    TotalRequests int `json:"Total-requests"`
+    RPS float64 `json:"RPS"`
+}
+type benchmarkOutput struct {
+    BenchmarkParameters BenchmarkParameters `json:"Benchmark-parameters"`
+    Latencies Latencies `json:"Latencies"`
+    Summary Summary `json:"Summary"`
+}
+
 // setGoMaxProcs sets runtime.GOMAXPROCS if the option is set
 // and returns the number of GOMAXPROCS configured.
 func (o BenchmarkOptions) setGoMaxProcs() int {
@@ -111,7 +140,6 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 		}
 	}
 
-    // Creating JSON output for Benchmark Parameters
     goMaxProcs := opts.setGoMaxProcs()
 	numConns := opts.getNumConnections(goMaxProcs)
 
@@ -165,10 +193,6 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 		}
 	}
 
-
-	// TODO: Support streaming updates.
-	// TOOD: Aggregate per-backend state for JSON output in future.
-
 	// Wait for all the worker goroutines to end.
 	wg.Wait()
 	total := time.Since(start)
@@ -185,69 +209,47 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 	)
 
     if opts.Format == "json" || opts.Format == "JSON" {
-        // Creating struct to store benchmark parameter output
-        type BenchmarkParameters struct {
-            CPUs int `json:"CPUs"`
-            Concurrency int `json:"Concurrency"`
-            Connections int `json:"Connections"`
-            MaxRequests int `json:"Max-requests"`
-            MaxDuration string `json:"Max-duration"`
-            MaxRPS int `json:"Max-RPS"`
-        }
-        // Creating struct to store latency output
-        type Latencies struct {
-            P5000 string `json:"0.5000"`
-            P9000 string `json:"0.9000"`
-            P9500 string `json:"0.9500"`
-            P9900 string `json:"0.9900"`
-            P9990 string `json:"0.9990"`
-            P9995 string `json:"0.9995"`
-            P1000 string `json:"1.0000"`
-        }
-        type Summary struct{
-            ElapsedTime string `json:"Elapsed-time"`
-            TotalRequests int `json:"Total-requests"`
-            RPS float64 `json:"RPS"`
-        }
-        type output struct {
-            BenchmarkParameters BenchmarkParameters `json:"Benchmark-parameters"`
-            Latencies Latencies `json:"Latencies"`
-            Summary Summary `json:"Summary"`
-        }
-        overall.printErrors(out)
-        latency_values := overall.getLatencies(out)
-        benchmark_params := BenchmarkParameters{CPUs: goMaxProcs, Connections: numConns, Concurrency: opts.Concurrency, MaxRequests: opts.MaxRequests, MaxDuration: opts.MaxDuration.String(), MaxRPS: opts.RPS}
-        latencies_output := Latencies{P5000: latency_values[0], P9000: latency_values[1], P9500: latency_values[2], P9900: latency_values[3], P9990: latency_values[4], P9995: latency_values[5], P1000: latency_values[6]}
-        summary := Summary{ElapsedTime: (total / time.Millisecond * time.Millisecond).String(), TotalRequests: overall.totalRequests, RPS: float64(overall.totalRequests)/total.Seconds()}
-        o := output{BenchmarkParameters: benchmark_params, Latencies: latencies_output, Summary: summary}
-        function_output, err := json.MarshalIndent(&o, "", "  ")
-    	if err != nil {
-    		out.Fatalf("Failed to convert map to JSON: %v\n", err)
-    	}
-    	out.Printf("%s\n\n", function_output)
+        // Calling JSON output helper method
+        outputJSON(opts, overall, out, goMaxProcs, numConns, total)
     } else {
-        out.Printf("Benchmark parameters:\n")
-        out.Printf("  CPUs:            %v\n", goMaxProcs)
-        out.Printf("  Connections:     %v\n", numConns)
-        out.Printf("  Concurrency:     %v\n", opts.Concurrency)
-        out.Printf("  Max requests:    %v\n", opts.MaxRequests)
-        out.Printf("  Max duration:    %v\n", opts.MaxDuration)
-        out.Printf("  Max RPS:         %v\n", opts.RPS)
-        overall.printErrors(out)
-        latency_values := overall.getLatencies(out)
-        out.Printf("Latencies:\n")
-        for i, quantile := range []float64{0.5, 0.9, 0.95, 0.99, 0.999, 0.9995, 1.0} {
-            out.Printf("  %.4f: %v\n", quantile, latency_values[i])
-        }
-        out.Printf("Elapsed time:      %v\n", (total / time.Millisecond * time.Millisecond))
-        out.Printf("Total requests:    %v\n", overall.totalRequests)
-        out.Printf("RPS:               %.2f\n", float64(overall.totalRequests)/total.Seconds())
+        // Calling plaintext output helper method
+        outputPlaintext(opts, overall, out, goMaxProcs, numConns, total)
     }
+}
 
+// JSON output helper method
+func outputJSON(opts BenchmarkOptions, overall *benchmarkState, out output, goMaxProcs int, numConns int, total time.Duration) {
+    overall.printErrors(out)
+    latency_values := overall.getLatencies(out)
+    benchmark_params := BenchmarkParameters{CPUs: goMaxProcs, Connections: numConns, Concurrency: opts.Concurrency, MaxRequests: opts.MaxRequests, MaxDuration: opts.MaxDuration.String(), MaxRPS: opts.RPS}
+    latencies_output := Latencies{P5000: latency_values[0], P9000: latency_values[1], P9500: latency_values[2], P9900: latency_values[3], P9990: latency_values[4], P9995: latency_values[5], P1000: latency_values[6]}
+    summary := Summary{ElapsedTime: (total / time.Millisecond * time.Millisecond).String(), TotalRequests: overall.totalRequests, RPS: float64(overall.totalRequests)/total.Seconds()}
+    o := benchmarkOutput{BenchmarkParameters: benchmark_params, Latencies: latencies_output, Summary: summary}
+    function_output, err := json.MarshalIndent(&o, "", "  ")
+    if err != nil {
+        out.Fatalf("Failed to convert map to JSON: %v\n", err)
+    }
+    out.Printf("%s\n\n", function_output)
+}
 
-	// out.Printf("Elapsed time:      %v\n", (total / time.Millisecond * time.Millisecond))
-	// out.Printf("Total requests:    %v\n", overall.totalRequests)
-	// out.Printf("RPS:               %.2f\n", float64(overall.totalRequests)/total.Seconds())
+// Plaintext output helper method
+func outputPlaintext(opts BenchmarkOptions, overall *benchmarkState, out output, goMaxProcs int, numConns int, total time.Duration) {
+    out.Printf("Benchmark parameters:\n")
+    out.Printf("  CPUs:            %v\n", goMaxProcs)
+    out.Printf("  Connections:     %v\n", numConns)
+    out.Printf("  Concurrency:     %v\n", opts.Concurrency)
+    out.Printf("  Max requests:    %v\n", opts.MaxRequests)
+    out.Printf("  Max duration:    %v\n", opts.MaxDuration)
+    out.Printf("  Max RPS:         %v\n", opts.RPS)
+    overall.printErrors(out)
+    latency_values := overall.getLatencies(out)
+    out.Printf("Latencies:\n")
+    for i, quantile := range []float64{0.5, 0.9, 0.95, 0.99, 0.999, 0.9995, 1.0} {
+        out.Printf("  %.4f: %v\n", quantile, latency_values[i])
+    }
+    out.Printf("Elapsed time:      %v\n", (total / time.Millisecond * time.Millisecond))
+    out.Printf("Total requests:    %v\n", overall.totalRequests)
+    out.Printf("RPS:               %.2f\n", float64(overall.totalRequests)/total.Seconds())
 }
 
 // stopOnInterrupt sets up a signal that will trigger the run to stop.
