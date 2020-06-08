@@ -79,7 +79,7 @@ func (s *benchmarkState) recordLatency(d time.Duration) {
 	s.statter.Timing("latency", d)
 }
 
-// Prints an array of latency values
+// Returns an array of latency values
 func (s *benchmarkState) getLatencies(out output) []string {
 	sort.Sort(byDuration(s.latencies))
     quantiles := []float64{0.5, 0.9, 0.95, 0.99, 0.999, 0.9995, 1.0}
@@ -88,6 +88,15 @@ func (s *benchmarkState) getLatencies(out output) []string {
         latency_values[i] = s.getQuantile(quantile).String()
     }
     return latency_values
+}
+
+// Prints out latency values
+func (s *benchmarkState) printLatencies(out output) {
+	sort.Sort(byDuration(s.latencies))
+	out.Printf("Latencies:\n")
+	for _, quantile := range []float64{0.5, 0.9, 0.95, 0.99, 0.999, 0.9995, 1.0} {
+		out.Printf("  %.4f: %v\n", quantile, s.getQuantile(quantile))
+	}
 }
 
 func (s *benchmarkState) printErrors(out output) {

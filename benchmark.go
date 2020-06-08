@@ -62,7 +62,7 @@ type Latencies struct {
     P1000 string `json:"1.0000"`
 }
 
-// Struct that stores benchmarkign summary
+// Struct that stores benchmarking summary
 type Summary struct{
     ElapsedTime string `json:"Elapsed-time"`
     TotalRequests int `json:"Total-requests"`
@@ -219,7 +219,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
     } else {
         // Calling plaintext output helper method
         outputPlaintext(opts, overall, out, goMaxProcs, numConns, total)
-    }
+	}
 }
 
 // JSON output helper method

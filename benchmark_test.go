@@ -218,3 +218,74 @@ func TestBenchmarkStatsPerPeer(t *testing.T) {
 	})
 	assert.Equal(t, want, statsServer.Aggregated(), "unexpected stats")
 }
+
+func TestBenchmarkOutput(t *testing.T) {
+	type BenchmarkParameters struct {
+		CPUs int `json:"CPUs"`
+		Concurrency int `json:"Concurrency"`
+		Connections int `json:"Connections"`
+		MaxRequests int `json:"Max-requests"`
+		MaxDuration string `json:"Max-duration"`
+		MaxRPS int `json:"Max-RPS"`
+	}
+	// Struct to store latencies output
+	type Latencies struct {
+		P5000 string `json:"0.5000"`
+		P9000 string `json:"0.9000"`
+		P9500 string `json:"0.9500"`
+		P9900 string `json:"0.9900"`
+		P9990 string `json:"0.9990"`
+		P9995 string `json:"0.9995"`
+		P1000 string `json:"1.0000"`
+	}
+	// Struct that stores benchmarking summary
+	type Summary struct{
+		ElapsedTime string `json:"Elapsed-time"`
+		TotalRequests int `json:"Total-requests"`
+		RPS float64 `json:"RPS"`
+	}
+	// Struct to store above defined structs
+	type BenchmarkOutput struct {
+		BenchmarkParameters BenchmarkParameters `json:"Benchmark-parameters"`
+		Latencies Latencies `json:"Latencies"`
+		Summary Summary `json:"Summary"`
+	}
+	tests := []struct {
+		opts    BenchmarkOptions
+	}{
+		{
+			opts: BenchmarkOptions{
+				Format: "json",
+			},
+		},
+		{
+			opts: BenchmarkOptions{
+				Format: "plaintext",
+			},
+		},
+	}
+	var requests atomic.Int32
+	s := newServer(t)
+	defer s.shutdown()
+	s.register(fooMethod, methods.errorIf(func() bool {
+		requests.Inc()
+		return false
+	}))
+	m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
+	for _, tt := range tests {
+		requests.Store(0)
+		// start := time.Now()
+		buf, _, out := getOutput(t)
+		opts := Options{BOpts: tt.opts}
+		runBenchmark(out, _testLogger, opts, _resolvedTChannelThrift, m)
+		bufStr := buf.String()
+		// b := []byte(bufStr)
+		// var benchmarkOutput BenchmarkOutput
+		// err := json.Unmarshal(b, &benchmarkOutput)
+		// if err != nil {
+		// 	fmt.Println("error:", err)
+		// }
+		// assert.Equal(t, benchmarkOutput.BenchmarkParameters.MaxRPS, opts.BOpts.RPS)
+		assert.NotContains(t, bufStr, "Errors")
+	}
+}
