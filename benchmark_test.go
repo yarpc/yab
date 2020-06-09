@@ -21,13 +21,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
-	"encoding/json"
-	"strconv"
 
 	"github.com/yarpc/yab/statsd/statsdtest"
 	"github.com/yarpc/yab/transport"
@@ -223,39 +223,9 @@ func TestBenchmarkStatsPerPeer(t *testing.T) {
 
 // Method that tests the 'Format' option of Benchmark Options
 func TestBenchmarkOutput(t *testing.T) {
-	type BenchmarkParameters struct {
-		CPUs int `json:"CPUs"`
-		Concurrency int `json:"Concurrency"`
-		Connections int `json:"Connections"`
-		MaxRequests int `json:"Max-requests"`
-		MaxDuration string `json:"Max-duration"`
-		MaxRPS int `json:"Max-RPS"`
-	}
-	// Struct to store latencies output
-	type Latencies struct {
-		P5000 string `json:"0.5000"`
-		P9000 string `json:"0.9000"`
-		P9500 string `json:"0.9500"`
-		P9900 string `json:"0.9900"`
-		P9990 string `json:"0.9990"`
-		P9995 string `json:"0.9995"`
-		P1000 string `json:"1.0000"`
-	}
-	// Struct that stores benchmarking summary
-	type Summary struct{
-		ElapsedTime string `json:"Elapsed-time"`
-		TotalRequests int `json:"Total-requests"`
-		RPS float64 `json:"RPS"`
-	}
-	// Struct to store above defined structs
-	type BenchmarkOutput struct {
-		BenchmarkParameters BenchmarkParameters `json:"Benchmark-parameters"`
-		Latencies Latencies `json:"Latencies"`
-		Summary Summary `json:"Summary"`
-	}
 	// Testing both plaintext and JSON output
 	tests := []struct {
-		opts    BenchmarkOptions
+		opts BenchmarkOptions
 	}{
 		{
 			opts: BenchmarkOptions{
@@ -281,12 +251,12 @@ func TestBenchmarkOutput(t *testing.T) {
 		buf, _, out := getOutput(t)
 		opts := Options{
 			BOpts: BenchmarkOptions{
-			MaxRequests: 100,
-			MaxDuration: 100 * time.Second,
-			RPS:         120,
-			Connections: 50,
-			Concurrency: 2,
-			Format:      tt.opts.Format,
+				MaxRequests: 100,
+				MaxDuration: 100 * time.Second,
+				RPS:         120,
+				Connections: 50,
+				Concurrency: 2,
+				Format:      tt.opts.Format,
 			},
 			TOpts: s.transportOpts(),
 		}
@@ -305,7 +275,7 @@ func TestBenchmarkOutput(t *testing.T) {
 			// Ensuring the total number of requests does not surpass MaxRequests parameter
 			assert.GreaterOrEqual(t, opts.BOpts.MaxRequests, benchmarkOutput.Summary.TotalRequests)
 			// Ensuring the string of JSON output contains 'Summary' field
-			assert.Contains(t, bufStr, "Summary")
+			assert.Contains(t, bufStr, "summary")
 			// Ensuring JSON output does not contain errors
 			assert.NotContains(t, bufStr, "Errors")
 		} else {
@@ -317,7 +287,7 @@ func TestBenchmarkOutput(t *testing.T) {
 			assert.Contains(t, bufStr, "Latencies")
 			assert.Contains(t, bufStr, "Elapsed time")
 			// Ensuring plaintext output does not contain JSON output field
-			assert.NotContains(t, bufStr, "Summary")
+			assert.NotContains(t, bufStr, "summary")
 			// Ensuring plaintext output does not contain errors
 			assert.NotContains(t, bufStr, "Errors")
 		}

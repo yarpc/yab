@@ -82,12 +82,11 @@ func (s *benchmarkState) recordLatency(d time.Duration) {
 // Returns an array of latency values
 func (s *benchmarkState) getLatencies(out output) []string {
 	sort.Sort(byDuration(s.latencies))
-    quantiles := []float64{0.5, 0.9, 0.95, 0.99, 0.999, 0.9995, 1.0}
-    latencyValues := make([]string, 7)
-    for i, quantile := range quantiles {
-        latencyValues[i] = s.getQuantile(quantile).String()
-    }
-    return latencyValues
+	latencyValues := make([]string, 7)
+	for i, quantile := range []float64{0.5, 0.9, 0.95, 0.99, 0.999, 0.9995, 1.0} {
+		latencyValues[i] = s.getQuantile(quantile).String()
+	}
+	return latencyValues
 }
 
 // Prints out latency values
