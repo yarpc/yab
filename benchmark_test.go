@@ -26,6 +26,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"encoding/json"
+	"strconv"
 
 	"github.com/yarpc/yab/statsd/statsdtest"
 	"github.com/yarpc/yab/transport"
@@ -219,6 +221,7 @@ func TestBenchmarkStatsPerPeer(t *testing.T) {
 	assert.Equal(t, want, statsServer.Aggregated(), "unexpected stats")
 }
 
+// Method that tests the 'Format' option of Benchmark Options
 func TestBenchmarkOutput(t *testing.T) {
 	type BenchmarkParameters struct {
 		CPUs int `json:"CPUs"`
@@ -250,6 +253,7 @@ func TestBenchmarkOutput(t *testing.T) {
 		Latencies Latencies `json:"Latencies"`
 		Summary Summary `json:"Summary"`
 	}
+	// Testing both plaintext and JSON output
 	tests := []struct {
 		opts    BenchmarkOptions
 	}{
@@ -274,18 +278,48 @@ func TestBenchmarkOutput(t *testing.T) {
 	m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
 	for _, tt := range tests {
 		requests.Store(0)
-		// start := time.Now()
 		buf, _, out := getOutput(t)
-		opts := Options{BOpts: tt.opts}
+		opts := Options{
+			BOpts: BenchmarkOptions{
+			MaxRequests: 100,
+			MaxDuration: 100 * time.Second,
+			RPS:         120,
+			Connections: 50,
+			Concurrency: 2,
+			Format:      tt.opts.Format,
+			},
+			TOpts: s.transportOpts(),
+		}
 		runBenchmark(out, _testLogger, opts, _resolvedTChannelThrift, m)
 		bufStr := buf.String()
-		// b := []byte(bufStr)
-		// var benchmarkOutput BenchmarkOutput
-		// err := json.Unmarshal(b, &benchmarkOutput)
-		// if err != nil {
-		// 	fmt.Println("error:", err)
-		// }
-		// assert.Equal(t, benchmarkOutput.BenchmarkParameters.MaxRPS, opts.BOpts.RPS)
-		assert.NotContains(t, bufStr, "Errors")
+		if opts.BOpts.Format == "json" {
+			// Creating struct from string of JSON output
+			b := []byte(bufStr)
+			var benchmarkOutput BenchmarkOutput
+			err := json.Unmarshal(b, &benchmarkOutput)
+			if err != nil {
+				fmt.Println("error:", err)
+			}
+			// Ensuring JSON output fields match defined structs passed into runBenchmark()
+			assert.Equal(t, benchmarkOutput.BenchmarkParameters.MaxRPS, opts.BOpts.RPS)
+			// Ensuring the total number of requests does not surpass MaxRequests parameter
+			assert.GreaterOrEqual(t, opts.BOpts.MaxRequests, benchmarkOutput.Summary.TotalRequests)
+			// Ensuring the string of JSON output contains 'Summary' field
+			assert.Contains(t, bufStr, "Summary")
+			// Ensuring JSON output does not contain errors
+			assert.NotContains(t, bufStr, "Errors")
+		} else {
+			// Ensuring correct RPS value in plaintext output
+			rps := strconv.Itoa(opts.BOpts.RPS)
+			assert.Contains(t, bufStr, rps)
+			// Ensuring plaintext output contains certain fields
+			assert.Contains(t, bufStr, "Max RPS")
+			assert.Contains(t, bufStr, "Latencies")
+			assert.Contains(t, bufStr, "Elapsed time")
+			// Ensuring plaintext output does not contain JSON output field
+			assert.NotContains(t, bufStr, "Summary")
+			// Ensuring plaintext output does not contain errors
+			assert.NotContains(t, bufStr, "Errors")
+		}
 	}
 }
