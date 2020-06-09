@@ -348,7 +348,6 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 		out.Fatalf("Failed while preparing the request: %v\n", err)
 	}
 
-
 	// Only make the request if the user hasn't specified 0 warmup.
 	if !(opts.BOpts.enabled() && opts.BOpts.WarmupRequests == 0) {
 		makeInitialRequest(out, transport, serializer, req)
