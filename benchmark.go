@@ -241,6 +241,7 @@ func outputJSON(opts BenchmarkOptions, overall *benchmarkState, out output, goMa
     out.Printf("%s\n\n", functionOutput)
 }
 
+
 // Plaintext output helper method
 func outputPlaintext(opts BenchmarkOptions, overall *benchmarkState, out output, goMaxProcs int, numConns int, total time.Duration) {
 	// Print out errors
