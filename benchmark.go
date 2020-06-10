@@ -40,6 +40,9 @@ import (
 var (
 	errNegativeDuration = errors.New("duration cannot be negative")
 	errNegativeMaxReqs  = errors.New("max requests cannot be negative")
+
+	// Global quantiles array for obtaining latency values from getLatencies() method
+	quantiles = []string{"0.5000", "0.9000", "0.9500", "0.9900", "0.9990", "0.9995", "1.0000"}
 )
 
 // BenchmarkParameters holds values of all benchmark parameters
@@ -205,8 +208,6 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 	// Print out errors
 	overall.printErrors(out)
 
-	// Create Quantiles array
-	quantiles := []string{"0.5000", "0.9000", "0.9500", "0.9900", "0.9990", "0.9995", "1.0000"}
 	latencyValues := overall.getLatencies(out, quantiles)
 
 	// Create BenchmarkParameters, Summary, and BenchmarkOutput structs
@@ -232,7 +233,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 	if opts.Format == "json" || opts.Format == "JSON" {
 		outputJSON(overall, out, total, benchmarkOutput)
 	} else {
-		outputPlaintext(overall, out, total, quantiles, benchmarkOutput)
+		outputPlaintext(overall, out, total, benchmarkOutput)
 	}
 }
 
@@ -248,7 +249,7 @@ func outputJSON(overall *benchmarkState, out output, total time.Duration, benchm
 }
 
 // Plaintext output helper method
-func outputPlaintext(overall *benchmarkState, out output, total time.Duration, quantiles []string, benchmarkOutput BenchmarkOutput) {
+func outputPlaintext(overall *benchmarkState, out output, total time.Duration, benchmarkOutput BenchmarkOutput) {
 	// Print out benchmark parameters
 	out.Printf("Benchmark parameters:\n")
 	out.Printf("  CPUs:            %v\n", benchmarkOutput.BenchmarkParameters.CPUs)

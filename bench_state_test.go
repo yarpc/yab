@@ -102,7 +102,6 @@ func TestBenchmarkStateLatencies(t *testing.T) {
 	assert.Equal(t, state.totalSuccess, 10001, "Success count mismatch")
 	assert.Equal(t, state.totalRequests, 10001, "Request count mismatch")
 
-	quantiles := []string{"0.5000", "0.9000", "0.9500", "0.9900", "0.9990", "0.9995", "1.0000"}
 	out.Printf("Latencies:\n")
 	latencyValues := state.getLatencies(out, quantiles)
 	for _, quantile := range quantiles {
@@ -153,7 +152,6 @@ func TestBenchmarkStateMergeLatencies(t *testing.T) {
 
 	buf, _, out := getOutput(t)
 
-	quantiles := []string{"0.5000", "0.9000", "0.9500", "0.9900", "0.9990", "0.9995", "1.0000"}
 	out.Printf("Latencies:\n")
 	latencyValues := state1.getLatencies(out, quantiles)
 	for _, quantile := range quantiles {
