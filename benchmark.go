@@ -208,7 +208,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 	// Print out errors
 	overall.printErrors(out)
 
-	latencyValues := overall.getLatencies(out, quantiles)
+	latencyValues := overall.getLatencies(out)
 
 	// Create BenchmarkParameters, Summary, and BenchmarkOutput structs
 	benchmarkParams := BenchmarkParameters{
@@ -260,15 +260,19 @@ func outputPlaintext(overall *benchmarkState, out output, total time.Duration, b
 	out.Printf("  Max RPS:         %v\n", benchmarkOutput.BenchmarkParameters.MaxRPS)
 
 	// Print out latencies
-	out.Printf("Latencies:\n")
-	for _, quantile := range quantiles {
-		out.Printf("  %s: %v\n", quantile, benchmarkOutput.Latencies[quantile])
-	}
+	printLatencies(out, benchmarkOutput.Latencies)
 
 	// Print out summary
 	out.Printf("Elapsed time:      %v\n", benchmarkOutput.Summary.ElapsedTime)
 	out.Printf("Total requests:    %v\n", benchmarkOutput.Summary.TotalRequests)
 	out.Printf("RPS:               %.2f\n", benchmarkOutput.Summary.RPS)
+}
+
+func printLatencies(out output, latencyValues map[string]string) {
+	out.Printf("Latencies:\n")
+	for _, quantile := range quantiles {
+		out.Printf("  %s: %v\n", quantile, latencyValues[quantile])
+	}
 }
 
 // stopOnInterrupt sets up a signal that will trigger the run to stop.
