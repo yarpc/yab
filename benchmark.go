@@ -213,21 +213,12 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 		zap.Int("totalRequests", overall.totalRequests),
 		zap.Time("startTime", start),
 	)
-
-	if opts.Format == "json" || opts.Format == "JSON" {
-		outputJSON(opts, overall, out, goMaxProcs, numConns, total)
-	} else {
-		outputPlaintext(opts, overall, out, goMaxProcs, numConns, total)
-	}
-}
-
-// JSON output helper method
-func outputJSON(opts BenchmarkOptions, overall *benchmarkState, out output, goMaxProcs int, numConns int, total time.Duration) {
 	// Print out errors
 	overall.printErrors(out)
 
 	// Create Latencies, BenchmarkParameters, Summary, and BenchmarkOutput structs
 	latencyValues := overall.getLatencies(out)
+
 	benchmarkParams := BenchmarkParameters{
 		CPUs:        goMaxProcs,
 		Connections: numConns,
@@ -256,6 +247,16 @@ func outputJSON(opts BenchmarkOptions, overall *benchmarkState, out output, goMa
 		Summary:             summary,
 	}
 
+	if opts.Format == "json" || opts.Format == "JSON" {
+		outputJSON(overall, out, total, benchmarkOutput)
+	} else {
+		outputPlaintext(overall, out, total, benchmarkOutput)
+	}
+}
+
+// JSON output helper method
+func outputJSON(overall *benchmarkState, out output, total time.Duration, benchmarkOutput BenchmarkOutput) {
+
 	jsonOutput, err := json.MarshalIndent(&benchmarkOutput, "" /* prefix */, "  " /* indent */)
 	if err != nil {
 		out.Fatalf("Failed to marshal benchmark output: %v\n", err)
@@ -265,27 +266,31 @@ func outputJSON(opts BenchmarkOptions, overall *benchmarkState, out output, goMa
 }
 
 // Plaintext output helper method
-func outputPlaintext(opts BenchmarkOptions, overall *benchmarkState, out output, goMaxProcs int, numConns int, total time.Duration) {
-	// Print out errors
-	overall.printErrors(out)
+func outputPlaintext(overall *benchmarkState, out output, total time.Duration, benchmarkOutput BenchmarkOutput) {
 	// Print out benchmark parameters
 	out.Printf("Benchmark parameters:\n")
-	out.Printf("  CPUs:            %v\n", goMaxProcs)
-	out.Printf("  Connections:     %v\n", numConns)
-	out.Printf("  Concurrency:     %v\n", opts.Concurrency)
-	out.Printf("  Max requests:    %v\n", opts.MaxRequests)
-	out.Printf("  Max duration:    %v\n", opts.MaxDuration)
-	out.Printf("  Max RPS:         %v\n", opts.RPS)
+	out.Printf("  CPUs:            %v\n", benchmarkOutput.BenchmarkParameters.CPUs)
+	out.Printf("  Connections:     %v\n", benchmarkOutput.BenchmarkParameters.Connections)
+	out.Printf("  Concurrency:     %v\n", benchmarkOutput.BenchmarkParameters.Concurrency)
+	out.Printf("  Max requests:    %v\n", benchmarkOutput.BenchmarkParameters.MaxRequests)
+	out.Printf("  Max duration:    %v\n", benchmarkOutput.BenchmarkParameters.MaxDuration)
+	out.Printf("  Max RPS:         %v\n", benchmarkOutput.BenchmarkParameters.MaxRPS)
+
 	// Print out latencies
-	latencyValues := overall.getLatencies(out)
 	out.Printf("Latencies:\n")
-	for i, quantile := range []float64{0.5, 0.9, 0.95, 0.99, 0.999, 0.9995, 1.0} {
-		out.Printf("  %.4f: %v\n", quantile, latencyValues[i])
-	}
+	quantiles := []float64{0.5, 0.9, 0.95, 0.99, 0.999, 0.9995, 1.0}
+	out.Printf("  %.4f: %v\n", quantiles[0], benchmarkOutput.Latencies.P5000)
+	out.Printf("  %.4f: %v\n", quantiles[1], benchmarkOutput.Latencies.P9000)
+	out.Printf("  %.4f: %v\n", quantiles[2], benchmarkOutput.Latencies.P9500)
+	out.Printf("  %.4f: %v\n", quantiles[3], benchmarkOutput.Latencies.P9900)
+	out.Printf("  %.4f: %v\n", quantiles[4], benchmarkOutput.Latencies.P9990)
+	out.Printf("  %.4f: %v\n", quantiles[5], benchmarkOutput.Latencies.P9995)
+	out.Printf("  %.4f: %v\n", quantiles[6], benchmarkOutput.Latencies.P1000)
+
 	// Print out summary
-	out.Printf("Elapsed time:      %v\n", (total / time.Millisecond * time.Millisecond))
-	out.Printf("Total requests:    %v\n", overall.totalRequests)
-	out.Printf("RPS:               %.2f\n", float64(overall.totalRequests)/total.Seconds())
+	out.Printf("Elapsed time:      %v\n", benchmarkOutput.Summary.ElapsedTime)
+	out.Printf("Total requests:    %v\n", benchmarkOutput.Summary.TotalRequests)
+	out.Printf("RPS:               %.2f\n", benchmarkOutput.Summary.RPS)
 }
 
 // stopOnInterrupt sets up a signal that will trigger the run to stop.
