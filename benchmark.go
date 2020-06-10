@@ -59,7 +59,7 @@ type Summary struct {
 	RPS           float64 `json:"rps"`
 }
 
-// BenchmarkOutput stores above defined structs
+// BenchmarkOutput stores benchmark settings and results
 type BenchmarkOutput struct {
 	BenchmarkParameters BenchmarkParameters `json:"benchmarkParameters"`
 	Latencies           map[string]string   `json:"latencies"`
@@ -206,7 +206,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 	overall.printErrors(out)
 
 	// Create Quantiles array
-	quantiles := []float64{0.5, 0.9, 0.95, 0.99, 0.999, 0.9995, 1.0}
+	quantiles := []string{"0.5000", "0.9000", "0.9500", "0.9900", "0.9990", "0.9995", "1.0000"}
 	latencyValues := overall.getLatencies(out, quantiles)
 
 	// Create BenchmarkParameters, Summary, and BenchmarkOutput structs
@@ -248,7 +248,7 @@ func outputJSON(overall *benchmarkState, out output, total time.Duration, benchm
 }
 
 // Plaintext output helper method
-func outputPlaintext(overall *benchmarkState, out output, total time.Duration, quantiles []float64, benchmarkOutput BenchmarkOutput) {
+func outputPlaintext(overall *benchmarkState, out output, total time.Duration, quantiles []string, benchmarkOutput BenchmarkOutput) {
 	// Print out benchmark parameters
 	out.Printf("Benchmark parameters:\n")
 	out.Printf("  CPUs:            %v\n", benchmarkOutput.BenchmarkParameters.CPUs)
@@ -261,7 +261,7 @@ func outputPlaintext(overall *benchmarkState, out output, total time.Duration, q
 	// Print out latencies
 	out.Printf("Latencies:\n")
 	for _, quantile := range quantiles {
-		out.Printf("  %.4f: %v\n", quantile, benchmarkOutput.Latencies[fmt.Sprintf("%.4f", quantile)])
+		out.Printf("  %s: %v\n", quantile, benchmarkOutput.Latencies[quantile])
 	}
 
 	// Print out summary

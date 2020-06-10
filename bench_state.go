@@ -23,6 +23,7 @@ package main
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/yarpc/yab/sorted"
@@ -80,11 +81,12 @@ func (s *benchmarkState) recordLatency(d time.Duration) {
 }
 
 // Returns an array of latency values
-func (s *benchmarkState) getLatencies(out output, quantiles []float64) map[string]string {
+func (s *benchmarkState) getLatencies(out output, quantiles []string) map[string]string {
 	sort.Sort(byDuration(s.latencies))
-	latencyValues := make(map[string]string)
+	latencyValues := make(map[string]string, len(quantiles))
 	for _, quantile := range quantiles {
-		latencyValues[fmt.Sprintf("%.4f", quantile)] = s.getQuantile(quantile).String()
+		floatQuantile, _ := strconv.ParseFloat(quantile, 64)
+		latencyValues[quantile] = s.getQuantile(floatQuantile).String()
 	}
 	return latencyValues
 }
