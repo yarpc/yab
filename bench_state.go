@@ -85,7 +85,10 @@ func (s *benchmarkState) getLatencies(out output, quantiles []string) map[string
 	sort.Sort(byDuration(s.latencies))
 	latencyValues := make(map[string]string, len(quantiles))
 	for _, quantile := range quantiles {
-		floatQuantile, _ := strconv.ParseFloat(quantile, 64)
+		floatQuantile, err := strconv.ParseFloat(quantile, 64)
+		if err != nil {
+			continue
+		}
 		latencyValues[quantile] = s.getQuantile(floatQuantile).String()
 	}
 	return latencyValues
