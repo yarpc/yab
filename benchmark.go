@@ -52,17 +52,6 @@ type BenchmarkParameters struct {
 	MaxRPS      int    `json:"maxRPS"`
 }
 
-// Latencies stores the latencies output for different quantiles
-type Latencies struct {
-	P5000 string `json:"0.5000"`
-	P9000 string `json:"0.9000"`
-	P9500 string `json:"0.9500"`
-	P9900 string `json:"0.9900"`
-	P9990 string `json:"0.9990"`
-	P9995 string `json:"0.9995"`
-	P1000 string `json:"1.0000"`
-}
-
 // Summary stores the benchmarking summary
 type Summary struct {
 	ElapsedTime   string  `json:"elapsedTime"`
@@ -73,7 +62,7 @@ type Summary struct {
 // BenchmarkOutput stores above defined structs
 type BenchmarkOutput struct {
 	BenchmarkParameters BenchmarkParameters `json:"benchmarkParameters"`
-	Latencies           Latencies           `json:"latencies"`
+	Latencies           map[string]string   `json:"latencies"`
 	Summary             Summary             `json:"summary"`
 }
 
@@ -216,9 +205,11 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 	// Print out errors
 	overall.printErrors(out)
 
-	// Create Latencies, BenchmarkParameters, Summary, and BenchmarkOutput structs
-	latencyValues := overall.getLatencies(out)
+	// Create Quantiles array
+	quantiles := []float64{0.5, 0.9, 0.95, 0.99, 0.999, 0.9995, 1.0}
+	latencyValues := overall.getLatencies(out, quantiles)
 
+	// Create BenchmarkParameters, Summary, and BenchmarkOutput structs
 	benchmarkParams := BenchmarkParameters{
 		CPUs:        goMaxProcs,
 		Connections: numConns,
@@ -227,15 +218,6 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 		MaxDuration: opts.MaxDuration.String(),
 		MaxRPS:      opts.RPS,
 	}
-	latenciesOutput := Latencies{
-		P5000: latencyValues[0],
-		P9000: latencyValues[1],
-		P9500: latencyValues[2],
-		P9900: latencyValues[3],
-		P9990: latencyValues[4],
-		P9995: latencyValues[5],
-		P1000: latencyValues[6],
-	}
 	summary := Summary{
 		ElapsedTime:   (total / time.Millisecond * time.Millisecond).String(),
 		TotalRequests: overall.totalRequests,
@@ -243,14 +225,14 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 	}
 	benchmarkOutput := BenchmarkOutput{
 		BenchmarkParameters: benchmarkParams,
-		Latencies:           latenciesOutput,
+		Latencies:           latencyValues,
 		Summary:             summary,
 	}
 
 	if opts.Format == "json" || opts.Format == "JSON" {
 		outputJSON(overall, out, total, benchmarkOutput)
 	} else {
-		outputPlaintext(overall, out, total, benchmarkOutput)
+		outputPlaintext(overall, out, total, quantiles, benchmarkOutput)
 	}
 }
 
@@ -266,7 +248,7 @@ func outputJSON(overall *benchmarkState, out output, total time.Duration, benchm
 }
 
 // Plaintext output helper method
-func outputPlaintext(overall *benchmarkState, out output, total time.Duration, benchmarkOutput BenchmarkOutput) {
+func outputPlaintext(overall *benchmarkState, out output, total time.Duration, quantiles []float64, benchmarkOutput BenchmarkOutput) {
 	// Print out benchmark parameters
 	out.Printf("Benchmark parameters:\n")
 	out.Printf("  CPUs:            %v\n", benchmarkOutput.BenchmarkParameters.CPUs)
@@ -278,14 +260,9 @@ func outputPlaintext(overall *benchmarkState, out output, total time.Duration, b
 
 	// Print out latencies
 	out.Printf("Latencies:\n")
-	quantiles := []float64{0.5, 0.9, 0.95, 0.99, 0.999, 0.9995, 1.0}
-	out.Printf("  %.4f: %v\n", quantiles[0], benchmarkOutput.Latencies.P5000)
-	out.Printf("  %.4f: %v\n", quantiles[1], benchmarkOutput.Latencies.P9000)
-	out.Printf("  %.4f: %v\n", quantiles[2], benchmarkOutput.Latencies.P9500)
-	out.Printf("  %.4f: %v\n", quantiles[3], benchmarkOutput.Latencies.P9900)
-	out.Printf("  %.4f: %v\n", quantiles[4], benchmarkOutput.Latencies.P9990)
-	out.Printf("  %.4f: %v\n", quantiles[5], benchmarkOutput.Latencies.P9995)
-	out.Printf("  %.4f: %v\n", quantiles[6], benchmarkOutput.Latencies.P1000)
+	for _, quantile := range quantiles {
+		out.Printf("  %.4f: %v\n", quantile, benchmarkOutput.Latencies[fmt.Sprintf("%.4f", quantile)])
+	}
 
 	// Print out summary
 	out.Printf("Elapsed time:      %v\n", benchmarkOutput.Summary.ElapsedTime)
