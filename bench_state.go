@@ -94,15 +94,6 @@ func (s *benchmarkState) getLatencies(out output, quantiles []string) map[string
 	return latencyValues
 }
 
-// Prints out latency values
-func (s *benchmarkState) printLatencies(out output) {
-	sort.Sort(byDuration(s.latencies))
-	out.Printf("Latencies:\n")
-	for _, quantile := range []float64{0.5, 0.9, 0.95, 0.99, 0.999, 0.9995, 1.0} {
-		out.Printf("  %.4f: %v\n", quantile, s.getQuantile(quantile))
-	}
-}
-
 func (s *benchmarkState) printErrors(out output) {
 	if len(s.errors) == 0 {
 		return
