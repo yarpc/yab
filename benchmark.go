@@ -43,6 +43,7 @@ var (
 
 	// using a global quantiles array mainly for ease of testing, and not passing the same array
 	// around to multiple functions
+	// TODO: modify quantile parameters to remove "." character and increase ease of parsing
 	_quantiles = []string{"0.5000", "0.9000", "0.9500", "0.9900", "0.9990", "0.9995", "1.0000"}
 )
 
@@ -207,6 +208,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 		zap.Time("startTime", start),
 	)
 	// Print out errors
+	// TODO: allow errors to be printed in JSON format for output consistency
 	overall.printErrors(out)
 
 	latencyValues := overall.getLatencies(out)
