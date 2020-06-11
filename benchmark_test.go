@@ -24,7 +24,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -221,31 +220,38 @@ func TestBenchmarkStatsPerPeer(t *testing.T) {
 	assert.Equal(t, want, statsServer.Aggregated(), "unexpected stats")
 }
 
-// Method that tests the 'Format' option of Benchmark Options
 func TestBenchmarkOutput(t *testing.T) {
 	// Testing both plaintext and JSON output
 	tests := []struct {
-		name string
-		opts BenchmarkOptions
+		name          string
+		opts          BenchmarkOptions
+		wantOutput    []string
+		notWantOutput []string
 	}{
 		{
 			name: "Test json output",
 			opts: BenchmarkOptions{
 				Format: "json",
 			},
+			wantOutput:    []string{"summary", "benchmarkParameters", "maxRPS"},
+			notWantOutput: []string{"Errors", "Benchmark parameters", "Max RPS"},
 		},
 		{
 			name: "Test plaintext output",
 			opts: BenchmarkOptions{
 				Format: "plaintext",
 			},
+			wantOutput:    []string{"Benchmark parameters", "Max RPS"},
+			notWantOutput: []string{"Errors", "summary", "maxRPS"},
 		},
-		// CSV format should default to plaintext
+		// unimplemented format should default to plaintext
 		{
 			name: "Test undefined output",
 			opts: BenchmarkOptions{
 				Format: "csv",
 			},
+			wantOutput:    []string{"Benchmark parameters", "Max RPS"},
+			notWantOutput: []string{"Errors", "benchmarkParameters", "maxRPS"},
 		},
 	}
 
@@ -276,11 +282,13 @@ func TestBenchmarkOutput(t *testing.T) {
 
 			runBenchmark(out, _testLogger, opts, _resolvedTChannelThrift, m)
 			bufStr := buf.String()
-			// Ensuring plaintext or JSON output does not contain errors
-			assert.NotContains(t, bufStr, "Errors")
-			// Ensuring correct RPS value in plaintext or JSON output
-			rps := strconv.Itoa(opts.BOpts.RPS)
-			assert.Contains(t, bufStr, rps)
+
+			for _, want := range tt.wantOutput {
+				assert.Contains(t, bufStr, want)
+			}
+			for _, notWant := range tt.notWantOutput {
+				assert.NotContains(t, bufStr, notWant)
+			}
 
 			if opts.BOpts.Format == "json" {
 				// Creating struct from string of JSON output
@@ -290,21 +298,11 @@ func TestBenchmarkOutput(t *testing.T) {
 				if err != nil {
 					fmt.Println("error:", err)
 				}
-
 				assert.Equal(t, benchmarkOutput.BenchmarkParameters.MaxRPS, opts.BOpts.RPS)
 				assert.GreaterOrEqual(t, opts.BOpts.MaxRequests, benchmarkOutput.Summary.TotalRequests)
-				// Ensuring the string of JSON output contains 'summary' field
-				assert.Contains(t, bufStr, "summary")
-
-			} else {
-
-				// Ensuring plaintext output contains certain fields
-				assert.Contains(t, bufStr, "Max RPS")
-				assert.Contains(t, bufStr, "Latencies")
-				assert.Contains(t, bufStr, "Elapsed time")
-				// Ensuring plaintext output does not contain JSON output field
-				assert.NotContains(t, bufStr, "summary")
+				return
 			}
+
 		})
 	}
 }

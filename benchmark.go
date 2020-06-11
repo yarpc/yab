@@ -41,7 +41,7 @@ var (
 	errNegativeDuration = errors.New("duration cannot be negative")
 	errNegativeMaxReqs  = errors.New("max requests cannot be negative")
 
-	// using a global quantiles array mainly for ease of testing, and not passing the same arrary
+	// using a global quantiles array mainly for ease of testing, and not passing the same array
 	// around to multiple functions
 	_quantiles = []string{"0.5000", "0.9000", "0.9500", "0.9900", "0.9990", "0.9995", "1.0000"}
 )
@@ -234,6 +234,9 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 	if opts.Format == "json" || opts.Format == "JSON" {
 		outputJSON(overall, out, total, benchmarkOutput)
 	} else {
+		if opts.Format != "plaintext" {
+			out.Printf("ERROR: Please specify <json> or <JSON> for JSON output. Printing plaintext output as default.\n\n")
+		}
 		outputPlaintext(overall, out, total, benchmarkOutput)
 	}
 }
