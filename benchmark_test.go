@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"require"
 	"sync"
 	"testing"
 	"time"
@@ -229,7 +230,7 @@ func TestBenchmarkOutput(t *testing.T) {
 		notWantOutput []string
 	}{
 		{
-			name: "Test json output",
+			name: "json",
 			opts: BenchmarkOptions{
 				Format: "json",
 			},
@@ -237,7 +238,7 @@ func TestBenchmarkOutput(t *testing.T) {
 			notWantOutput: []string{"Errors", "Benchmark parameters", "Max RPS"},
 		},
 		{
-			name: "Test plaintext output",
+			name: "plaintext",
 			opts: BenchmarkOptions{
 				Format: "plaintext",
 			},
@@ -246,7 +247,7 @@ func TestBenchmarkOutput(t *testing.T) {
 		},
 		// unimplemented format should default to plaintext
 		{
-			name: "Test undefined output",
+			name: "unrecognized",
 			opts: BenchmarkOptions{
 				Format: "csv",
 			},
@@ -295,12 +296,9 @@ func TestBenchmarkOutput(t *testing.T) {
 				var benchmarkOutput BenchmarkOutput
 				b := []byte(bufStr)
 				err := json.Unmarshal(b, &benchmarkOutput)
-				if err != nil {
-					fmt.Println("error:", err)
-				}
+				require.NoError(t, err)
 				assert.Equal(t, benchmarkOutput.BenchmarkParameters.MaxRPS, opts.BOpts.RPS)
 				assert.GreaterOrEqual(t, opts.BOpts.MaxRequests, benchmarkOutput.Summary.TotalRequests)
-				return
 			}
 
 		})
