@@ -24,7 +24,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"require"
 	"sync"
 	"testing"
 	"time"
@@ -33,6 +32,7 @@ import (
 	"github.com/yarpc/yab/transport"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/uber/tchannel-go/testutils"
 	"go.uber.org/atomic"
 )
