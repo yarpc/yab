@@ -225,25 +225,30 @@ func TestBenchmarkStatsPerPeer(t *testing.T) {
 func TestBenchmarkOutput(t *testing.T) {
 	// Testing both plaintext and JSON output
 	tests := []struct {
+		name string
 		opts BenchmarkOptions
 	}{
 		{
+			name: "Test json output",
 			opts: BenchmarkOptions{
 				Format: "json",
 			},
 		},
 		{
+			name: "Test plaintext output",
 			opts: BenchmarkOptions{
 				Format: "plaintext",
 			},
 		},
 		// CSV format should default to plaintext
 		{
+			name: "Test undefined output",
 			opts: BenchmarkOptions{
 				Format: "csv",
 			},
 		},
 	}
+
 	var requests atomic.Int32
 	s := newServer(t)
 	defer s.shutdown()
@@ -252,50 +257,54 @@ func TestBenchmarkOutput(t *testing.T) {
 		return false
 	}))
 	m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
+
 	for _, tt := range tests {
-		requests.Store(0)
-		buf, _, out := getOutput(t)
-		opts := Options{
-			BOpts: BenchmarkOptions{
-				MaxRequests: 100,
-				MaxDuration: 100 * time.Second,
-				RPS:         120,
-				Connections: 50,
-				Concurrency: 2,
-				Format:      tt.opts.Format,
-			},
-			TOpts: s.transportOpts(),
-		}
-		runBenchmark(out, _testLogger, opts, _resolvedTChannelThrift, m)
-		bufStr := buf.String()
-		if opts.BOpts.Format == "json" {
-			// Creating struct from string of JSON output
-			b := []byte(bufStr)
-			var benchmarkOutput BenchmarkOutput
-			err := json.Unmarshal(b, &benchmarkOutput)
-			if err != nil {
-				fmt.Println("error:", err)
+		t.Run(tt.name, func(t *testing.T) {
+			requests.Store(0)
+			buf, _, out := getOutput(t)
+			opts := Options{
+				BOpts: BenchmarkOptions{
+					MaxRequests: 100,
+					MaxDuration: 100 * time.Second,
+					RPS:         120,
+					Connections: 50,
+					Concurrency: 2,
+					Format:      tt.opts.Format,
+				},
+				TOpts: s.transportOpts(),
 			}
-			// Ensuring JSON output fields match defined structs passed into runBenchmark()
-			assert.Equal(t, benchmarkOutput.BenchmarkParameters.MaxRPS, opts.BOpts.RPS)
-			// Ensuring the total number of requests does not surpass MaxRequests parameter
-			assert.GreaterOrEqual(t, opts.BOpts.MaxRequests, benchmarkOutput.Summary.TotalRequests)
-			// Ensuring the string of JSON output contains 'Summary' field
-			assert.Contains(t, bufStr, "summary")
-			// Ensuring JSON output does not contain errors
+
+			runBenchmark(out, _testLogger, opts, _resolvedTChannelThrift, m)
+			bufStr := buf.String()
+			// Ensuring plaintext or JSON output does not contain errors
 			assert.NotContains(t, bufStr, "Errors")
-		} else {
-			// Ensuring correct RPS value in plaintext output
+			// Ensuring correct RPS value in plaintext or JSON output
 			rps := strconv.Itoa(opts.BOpts.RPS)
 			assert.Contains(t, bufStr, rps)
-			// Ensuring plaintext output contains certain fields
-			assert.Contains(t, bufStr, "Max RPS")
-			assert.Contains(t, bufStr, "Latencies")
-			assert.Contains(t, bufStr, "Elapsed time")
-			// Ensuring plaintext output does not contain JSON output field
-			assert.NotContains(t, bufStr, "summary")
-			// Ensuring plaintext output does not contain errors
-			assert.NotContains(t, bufStr, "Errors")
-		}
+
+			if opts.BOpts.Format == "json" {
+				// Creating struct from string of JSON output
+				var benchmarkOutput BenchmarkOutput
+				b := []byte(bufStr)
+				err := json.Unmarshal(b, &benchmarkOutput)
+				if err != nil {
+					fmt.Println("error:", err)
+				}
+
+				assert.Equal(t, benchmarkOutput.BenchmarkParameters.MaxRPS, opts.BOpts.RPS)
+				assert.GreaterOrEqual(t, opts.BOpts.MaxRequests, benchmarkOutput.Summary.TotalRequests)
+				// Ensuring the string of JSON output contains 'summary' field
+				assert.Contains(t, bufStr, "summary")
+
+			} else {
+
+				// Ensuring plaintext output contains certain fields
+				assert.Contains(t, bufStr, "Max RPS")
+				assert.Contains(t, bufStr, "Latencies")
+				assert.Contains(t, bufStr, "Elapsed time")
+				// Ensuring plaintext output does not contain JSON output field
+				assert.NotContains(t, bufStr, "summary")
+			}
+		})
 	}
 }
