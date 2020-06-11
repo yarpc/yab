@@ -41,8 +41,9 @@ var (
 	errNegativeDuration = errors.New("duration cannot be negative")
 	errNegativeMaxReqs  = errors.New("max requests cannot be negative")
 
-	// Global quantiles array for obtaining latency values from getLatencies() method
-	quantiles = []string{"0.5000", "0.9000", "0.9500", "0.9900", "0.9990", "0.9995", "1.0000"}
+	// using a global quantiles array mainly for ease of testing, and not passing the same arrary
+	// around to multiple functions
+	_quantiles = []string{"0.5000", "0.9000", "0.9500", "0.9900", "0.9990", "0.9995", "1.0000"}
 )
 
 // BenchmarkParameters holds values of all benchmark parameters
@@ -270,7 +271,7 @@ func outputPlaintext(overall *benchmarkState, out output, total time.Duration, b
 
 func printLatencies(out output, latencyValues map[string]string) {
 	out.Printf("Latencies:\n")
-	for _, quantile := range quantiles {
+	for _, quantile := range _quantiles {
 		out.Printf("  %s: %v\n", quantile, latencyValues[quantile])
 	}
 }

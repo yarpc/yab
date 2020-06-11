@@ -237,6 +237,12 @@ func TestBenchmarkOutput(t *testing.T) {
 				Format: "plaintext",
 			},
 		},
+		// CSV format should default to plaintext
+		{
+			opts: BenchmarkOptions{
+				Format: "csv",
+			},
+		},
 	}
 	var requests atomic.Int32
 	s := newServer(t)
