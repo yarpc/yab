@@ -43,8 +43,7 @@ var (
 
 	// using a global quantiles array mainly for ease of testing, and not passing the same array
 	// around to multiple functions
-	// TODO: modify quantile parameters to remove "." character and increase ease of parsing
-	_quantiles = []float64{0.5000, 0.9000, 0.9500, 0.9900, 0.9990, 0.9995, 1.0000}
+	_quantiles = []float64{0.5, 0.9, 0.95, 0.99, 0.999, 0.9995, 1.0}
 )
 
 // BenchmarkParameters holds values of all benchmark parameters
@@ -152,12 +151,16 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 		MaxRPS:      opts.RPS,
 	}
 
-	if opts.Format != "json" && opts.Format != "JSON" {
-		if opts.Format != "plaintext" {
-			out.Printf("ERROR: Please specify <json> or <JSON> for JSON output. Printing plaintext output as default.\n\n")
-		}
+	formatAsJSON := false
+	if opts.Format == "json" || opts.Format == "JSON" {
+		formatAsJSON = true
+	} else if opts.Format != "" {
+		out.Printf("Unrecognized format option %s, please specify <json> or <JSON> for JSON output. Printing plaintext output as default.\n", opts.Format)
+	}
+	if !formatAsJSON {
 		printBenchmarkParameters(out, benchmarkParameters)
 	}
+	// If format is JSON, benchmark parameters are printed after benchmark is run to maintain a single JSON blob
 
 	// Warm up number of connections.
 	logger.Debug("Warming up connections.", zap.Int("numConns", numConns))
@@ -235,7 +238,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 		RPS:           float64(overall.totalRequests) / total.Seconds(),
 	}
 
-	if opts.Format == "json" || opts.Format == "JSON" {
+	if formatAsJSON == true {
 		outputJSON(out, benchmarkParameters, latencyValues, summary)
 	} else {
 		outputPlaintext(out, latencyValues, summary)
@@ -245,6 +248,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 // JSON output helper method
 func outputJSON(out output, benchmarkParameters BenchmarkParameters, latencyValues map[float64]time.Duration, summary Summary) {
 	// convert map[float64]string to map[string]string
+	// TODO: modify quantile parameters to remove "." character and increase ease of parsing
 	latenciesStringMap := make(map[string]string)
 	for quantile, latency := range latencyValues {
 		latenciesStringMap[fmt.Sprintf("%f", quantile)] = latency.String()
