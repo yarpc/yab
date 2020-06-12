@@ -44,7 +44,7 @@ var (
 	// using a global quantiles array mainly for ease of testing, and not passing the same array
 	// around to multiple functions
 	// TODO: modify quantile parameters to remove "." character and increase ease of parsing
-	_quantiles = []string{"0.5000", "0.9000", "0.9500", "0.9900", "0.9990", "0.9995", "1.0000"}
+	_quantiles = []float64{0.5000, 0.9000, 0.9500, 0.9900, 0.9990, 0.9995, 1.0000}
 )
 
 // BenchmarkParameters holds values of all benchmark parameters
@@ -64,7 +64,7 @@ type Summary struct {
 	RPS           float64 `json:"rps"`
 }
 
-// BenchmarkOutput stores benchmark settings and results
+// BenchmarkOutput stores benchmark settings and results for JSON output
 type BenchmarkOutput struct {
 	BenchmarkParameters BenchmarkParameters `json:"benchmarkParameters"`
 	Latencies           map[string]string   `json:"latencies"`
@@ -143,6 +143,22 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 	goMaxProcs := opts.setGoMaxProcs()
 	numConns := opts.getNumConnections(goMaxProcs)
 
+	benchmarkParameters := BenchmarkParameters{
+		CPUs:        goMaxProcs,
+		Connections: numConns,
+		Concurrency: opts.Concurrency,
+		MaxRequests: opts.MaxRequests,
+		MaxDuration: opts.MaxDuration.String(),
+		MaxRPS:      opts.RPS,
+	}
+
+	if opts.Format != "json" && opts.Format != "JSON" {
+		if opts.Format != "plaintext" {
+			out.Printf("ERROR: Please specify <json> or <JSON> for JSON output. Printing plaintext output as default.\n\n")
+		}
+		printBenchmarkParameters(out, benchmarkParameters)
+	}
+
 	// Warm up number of connections.
 	logger.Debug("Warming up connections.", zap.Int("numConns", numConns))
 	connections, err := m.WarmTransports(numConns, allOpts.TOpts, resolved, opts.WarmupRequests)
@@ -213,38 +229,33 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 
 	latencyValues := overall.getLatencies(out)
 
-	// Create BenchmarkParameters, Summary, and BenchmarkOutput structs
-	benchmarkParams := BenchmarkParameters{
-		CPUs:        goMaxProcs,
-		Connections: numConns,
-		Concurrency: opts.Concurrency,
-		MaxRequests: opts.MaxRequests,
-		MaxDuration: opts.MaxDuration.String(),
-		MaxRPS:      opts.RPS,
-	}
 	summary := Summary{
 		ElapsedTime:   (total / time.Millisecond * time.Millisecond).String(),
 		TotalRequests: overall.totalRequests,
 		RPS:           float64(overall.totalRequests) / total.Seconds(),
 	}
-	benchmarkOutput := BenchmarkOutput{
-		BenchmarkParameters: benchmarkParams,
-		Latencies:           latencyValues,
-		Summary:             summary,
-	}
 
 	if opts.Format == "json" || opts.Format == "JSON" {
-		outputJSON(overall, out, total, benchmarkOutput)
+		outputJSON(out, benchmarkParameters, latencyValues, summary)
 	} else {
-		if opts.Format != "plaintext" {
-			out.Printf("ERROR: Please specify <json> or <JSON> for JSON output. Printing plaintext output as default.\n\n")
-		}
-		outputPlaintext(overall, out, total, benchmarkOutput)
+		outputPlaintext(out, latencyValues, summary)
 	}
 }
 
 // JSON output helper method
-func outputJSON(overall *benchmarkState, out output, total time.Duration, benchmarkOutput BenchmarkOutput) {
+func outputJSON(out output, benchmarkParameters BenchmarkParameters, latencyValues map[float64]time.Duration, summary Summary) {
+	// convert map[float64]string to map[string]string
+	latenciesStringMap := make(map[string]string)
+	for quantile, latency := range latencyValues {
+		latenciesStringMap[fmt.Sprintf("%f", quantile)] = latency.String()
+	}
+
+	// create BenchmarkOutput struct
+	benchmarkOutput := BenchmarkOutput{
+		BenchmarkParameters: benchmarkParameters,
+		Latencies:           latenciesStringMap,
+		Summary:             summary,
+	}
 
 	jsonOutput, err := json.MarshalIndent(&benchmarkOutput, "" /* prefix */, "  " /* indent */)
 	if err != nil {
@@ -255,29 +266,30 @@ func outputJSON(overall *benchmarkState, out output, total time.Duration, benchm
 }
 
 // Plaintext output helper method
-func outputPlaintext(overall *benchmarkState, out output, total time.Duration, benchmarkOutput BenchmarkOutput) {
-	// Print out benchmark parameters
-	out.Printf("Benchmark parameters:\n")
-	out.Printf("  CPUs:            %v\n", benchmarkOutput.BenchmarkParameters.CPUs)
-	out.Printf("  Connections:     %v\n", benchmarkOutput.BenchmarkParameters.Connections)
-	out.Printf("  Concurrency:     %v\n", benchmarkOutput.BenchmarkParameters.Concurrency)
-	out.Printf("  Max requests:    %v\n", benchmarkOutput.BenchmarkParameters.MaxRequests)
-	out.Printf("  Max duration:    %v\n", benchmarkOutput.BenchmarkParameters.MaxDuration)
-	out.Printf("  Max RPS:         %v\n", benchmarkOutput.BenchmarkParameters.MaxRPS)
-
+func outputPlaintext(out output, latencyValues map[float64]time.Duration, summary Summary) {
 	// Print out latencies
-	printLatencies(out, benchmarkOutput.Latencies)
+	printLatencies(out, latencyValues)
 
 	// Print out summary
-	out.Printf("Elapsed time:      %v\n", benchmarkOutput.Summary.ElapsedTime)
-	out.Printf("Total requests:    %v\n", benchmarkOutput.Summary.TotalRequests)
-	out.Printf("RPS:               %.2f\n", benchmarkOutput.Summary.RPS)
+	out.Printf("Elapsed time:      %v\n", summary.ElapsedTime)
+	out.Printf("Total requests:    %v\n", summary.TotalRequests)
+	out.Printf("RPS:               %.2f\n", summary.RPS)
 }
 
-func printLatencies(out output, latencyValues map[string]string) {
+func printBenchmarkParameters(out output, benchmarkParameters BenchmarkParameters) {
+	out.Printf("Benchmark parameters:\n")
+	out.Printf("  CPUs:            %v\n", benchmarkParameters.CPUs)
+	out.Printf("  Connections:     %v\n", benchmarkParameters.Connections)
+	out.Printf("  Concurrency:     %v\n", benchmarkParameters.Concurrency)
+	out.Printf("  Max requests:    %v\n", benchmarkParameters.MaxRequests)
+	out.Printf("  Max duration:    %v\n", benchmarkParameters.MaxDuration)
+	out.Printf("  Max RPS:         %v\n", benchmarkParameters.MaxRPS)
+}
+
+func printLatencies(out output, latencyValues map[float64]time.Duration) {
 	out.Printf("Latencies:\n")
 	for _, quantile := range _quantiles {
-		out.Printf("  %s: %v\n", quantile, latencyValues[quantile])
+		out.Printf("  %.4f: %v\n", quantile, latencyValues[quantile])
 	}
 }
 
