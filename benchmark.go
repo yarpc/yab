@@ -56,6 +56,17 @@ type BenchmarkParameters struct {
 	MaxRPS      int    `json:"maxRPS"`
 }
 
+// Latencies stores the latency values for each of the quantiles below
+type Latencies struct {
+	P50   string `json:"p50"`
+	P90   string `json:"p90"`
+	P95   string `json:"p95"`
+	P99   string `json:"p99"`
+	P999  string `json:"p999"`
+	P9995 string `json:"p9995"`
+	P100  string `json:"p100"`
+}
+
 // Summary stores the benchmarking summary
 type Summary struct {
 	ElapsedTime   string  `json:"elapsedTime"`
@@ -66,7 +77,7 @@ type Summary struct {
 // BenchmarkOutput stores benchmark settings and results for JSON output
 type BenchmarkOutput struct {
 	BenchmarkParameters BenchmarkParameters `json:"benchmarkParameters"`
-	Latencies           map[string]string   `json:"latencies"`
+	Latencies           Latencies           `json:"latencies"`
 	Summary             Summary             `json:"summary"`
 }
 
@@ -155,7 +166,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 	if opts.Format == "json" || opts.Format == "JSON" {
 		formatAsJSON = true
 	} else if opts.Format != "" {
-		out.Printf("Unrecognized format option %s, please specify <json> or <JSON> for JSON output. Printing plaintext output as default.\n", opts.Format)
+		out.Printf("Unrecognized format option <%s>, please specify <json> or <JSON> for JSON output. Printing plaintext output as default.\n\n", opts.Format)
 	}
 	if !formatAsJSON {
 		printBenchmarkParameters(out, benchmarkParameters)
@@ -249,15 +260,34 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 func outputJSON(out output, benchmarkParameters BenchmarkParameters, latencyValues map[float64]time.Duration, summary Summary) {
 	// convert map[float64]string to map[string]string
 	// TODO: modify quantile parameters to remove "." character and increase ease of parsing
-	latenciesStringMap := make(map[string]string)
-	for quantile, latency := range latencyValues {
-		latenciesStringMap[fmt.Sprintf("%f", quantile)] = latency.String()
+
+	lat := Latencies{}
+	if p, ok := latencyValues[0.5]; ok {
+		lat.P50 = p.String()
+	}
+	if p, ok := latencyValues[0.9]; ok {
+		lat.P90 = p.String()
+	}
+	if p, ok := latencyValues[0.95]; ok {
+		lat.P95 = p.String()
+	}
+	if p, ok := latencyValues[0.99]; ok {
+		lat.P99 = p.String()
+	}
+	if p, ok := latencyValues[0.999]; ok {
+		lat.P999 = p.String()
+	}
+	if p, ok := latencyValues[0.9995]; ok {
+		lat.P9995 = p.String()
+	}
+	if p, ok := latencyValues[1.0]; ok {
+		lat.P100 = p.String()
 	}
 
 	// create BenchmarkOutput struct
 	benchmarkOutput := BenchmarkOutput{
 		BenchmarkParameters: benchmarkParameters,
-		Latencies:           latenciesStringMap,
+		Latencies:           lat,
 		Summary:             summary,
 	}
 
