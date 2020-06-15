@@ -332,6 +332,7 @@ func (latencyMap LatencyMap) MarshalJSON() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		buf.Write(key)
 		buf.WriteString(":")
 		// marshal value
@@ -353,10 +354,12 @@ func (latencyMap LatencyMap) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
+
 	for k, v := range unmarshalOutput {
 		kv := KeyVal{Key: k, Val: v}
 		latencyMap = append(latencyMap, kv)
 	}
+
 	return nil
 }
 
