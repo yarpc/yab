@@ -80,7 +80,7 @@ func (s *benchmarkState) recordLatency(d time.Duration) {
 }
 
 // Returns a mapping of quantiles to latency values
-func (s *benchmarkState) getLatencies(out output) map[float64]time.Duration {
+func (s *benchmarkState) getLatencies() map[float64]time.Duration {
 	sort.Sort(byDuration(s.latencies))
 	latencyValues := make(map[float64]time.Duration, len(_quantiles))
 	for _, quantile := range _quantiles {

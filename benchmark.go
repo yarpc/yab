@@ -21,6 +21,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -41,9 +42,18 @@ var (
 	errNegativeDuration = errors.New("duration cannot be negative")
 	errNegativeMaxReqs  = errors.New("max requests cannot be negative")
 
-	// using a global quantiles array mainly for ease of testing, and not passing the same array
+	// using a global _quantiles slice and _percentileMap mainly for ease of testing, and not passing the same array
 	// around to multiple functions
-	_quantiles = []float64{0.5, 0.9, 0.95, 0.99, 0.999, 0.9995, 1.0}
+	_quantiles     = []float64{0.5, 0.9, 0.95, 0.99, 0.999, 0.9995, 1.0}
+	_percentileMap = map[float64]string{
+		0.5:    "P50",
+		0.9:    "P90",
+		0.95:   "P95",
+		0.99:   "P99",
+		0.999:  "P999",
+		0.9995: "P9995",
+		1.0:    "P100",
+	}
 )
 
 // BenchmarkParameters holds values of all benchmark parameters
@@ -56,16 +66,14 @@ type BenchmarkParameters struct {
 	MaxRPS      int    `json:"maxRPS"`
 }
 
-// Latencies stores the latency values for each of the quantiles below
-type Latencies struct {
-	P50   string `json:"p50"`
-	P90   string `json:"p90"`
-	P95   string `json:"p95"`
-	P99   string `json:"p99"`
-	P999  string `json:"p999"`
-	P9995 string `json:"p9995"`
-	P100  string `json:"p100"`
+// KeyVal stores individual quantile -> latency value mapping
+type KeyVal struct {
+	Key string
+	Val string
 }
+
+// LatencyMap stores multiple key-value pairs for latency value output
+type LatencyMap []KeyVal
 
 // Summary stores the benchmarking summary
 type Summary struct {
@@ -77,7 +85,7 @@ type Summary struct {
 // BenchmarkOutput stores benchmark settings and results for JSON output
 type BenchmarkOutput struct {
 	BenchmarkParameters BenchmarkParameters `json:"benchmarkParameters"`
-	Latencies           Latencies           `json:"latencies"`
+	Latencies           LatencyMap          `json:"latencies"`
 	Summary             Summary             `json:"summary"`
 }
 
@@ -168,6 +176,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 	} else if opts.Format != "" {
 		out.Printf("Unrecognized format option <%s>, please specify <json> or <JSON> for JSON output. Printing plaintext output as default.\n\n", opts.Format)
 	}
+
 	if !formatAsJSON {
 		printBenchmarkParameters(out, benchmarkParameters)
 	}
@@ -237,11 +246,12 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 		zap.Int("totalRequests", overall.totalRequests),
 		zap.Time("startTime", start),
 	)
+
 	// Print out errors
 	// TODO: allow errors to be printed in JSON format for output consistency
 	overall.printErrors(out)
 
-	latencyValues := overall.getLatencies(out)
+	latencyValues := overall.getLatencies()
 
 	summary := Summary{
 		ElapsedTime:   (total / time.Millisecond * time.Millisecond).String(),
@@ -249,7 +259,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 		RPS:           float64(overall.totalRequests) / total.Seconds(),
 	}
 
-	if formatAsJSON == true {
+	if formatAsJSON {
 		outputJSON(out, benchmarkParameters, latencyValues, summary)
 	} else {
 		outputPlaintext(out, latencyValues, summary)
@@ -258,36 +268,17 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 
 // JSON output helper method
 func outputJSON(out output, benchmarkParameters BenchmarkParameters, latencyValues map[float64]time.Duration, summary Summary) {
-	// convert map[float64]string to map[string]string
-	// TODO: modify quantile parameters to remove "." character and increase ease of parsing
 
-	lat := Latencies{}
-	if p, ok := latencyValues[0.5]; ok {
-		lat.P50 = p.String()
-	}
-	if p, ok := latencyValues[0.9]; ok {
-		lat.P90 = p.String()
-	}
-	if p, ok := latencyValues[0.95]; ok {
-		lat.P95 = p.String()
-	}
-	if p, ok := latencyValues[0.99]; ok {
-		lat.P99 = p.String()
-	}
-	if p, ok := latencyValues[0.999]; ok {
-		lat.P999 = p.String()
-	}
-	if p, ok := latencyValues[0.9995]; ok {
-		lat.P9995 = p.String()
-	}
-	if p, ok := latencyValues[1.0]; ok {
-		lat.P100 = p.String()
+	latencies := LatencyMap{}
+	for _, quantile := range _quantiles {
+		keyVal := KeyVal{Key: _percentileMap[quantile], Val: latencyValues[quantile].String()}
+		latencies = append(latencies, keyVal)
 	}
 
 	// create BenchmarkOutput struct
 	benchmarkOutput := BenchmarkOutput{
 		BenchmarkParameters: benchmarkParameters,
-		Latencies:           lat,
+		Latencies:           latencies,
 		Summary:             summary,
 	}
 
@@ -325,6 +316,34 @@ func printLatencies(out output, latencyValues map[float64]time.Duration) {
 	for _, quantile := range _quantiles {
 		out.Printf("  %.4f: %v\n", quantile, latencyValues[quantile])
 	}
+}
+
+// MarshalJSON implements the json.Marshaler interface
+func (latencyMap LatencyMap) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+
+	buf.WriteString("{")
+	for i, kv := range latencyMap {
+		if i != 0 {
+			buf.WriteString(",")
+		}
+		// marshal key
+		key, err := json.Marshal(kv.Key)
+		if err != nil {
+			return nil, err
+		}
+		buf.Write(key)
+		buf.WriteString(":")
+		// marshal value
+		val, err := json.Marshal(kv.Val)
+		if err != nil {
+			return nil, err
+		}
+		buf.Write(val)
+	}
+
+	buf.WriteString("}")
+	return buf.Bytes(), nil
 }
 
 // stopOnInterrupt sets up a signal that will trigger the run to stop.
