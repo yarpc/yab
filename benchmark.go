@@ -318,7 +318,7 @@ func printLatencies(out output, latencyValues map[float64]time.Duration) {
 	}
 }
 
-// MarshalJSON implements the json.Marshaler interface
+// MarshalJSON implements the json.Marshaler interface for the custom latencyMap
 func (latencyMap LatencyMap) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 
@@ -344,6 +344,20 @@ func (latencyMap LatencyMap) MarshalJSON() ([]byte, error) {
 
 	buf.WriteString("}")
 	return buf.Bytes(), nil
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface for the custom latencyMap
+func (latencyMap LatencyMap) UnmarshalJSON(b []byte) error {
+	var unmarshalOutput map[string]string
+	err := json.Unmarshal(b, &unmarshalOutput)
+	if err != nil {
+		return err
+	}
+	for k, v := range unmarshalOutput {
+		kv := KeyVal{Key: k, Val: v}
+		latencyMap = append(latencyMap, kv)
+	}
+	return nil
 }
 
 // stopOnInterrupt sets up a signal that will trigger the run to stop.
