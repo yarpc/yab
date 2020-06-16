@@ -67,13 +67,13 @@ type BenchmarkParameters struct {
 }
 
 // KeyVal stores individual quantile -> latency value mapping
-type KeyVal struct {
-	Key string
-	Val string
+type latencyElement struct {
+	quantile string
+	latency  string
 }
 
-// LatencyMap stores multiple key-value pairs for latency value output
-type LatencyMap []KeyVal
+// LatencyMap stores multiple key-value pairs for latency value output to preserve specific ordering of elements.
+type LatencyMap []latencyElement
 
 // Summary stores the benchmarking summary
 type Summary struct {
@@ -87,6 +87,54 @@ type BenchmarkOutput struct {
 	BenchmarkParameters BenchmarkParameters `json:"benchmarkParameters"`
 	Latencies           LatencyMap          `json:"latencies"`
 	Summary             Summary             `json:"summary"`
+}
+
+// MarshalJSON implements the json.Marshaler interface for the custom latencyMap
+func (latencyMap LatencyMap) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+
+	buf.WriteString("{")
+	for i, kv := range latencyMap {
+		if i != 0 {
+			buf.WriteString(",")
+		}
+		// marshal key
+		key, err := json.Marshal(kv.quantile)
+		if err != nil {
+			return nil, err
+		}
+
+		buf.Write(key)
+		buf.WriteString(":")
+		// marshal value
+		val, err := json.Marshal(kv.latency)
+		if err != nil {
+			return nil, err
+		}
+		buf.Write(val)
+	}
+
+	buf.WriteString("}")
+	return buf.Bytes(), nil
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface for the custom latencyMap
+func (latencyMap *LatencyMap) UnmarshalJSON(b []byte) error {
+	var unmarshalOutput map[string]string
+	err := json.Unmarshal(b, &unmarshalOutput)
+	if err != nil {
+		return err
+	}
+
+	for k, v := range unmarshalOutput {
+		kv := latencyElement{
+			quantile: k,
+			latency:  v,
+		}
+		*latencyMap = append(*latencyMap, kv)
+	}
+
+	return nil
 }
 
 // setGoMaxProcs sets runtime.GOMAXPROCS if the option is set
@@ -271,8 +319,11 @@ func outputJSON(out output, benchmarkParameters BenchmarkParameters, latencyValu
 
 	latencies := LatencyMap{}
 	for _, quantile := range _quantiles {
-		keyVal := KeyVal{Key: _percentileMap[quantile], Val: latencyValues[quantile].String()}
-		latencies = append(latencies, keyVal)
+		element := latencyElement{
+			quantile: _percentileMap[quantile],
+			latency:  latencyValues[quantile].String(),
+		}
+		latencies = append(latencies, element)
 	}
 
 	// create BenchmarkOutput struct
@@ -316,51 +367,6 @@ func printLatencies(out output, latencyValues map[float64]time.Duration) {
 	for _, quantile := range _quantiles {
 		out.Printf("  %.4f: %v\n", quantile, latencyValues[quantile])
 	}
-}
-
-// MarshalJSON implements the json.Marshaler interface for the custom latencyMap
-func (latencyMap LatencyMap) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-
-	buf.WriteString("{")
-	for i, kv := range latencyMap {
-		if i != 0 {
-			buf.WriteString(",")
-		}
-		// marshal key
-		key, err := json.Marshal(kv.Key)
-		if err != nil {
-			return nil, err
-		}
-
-		buf.Write(key)
-		buf.WriteString(":")
-		// marshal value
-		val, err := json.Marshal(kv.Val)
-		if err != nil {
-			return nil, err
-		}
-		buf.Write(val)
-	}
-
-	buf.WriteString("}")
-	return buf.Bytes(), nil
-}
-
-// UnmarshalJSON implements the json.Unmarshaler interface for the custom latencyMap
-func (latencyMap LatencyMap) UnmarshalJSON(b []byte) error {
-	var unmarshalOutput map[string]string
-	err := json.Unmarshal(b, &unmarshalOutput)
-	if err != nil {
-		return err
-	}
-
-	for k, v := range unmarshalOutput {
-		kv := KeyVal{Key: k, Val: v}
-		latencyMap = append(latencyMap, kv)
-	}
-
-	return nil
 }
 
 // stopOnInterrupt sets up a signal that will trigger the run to stop.

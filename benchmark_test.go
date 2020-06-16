@@ -234,7 +234,7 @@ func TestBenchmarkOutput(t *testing.T) {
 			opts: BenchmarkOptions{
 				Format: "json",
 			},
-			wantOutput:    []string{"summary", "benchmarkParameters", "maxRPS"},
+			wantOutput:    []string{"summary", "benchmarkParameters", "maxRPS", "latencies"},
 			notWantOutput: []string{"Errors", "Benchmark parameters", "Max RPS"},
 		},
 		{
@@ -299,6 +299,7 @@ func TestBenchmarkOutput(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, benchmarkOutput.BenchmarkParameters.MaxRPS, opts.BOpts.RPS)
 				assert.GreaterOrEqual(t, opts.BOpts.MaxRequests, benchmarkOutput.Summary.TotalRequests)
+				assert.Equal(t, len(_quantiles), len(benchmarkOutput.Latencies))
 			}
 
 		})
