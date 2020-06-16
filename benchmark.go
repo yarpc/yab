@@ -66,13 +66,13 @@ type BenchmarkParameters struct {
 	MaxRPS      int    `json:"maxRPS"`
 }
 
-// KeyVal stores individual quantile -> latency value mapping
+// latencyElement stores individual quantile -> latency value mapping
 type latencyElement struct {
 	quantile string
 	latency  string
 }
 
-// LatencyMap stores multiple key-value pairs for latency value output to preserve specific ordering of elements.
+// LatencyMap stores latency quantile to value mappings, using a slice to preserve specific ordering of elements for serialization.
 type LatencyMap []latencyElement
 
 // Summary stores the benchmarking summary
@@ -89,7 +89,7 @@ type BenchmarkOutput struct {
 	Summary             Summary             `json:"summary"`
 }
 
-// MarshalJSON implements the json.Marshaler interface for the custom latencyMap
+// MarshalJSON implements the json.Marshaler interface for the custom LatencyMap
 func (latencyMap LatencyMap) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 
@@ -222,7 +222,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 	if opts.Format == "json" || opts.Format == "JSON" {
 		formatAsJSON = true
 	} else if opts.Format != "" {
-		out.Printf("Unrecognized format option <%s>, please specify <json> or <JSON> for JSON output. Printing plaintext output as default.\n\n", opts.Format)
+		out.Printf("Unrecognized format option %q, please specify 'json' or 'JSON' for JSON output. Printing plaintext output as default.\n\n", opts.Format)
 	}
 
 	if !formatAsJSON {
