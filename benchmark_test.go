@@ -271,8 +271,8 @@ func TestBenchmarkOutput(t *testing.T) {
 			buf, _, out := getOutput(t)
 			opts := Options{
 				BOpts: BenchmarkOptions{
-					MaxRequests: 100,
-					MaxDuration: 100 * time.Second,
+					MaxRequests: 10,
+					MaxDuration: 200 * time.Millisecond,
 					RPS:         120,
 					Connections: 50,
 					Concurrency: 2,
