@@ -25,6 +25,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"os/signal"
 	"runtime"
@@ -59,8 +60,8 @@ var (
 // BenchmarkParameters holds values of all benchmark parameters
 type BenchmarkParameters struct {
 	CPUs        int    `json:"cpus"`
-	Concurrency int    `json:"concurrency"`
 	Connections int    `json:"connections"`
+	Concurrency int    `json:"concurrency"`
 	MaxRequests int    `json:"maxRequests"`
 	MaxDuration string `json:"maxDuration"`
 	MaxRPS      int    `json:"maxRPS"`
@@ -301,10 +302,15 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 
 	latencyValues := overall.getLatencies()
 
+	// Rounding RPS value to the hundredths place
+	rps := float64(overall.totalRequests) / total.Seconds()
+	rps = math.Round(rps * 100)
+	rps = rps / 100
+
 	summary := Summary{
 		ElapsedTime:   (total / time.Millisecond * time.Millisecond).String(),
 		TotalRequests: overall.totalRequests,
-		RPS:           float64(overall.totalRequests) / total.Seconds(),
+		RPS:           rps,
 	}
 
 	if formatAsJSON {
