@@ -304,8 +304,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 
 	// Rounding RPS value to the hundredths place
 	rps := float64(overall.totalRequests) / total.Seconds()
-	rps = math.Round(rps * 100)
-	rps = rps / 100
+	rps = (math.Round(rps * 100)) / 100
 
 	summary := Summary{
 		ElapsedTime:   (total / time.Millisecond * time.Millisecond).String(),
