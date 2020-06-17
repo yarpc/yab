@@ -245,7 +245,7 @@ func TestBenchmarkOutput(t *testing.T) {
 			wantOutput:    []string{"Benchmark parameters", "Max RPS"},
 			notWantOutput: []string{"Errors", "summary", "maxRPS"},
 		},
-		// unimplemented format should default to plaintext
+		// Unimplemented format should default to plaintext
 		{
 			name: "unrecognized",
 			opts: BenchmarkOptions{
@@ -297,7 +297,7 @@ func TestBenchmarkOutput(t *testing.T) {
 				b := []byte(bufStr)
 				err := json.Unmarshal(b, &benchmarkOutput)
 				require.NoError(t, err)
-				assert.Equal(t, benchmarkOutput.BenchmarkParameters.MaxRPS, opts.BOpts.RPS)
+				assert.Equal(t, benchmarkOutput.Parameters.MaxRPS, opts.BOpts.RPS)
 				assert.GreaterOrEqual(t, opts.BOpts.MaxRequests, benchmarkOutput.Summary.TotalRequests)
 				assert.Equal(t, len(_quantiles), len(benchmarkOutput.Latencies))
 			}
