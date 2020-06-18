@@ -225,26 +225,30 @@ func TestBenchmarkOutput(t *testing.T) {
 	// Testing both plaintext and JSON output
 	tests := []struct {
 		name          string
-		format        string
+		format        []string
+		wantJSON      bool
 		wantOutput    []string
 		notWantOutput []string
 	}{
 		{
 			name:          "json",
-			format:        "json",
+			format:        []string{"json", "JSON", "Json", "jsON", "jsoN"},
+			wantJSON:      true,
 			wantOutput:    []string{"summary", "benchmarkParameters", "maxRPS", "latencies"},
 			notWantOutput: []string{"Errors", "Benchmark parameters", "Max RPS", "Unrecognized format option"},
 		},
 		{
 			name:          "plaintext",
-			format:        "",
+			format:        []string{""},
+			wantJSON:      false,
 			wantOutput:    []string{"Benchmark parameters", "Max RPS"},
 			notWantOutput: []string{"Errors", "summary", "maxRPS", "Unrecognized format option"},
 		},
 		// Unimplemented format should default to plaintext
 		{
 			name:          "unrecognized",
-			format:        "csv",
+			format:        []string{"csv", "plaintext", "blob"},
+			wantJSON:      false,
 			wantOutput:    []string{"Benchmark parameters", "Max RPS", "Unrecognized format option"},
 			notWantOutput: []string{"Errors", "benchmarkParameters", "maxRPS"},
 		},
@@ -260,42 +264,44 @@ func TestBenchmarkOutput(t *testing.T) {
 	m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			requests.Store(0)
-			buf, _, out := getOutput(t)
-			opts := Options{
-				BOpts: BenchmarkOptions{
-					MaxRequests: 10,
-					MaxDuration: 200 * time.Millisecond,
-					RPS:         120,
-					Connections: 50,
-					Concurrency: 2,
-					Format:      tt.format,
-				},
-				TOpts: s.transportOpts(),
-			}
+		for _, format := range tt.format {
+			t.Run(tt.name, func(t *testing.T) {
+				requests.Store(0)
+				buf, _, out := getOutput(t)
+				opts := Options{
+					BOpts: BenchmarkOptions{
+						MaxRequests: 10,
+						MaxDuration: 200 * time.Millisecond,
+						RPS:         120,
+						Connections: 50,
+						Concurrency: 2,
+						Format:      format,
+					},
+					TOpts: s.transportOpts(),
+				}
 
-			runBenchmark(out, _testLogger, opts, _resolvedTChannelThrift, m)
-			bufStr := buf.String()
+				runBenchmark(out, _testLogger, opts, _resolvedTChannelThrift, m)
+				bufStr := buf.String()
 
-			for _, want := range tt.wantOutput {
-				assert.Contains(t, bufStr, want)
-			}
-			for _, notWant := range tt.notWantOutput {
-				assert.NotContains(t, bufStr, notWant)
-			}
+				for _, want := range tt.wantOutput {
+					assert.Contains(t, bufStr, want)
+				}
+				for _, notWant := range tt.notWantOutput {
+					assert.NotContains(t, bufStr, notWant)
+				}
 
-			if opts.BOpts.Format == "json" {
-				// Creating struct from string of JSON output
-				var benchmarkOutput BenchmarkOutput
-				b := []byte(bufStr)
-				err := json.Unmarshal(b, &benchmarkOutput)
-				require.NoError(t, err)
-				assert.Equal(t, benchmarkOutput.Parameters.MaxRPS, opts.BOpts.RPS)
-				assert.GreaterOrEqual(t, opts.BOpts.MaxRequests, benchmarkOutput.Summary.TotalRequests)
-				assert.Equal(t, len(_quantiles), len(benchmarkOutput.Latencies))
-			}
+				if tt.wantJSON {
+					// Creating struct from string of JSON output
+					var benchmarkOutput BenchmarkOutput
+					b := []byte(bufStr)
+					err := json.Unmarshal(b, &benchmarkOutput)
+					require.NoError(t, err)
+					assert.Equal(t, benchmarkOutput.Parameters.MaxRPS, opts.BOpts.RPS)
+					assert.GreaterOrEqual(t, opts.BOpts.MaxRequests, benchmarkOutput.Summary.TotalRequests)
+					assert.Equal(t, len(_quantiles), len(benchmarkOutput.Latencies))
+				}
 
-		})
+			})
+		}
 	}
 }

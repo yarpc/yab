@@ -159,7 +159,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 	if opts.Format == "json" {
 		formatAsJSON = true
 	} else if opts.Format != "" {
-		out.Printf("Unrecognized format option %q, please specify 'json' (case-insensitive) for JSON output. Printing plaintext output as default.\n\n", opts.Format)
+		out.Printf("Unrecognized format option %q, please specify 'json' for JSON output. Printing plaintext output as default.\n\n", opts.Format)
 	}
 
 	if !formatAsJSON {
@@ -270,7 +270,7 @@ func outputJSON(out output, parameters Parameters, latencyValues map[float64]tim
 	if err != nil {
 		out.Fatalf("Failed to marshal benchmark output: %v\n", err)
 	}
-	out.Printf("%s\n\n", jsonOutput)
+	out.Printf("%s\n", jsonOutput)
 }
 
 func outputPlaintext(out output, latencyValues map[float64]time.Duration, summary Summary) {
