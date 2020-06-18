@@ -225,33 +225,27 @@ func TestBenchmarkOutput(t *testing.T) {
 	// Testing both plaintext and JSON output
 	tests := []struct {
 		name          string
-		opts          BenchmarkOptions
+		format        string
 		wantOutput    []string
 		notWantOutput []string
 	}{
 		{
-			name: "json",
-			opts: BenchmarkOptions{
-				Format: "json",
-			},
+			name:          "json",
+			format:        "json",
 			wantOutput:    []string{"summary", "benchmarkParameters", "maxRPS", "latencies"},
-			notWantOutput: []string{"Errors", "Benchmark parameters", "Max RPS"},
+			notWantOutput: []string{"Errors", "Benchmark parameters", "Max RPS", "Unrecognized format option"},
 		},
 		{
-			name: "plaintext",
-			opts: BenchmarkOptions{
-				Format: "plaintext",
-			},
+			name:          "plaintext",
+			format:        "",
 			wantOutput:    []string{"Benchmark parameters", "Max RPS"},
-			notWantOutput: []string{"Errors", "summary", "maxRPS"},
+			notWantOutput: []string{"Errors", "summary", "maxRPS", "Unrecognized format option"},
 		},
 		// Unimplemented format should default to plaintext
 		{
-			name: "unrecognized",
-			opts: BenchmarkOptions{
-				Format: "csv",
-			},
-			wantOutput:    []string{"Benchmark parameters", "Max RPS"},
+			name:          "unrecognized",
+			format:        "csv",
+			wantOutput:    []string{"Benchmark parameters", "Max RPS", "Unrecognized format option"},
 			notWantOutput: []string{"Errors", "benchmarkParameters", "maxRPS"},
 		},
 	}
@@ -276,7 +270,7 @@ func TestBenchmarkOutput(t *testing.T) {
 					RPS:         120,
 					Connections: 50,
 					Concurrency: 2,
-					Format:      tt.opts.Format,
+					Format:      tt.format,
 				},
 				TOpts: s.transportOpts(),
 			}
