@@ -238,7 +238,7 @@ func TestBenchmarkOutput(t *testing.T) {
 			notWantOutput: []string{"Errors", "Benchmark parameters", "Max RPS", "Unrecognized format option"},
 		},
 		{
-			name:          "plaintext",
+			name:          "unspecified",
 			format:        []string{""},
 			wantJSON:      false,
 			wantOutput:    []string{"Benchmark parameters", "Max RPS"},
@@ -300,7 +300,6 @@ func TestBenchmarkOutput(t *testing.T) {
 					assert.GreaterOrEqual(t, opts.BOpts.MaxRequests, benchmarkOutput.Summary.TotalRequests)
 					assert.Equal(t, len(_quantiles), len(benchmarkOutput.Latencies))
 				}
-
 			})
 		}
 	}
