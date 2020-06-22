@@ -238,13 +238,13 @@ func TestBenchmarkOutput(t *testing.T) {
 			notWantOutput: []string{"Errors", "Benchmark parameters", "Max RPS", "Unrecognized format option"},
 		},
 		{
-			name:          "unspecified",
-			format:        []string{""},
+			name:          "text",
+			format:        []string{"text", ""},
 			wantJSON:      false,
 			wantOutput:    []string{"Benchmark parameters", "Max RPS"},
 			notWantOutput: []string{"Errors", "summary", "maxRPS", "Unrecognized format option"},
 		},
-		// Unimplemented format should default to plaintext
+		// Unimplemented format should print an error and default to plaintext
 		{
 			name:          "unrecognized",
 			format:        []string{"csv", "plaintext", "blob"},
@@ -270,12 +270,12 @@ func TestBenchmarkOutput(t *testing.T) {
 				buf, _, out := getOutput(t)
 				opts := Options{
 					BOpts: BenchmarkOptions{
-						MaxRequests: 10,
-						MaxDuration: 200 * time.Millisecond,
-						RPS:         120,
-						Connections: 50,
-						Concurrency: 2,
-						Format:      format,
+						MaxRequests:    1,
+						MaxDuration:    100 * time.Millisecond,
+						Connections:    1,
+						WarmupRequests: 0,
+						Concurrency:    1,
+						Format:         format,
 					},
 					TOpts: s.transportOpts(),
 				}

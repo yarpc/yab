@@ -155,14 +155,13 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 
 	// If format is JSON, benchmark parameters are printed after benchmark is run to maintain a single JSON blob
 	formatAsJSON := false
-	opts.Format = strings.ToLower(opts.Format)
-	if opts.Format == "json" {
+	switch format := strings.ToLower(opts.Format); format {
+	case "text", "":
+		printParameters(out, parameters)
+	case "json":
 		formatAsJSON = true
-	} else if opts.Format != "" {
+	default:
 		out.Printf("Unrecognized format option %q, please specify 'json' for JSON output. Printing plaintext output as default.\n\n", opts.Format)
-	}
-
-	if !formatAsJSON {
 		printParameters(out, parameters)
 	}
 
