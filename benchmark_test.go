@@ -222,7 +222,7 @@ func TestBenchmarkStatsPerPeer(t *testing.T) {
 }
 
 func TestBenchmarkOutput(t *testing.T) {
-	// Testing both plaintext and JSON output
+	// Testing text, json, and unrecognized output
 	tests := []struct {
 		name          string
 		format        []string
