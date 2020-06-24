@@ -302,7 +302,7 @@ func TestBenchmarkOutput(t *testing.T) {
 				}
 
 				if tt.wantJSON {
-					// Creating struct from string of JSON output
+					// Creating struct from JSON output string
 					var benchmarkOutput BenchmarkOutput
 					b := []byte(bufStr)
 					err := json.Unmarshal(b, &benchmarkOutput)
