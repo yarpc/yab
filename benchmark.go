@@ -161,7 +161,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 	case "json":
 		formatAsJSON = true
 	default:
-		out.Printf("Unrecognized format option %q, please specify 'json' for JSON output. Printing plaintext output as default.\n\n", opts.Format)
+		out.Warnf("Unrecognized format option %q, please specify 'json' for JSON output. Printing plaintext output as default.\n\n", opts.Format)
 		printParameters(out, parameters)
 	}
 

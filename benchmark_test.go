@@ -227,6 +227,7 @@ func TestBenchmarkOutput(t *testing.T) {
 		name          string
 		format        []string
 		wantJSON      bool
+		wantWarn      string
 		wantOutput    []string
 		notWantOutput []string
 	}{
@@ -234,6 +235,7 @@ func TestBenchmarkOutput(t *testing.T) {
 			name:          "json",
 			format:        []string{"json", "JSON", "Json", "jsON", "jsoN"},
 			wantJSON:      true,
+			wantWarn:      "",
 			wantOutput:    []string{"summary", "benchmarkParameters", "maxRPS", "latencies"},
 			notWantOutput: []string{"Errors", "Benchmark parameters", "Max RPS", "Unrecognized format option"},
 		},
@@ -241,6 +243,7 @@ func TestBenchmarkOutput(t *testing.T) {
 			name:          "text",
 			format:        []string{"text", ""},
 			wantJSON:      false,
+			wantWarn:      "",
 			wantOutput:    []string{"Benchmark parameters", "Max RPS"},
 			notWantOutput: []string{"Errors", "summary", "maxRPS", "Unrecognized format option"},
 		},
@@ -249,7 +252,8 @@ func TestBenchmarkOutput(t *testing.T) {
 			name:          "unrecognized",
 			format:        []string{"csv", "plaintext", "blob"},
 			wantJSON:      false,
-			wantOutput:    []string{"Benchmark parameters", "Max RPS", "Unrecognized format option"},
+			wantWarn:      "Unrecognized format option",
+			wantOutput:    []string{"Benchmark parameters", "Max RPS"},
 			notWantOutput: []string{"Errors", "benchmarkParameters", "maxRPS"},
 		},
 	}
@@ -267,7 +271,7 @@ func TestBenchmarkOutput(t *testing.T) {
 		for _, format := range tt.format {
 			t.Run(tt.name, func(t *testing.T) {
 				requests.Store(0)
-				buf, _, out := getOutput(t)
+				buf, bufWarn, out := getOutput(t)
 				opts := Options{
 					BOpts: BenchmarkOptions{
 						MaxRequests:    1,
@@ -282,12 +286,16 @@ func TestBenchmarkOutput(t *testing.T) {
 
 				runBenchmark(out, _testLogger, opts, _resolvedTChannelThrift, m)
 				bufStr := buf.String()
+				bufWarnStr := bufWarn.String()
 
 				for _, want := range tt.wantOutput {
 					assert.Contains(t, bufStr, want)
 				}
 				for _, notWant := range tt.notWantOutput {
 					assert.NotContains(t, bufStr, notWant)
+				}
+				if tt.wantWarn != "" {
+					assert.Contains(t, bufWarnStr, tt.wantWarn)
 				}
 
 				if tt.wantJSON {
