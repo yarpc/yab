@@ -294,8 +294,11 @@ func TestBenchmarkOutput(t *testing.T) {
 				for _, notWant := range tt.notWantOutput {
 					assert.NotContains(t, bufStr, notWant)
 				}
+
 				if tt.wantWarn != "" {
 					assert.Contains(t, bufWarnStr, tt.wantWarn)
+				} else {
+					assert.Empty(t, bufWarnStr)
 				}
 
 				if tt.wantJSON {
