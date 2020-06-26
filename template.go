@@ -27,41 +27,25 @@ import (
 	"strings"
 	"time"
 
+	"github.com/yarpc/yab/internal/yamlalias"
 	"github.com/yarpc/yab/templateargs"
 
 	"gopkg.in/yaml.v2"
 )
 
 type template struct {
-	Peers                     []string    `yaml:"peers"`
-	Peer                      string      `yaml:"peer"`
-	PeerList                  string      `yaml:"peerList"`
-	Peerlist                  stringAlias `yaml:"peerlist"`
-	PeerDashList              stringAlias `yaml:"peer-list"`
-	Caller                    string      `yaml:"caller"`
-	Service                   string      `yaml:"service"`
-	Thrift                    string      `yaml:"thrift"`
-	Procedure                 string      `yaml:"procedure"`
-	Method                    stringAlias `yaml:"method"`
-	DisableThriftEnvelope     *bool       `yaml:"disableThriftEnvelope"`
-	DisableDashThriftEnvelope **bool      `yaml:"disable-thrift-envelope"`
-	Disablethriftenvelope     **bool      `yaml:"disablethriftenvelope"`
+	Peers                 []string `yaml:"peers"`
+	Peer                  string   `yaml:"peer"`
+	PeerList              string   `yaml:"peerList" yaml-aliases:"peerlist,peer-list"`
+	Caller                string   `yaml:"caller"`
+	Service               string   `yaml:"service"`
+	Thrift                string   `yaml:"thrift"`
+	Procedure             string   `yaml:"procedure" yaml-aliases:"method"`
+	DisableThriftEnvelope *bool    `yaml:"disableThriftEnvelope" yaml-aliases:"disablethriftenvelope,disable-thrift-envelope"`
 
-	ShardKey        string `yaml:"shardKey"`
-	RoutingKey      string `yaml:"routingKey"`
-	RoutingDelegate string `yaml:"routingDelegate"`
-
-	Shardkey        stringAlias `yaml:"shardkey"`
-	Routingkey      stringAlias `yaml:"routingkey"`
-	Routingdelegate stringAlias `yaml:"routingdelegate"`
-
-	ShardDashKey        stringAlias `yaml:"shard-key"`
-	RoutingDashKey      stringAlias `yaml:"routing-key"`
-	RoutingDashDelegate stringAlias `yaml:"routing-delegate"`
-
-	SK stringAlias `yaml:"sk"`
-	RK stringAlias `yaml:"rk"`
-	RD stringAlias `yaml:"rd"`
+	ShardKey        string `yaml:"shardKey" yaml-aliases:"shardkey,shard-key,sk"`
+	RoutingKey      string `yaml:"routingKey" yaml-aliases:"routingkey,routing-key,rk"`
+	RoutingDelegate string `yaml:"routingDelegate" yaml-aliases:"routingdelegate,routing-delegate,rd"`
 
 	Headers map[string]string           `yaml:"headers"`
 	Baggage map[string]string           `yaml:"baggage"`
@@ -96,11 +80,12 @@ func readYAMLFile(yamlTemplate string, templateArgs map[string]string, opts *Opt
 }
 
 func readYAMLRequest(base string, contents []byte, templateArgs map[string]string, opts *Options) error {
-	t, err := unmarshalTemplate(contents)
-	if err != nil {
+	var t template
+	if err := yamlalias.UnmarshalStrict(contents, &t); err != nil {
 		return err
 	}
 
+	var err error
 	t.Request, err = templateargs.ProcessMap(t.Request, templateArgs)
 	if err != nil {
 		return err
@@ -164,33 +149,6 @@ func overrideParam(s *string, newS string) {
 	if newS != "" {
 		*s = newS
 	}
-}
-
-func unmarshalTemplate(bytes []byte) (*template, error) {
-	t := &template{}
-
-	t.Method.dest = &t.Procedure
-
-	t.Peerlist.dest = &t.PeerList
-	t.PeerDashList.dest = &t.PeerList
-
-	t.Shardkey.dest = &t.ShardKey
-	t.Routingkey.dest = &t.RoutingKey
-	t.Routingdelegate.dest = &t.RoutingDelegate
-
-	t.ShardDashKey.dest = &t.ShardKey
-	t.RoutingDashKey.dest = &t.RoutingKey
-	t.RoutingDashDelegate.dest = &t.RoutingDelegate
-
-	t.SK.dest = &t.ShardKey
-	t.RK.dest = &t.RoutingKey
-	t.RD.dest = &t.RoutingDelegate
-
-	t.Disablethriftenvelope = &t.DisableThriftEnvelope
-	t.DisableDashThriftEnvelope = &t.DisableThriftEnvelope
-
-	err := yaml.Unmarshal(bytes, &t)
-	return t, err
 }
 
 type headers map[string]string

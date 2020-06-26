@@ -100,7 +100,19 @@ func NewSerializer(opts Options, resolved resolvedProtocolEncoding) (encoding.Se
 	// procedure check for non-Thrift encodings.
 	switch resolved.enc {
 	case encoding.Thrift:
-		return encoding.NewThrift(opts.ROpts.ThriftFile, opts.ROpts.Procedure, opts.ROpts.ThriftMultiplexed)
+		envelope := !opts.ROpts.ThriftDisableEnvelopes
+
+		// TChannel and gRPC never use envelopes.
+		if resolved.protocol == transport.TChannel || resolved.protocol == transport.GRPC {
+			envelope = false
+		}
+
+		return encoding.NewThrift(encoding.ThriftParams{
+			File:        opts.ROpts.ThriftFile,
+			Method:      opts.ROpts.Procedure,
+			Envelope:    envelope,
+			Multiplexed: opts.ROpts.ThriftMultiplexed,
+		})
 	case encoding.Protobuf:
 		descSource, err := newProtoDescriptorProvider(opts.ROpts, opts.TOpts, resolved)
 		if err != nil {

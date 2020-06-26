@@ -36,13 +36,9 @@ import (
 
 const _multiplexedSeparator = ":"
 
-var (
-	// ErrSpecifyThriftFile is returned if no Thrift file is specified
-	// for a Thrift request.
-	ErrSpecifyThriftFile = errors.New("specify a Thrift file using --thrift")
-
-	defaultOpts = thrift.Options{UseEnvelopes: true}
-)
+// ErrSpecifyThriftFile is returned if no Thrift file is specified
+// for a Thrift request.
+var ErrSpecifyThriftFile = errors.New("specify a Thrift file using --thrift")
 
 type thriftSerializer struct {
 	methodName string
@@ -50,21 +46,30 @@ type thriftSerializer struct {
 	opts       thrift.Options
 }
 
+// ThriftParams contains the parameters for the NewThrift function.
+// We use a struct as there are multiple consecutive arguments of the same type.
+type ThriftParams struct {
+	File        string
+	Method      string
+	Multiplexed bool
+	Envelope    bool
+}
+
 // NewThrift returns a Thrift serializer.
-func NewThrift(thriftFile, methodName string, multiplexed bool) (Serializer, error) {
-	if thriftFile == "" {
+func NewThrift(p ThriftParams) (Serializer, error) {
+	if p.File == "" {
 		return nil, ErrSpecifyThriftFile
 	}
-	if isFileMissing(thriftFile) {
-		return nil, fmt.Errorf("cannot find Thrift file: %q", thriftFile)
+	if isFileMissing(p.File) {
+		return nil, fmt.Errorf("cannot find Thrift file: %q", p.File)
 	}
 
-	parsed, err := thrift.Parse(thriftFile)
+	parsed, err := thrift.Parse(p.File)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse Thrift file: %v", err)
 	}
 
-	thriftSvc, thriftMethod, err := thrift.SplitMethod(methodName)
+	thriftSvc, thriftMethod, err := thrift.SplitMethod(p.Method)
 	if err != nil {
 		return nil, err
 	}
@@ -79,12 +84,14 @@ func NewThrift(thriftFile, methodName string, multiplexed bool) (Serializer, err
 		return nil, err
 	}
 
-	opts := defaultOpts
-	if multiplexed {
+	opts := thrift.Options{
+		UseEnvelopes: p.Envelope,
+	}
+	if p.Multiplexed {
 		opts.EnvelopeMethodPrefix = thriftSvc + _multiplexedSeparator
 	}
 
-	return thriftSerializer{methodName, spec, opts}, nil
+	return thriftSerializer{p.Method, spec, opts}, nil
 }
 
 func (e thriftSerializer) Encoding() Encoding {
@@ -128,12 +135,6 @@ func findService(parsed *compile.Module, svcName string) (*compile.ServiceSpec, 
 
 func (e thriftSerializer) CheckSuccess(res *transport.Response) error {
 	return thrift.CheckSuccess(e.spec, res.Body, e.opts)
-}
-
-func (e thriftSerializer) WithoutEnvelopes() Serializer {
-	// We're modifying a copy of e.
-	e.opts.UseEnvelopes = false
-	return e
 }
 
 func findMethod(service *compile.ServiceSpec, methodName string) (*compile.FunctionSpec, error) {

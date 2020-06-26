@@ -567,7 +567,7 @@ func TestGetOptionsPrintsPluginErrors(t *testing.T) {
 	require.Contains(t, warnBuf.String(), "WARNING: Error adding plugin-based custom flags")
 }
 
-func TestAlises(t *testing.T) {
+func TestAliases(t *testing.T) {
 	type cmdArgs []string
 
 	tests := []struct {
@@ -577,12 +577,11 @@ func TestAlises(t *testing.T) {
 	}{
 		{
 			args: []cmdArgs{
-				{"--timeout", "1s"},
-				{"--timeout", "1000"},
-				{"-t", "1000"},
+				{"--timeout", "5s"},
+				{"--timeout", "5000"},
 			},
 			validate: func(args cmdArgs, opts *Options) {
-				assert.Equal(t, time.Second, opts.ROpts.Timeout.Duration(), "Args: %v", args)
+				assert.Equal(t, 5*time.Second, opts.ROpts.Timeout.Duration(), "Args: %v", args)
 			},
 		},
 		{
@@ -999,7 +998,7 @@ func TestResolveProtocolEncoding(t *testing.T) {
 	}
 }
 
-func TestWithTransportSerializer(t *testing.T) {
+func TestDetectThriftEnvelopes(t *testing.T) {
 	validRequestOpts := RequestOptions{
 		ThriftFile: validThrift,
 		Procedure:  fooMethod,
@@ -1057,7 +1056,6 @@ func TestWithTransportSerializer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.msg, func(t *testing.T) {
-
 			resolved := resolvedProtocolEncoding{
 				protocol: tt.protocol,
 				enc:      encoding.Thrift,
@@ -1065,7 +1063,6 @@ func TestWithTransportSerializer(t *testing.T) {
 			serializer, err := NewSerializer(Options{ROpts: tt.rOpts}, resolved)
 			require.NoError(t, err, "Failed to create serializer for %+v", tt.rOpts)
 
-			serializer = withTransportSerializer(tt.protocol, serializer, tt.rOpts)
 			req, err := serializer.Request(nil)
 			require.NoError(t, err, "Failed to serialize request for %+v", tt.rOpts)
 

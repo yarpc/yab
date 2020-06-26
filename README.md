@@ -10,7 +10,7 @@ currently supports making Thrift requests to both HTTP and TChannel services.
 
 If you have go installed, simply run the following to install the latest version:
 ```bash
-go get -u -f github.com/yarpc/yab
+GO111MODULE=on go get -u github.com/yarpc/yab
 ```
 
 This will install `yab` to `$GOPATH/bin/yab`.

@@ -21,6 +21,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"sync"
@@ -31,6 +32,7 @@ import (
 	"github.com/yarpc/yab/transport"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/uber/tchannel-go/testutils"
 	"go.uber.org/atomic"
 )
@@ -217,4 +219,99 @@ func TestBenchmarkStatsPerPeer(t *testing.T) {
 		return statsServer.Aggregated()["yab.tester.foo.Simple--foo.latency"] >= totalCalls
 	})
 	assert.Equal(t, want, statsServer.Aggregated(), "unexpected stats")
+}
+
+func TestBenchmarkOutput(t *testing.T) {
+	// Testing text, json, and unrecognized output
+	tests := []struct {
+		name          string
+		format        []string
+		wantJSON      bool
+		wantWarn      string
+		wantOutput    []string
+		notWantOutput []string
+	}{
+		{
+			name:          "json",
+			format:        []string{"json", "JSON", "Json", "jsON", "jsoN"},
+			wantJSON:      true,
+			wantWarn:      "",
+			wantOutput:    []string{"summary", "benchmarkParameters", "maxRPS", "latencies"},
+			notWantOutput: []string{"Errors", "Benchmark parameters", "Max RPS", "Unrecognized format option"},
+		},
+		{
+			name:          "text",
+			format:        []string{"text", ""},
+			wantJSON:      false,
+			wantWarn:      "",
+			wantOutput:    []string{"Benchmark parameters", "Max RPS"},
+			notWantOutput: []string{"Errors", "summary", "maxRPS", "Unrecognized format option"},
+		},
+		// Unimplemented format should print an error and default to plaintext
+		{
+			name:          "unrecognized",
+			format:        []string{"csv", "plaintext", "blob"},
+			wantJSON:      false,
+			wantWarn:      "Unrecognized format option",
+			wantOutput:    []string{"Benchmark parameters", "Max RPS"},
+			notWantOutput: []string{"Errors", "benchmarkParameters", "maxRPS"},
+		},
+	}
+
+	var requests atomic.Int32
+	s := newServer(t)
+	defer s.shutdown()
+	s.register(fooMethod, methods.errorIf(func() bool {
+		requests.Inc()
+		return false
+	}))
+	m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
+
+	for _, tt := range tests {
+		for _, format := range tt.format {
+			t.Run(tt.name, func(t *testing.T) {
+				requests.Store(0)
+				buf, bufWarn, out := getOutput(t)
+				opts := Options{
+					BOpts: BenchmarkOptions{
+						MaxRequests:    1,
+						MaxDuration:    100 * time.Millisecond,
+						Connections:    1,
+						WarmupRequests: 0,
+						Concurrency:    1,
+						Format:         format,
+					},
+					TOpts: s.transportOpts(),
+				}
+
+				runBenchmark(out, _testLogger, opts, _resolvedTChannelThrift, m)
+				bufStr := buf.String()
+				bufWarnStr := bufWarn.String()
+
+				for _, want := range tt.wantOutput {
+					assert.Contains(t, bufStr, want)
+				}
+				for _, notWant := range tt.notWantOutput {
+					assert.NotContains(t, bufStr, notWant)
+				}
+
+				if tt.wantWarn != "" {
+					assert.Contains(t, bufWarnStr, tt.wantWarn)
+				} else {
+					assert.Empty(t, bufWarnStr)
+				}
+
+				if tt.wantJSON {
+					// Creating struct from JSON output string
+					var benchmarkOutput BenchmarkOutput
+					b := []byte(bufStr)
+					err := json.Unmarshal(b, &benchmarkOutput)
+					require.NoError(t, err)
+					assert.Equal(t, benchmarkOutput.Parameters.MaxRPS, opts.BOpts.RPS)
+					assert.GreaterOrEqual(t, opts.BOpts.MaxRequests, benchmarkOutput.Summary.TotalRequests)
+					assert.Equal(t, len(_quantiles), len(benchmarkOutput.Latencies))
+				}
+			})
+		}
+	}
 }

@@ -21,11 +21,14 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -39,7 +42,35 @@ import (
 var (
 	errNegativeDuration = errors.New("duration cannot be negative")
 	errNegativeMaxReqs  = errors.New("max requests cannot be negative")
+
+	// using a global _quantiles slice mainly for ease of testing, and not passing
+	// the same array around to multiple functions
+	_quantiles = []float64{0.5000, 0.9000, 0.9500, 0.9900, 0.9990, 0.9995, 1.0000}
 )
+
+// Parameters holds values of all benchmark parameters
+type Parameters struct {
+	CPUs        int    `json:"cpus"`
+	Connections int    `json:"connections"`
+	Concurrency int    `json:"concurrency"`
+	MaxRequests int    `json:"maxRequests"`
+	MaxDuration string `json:"maxDuration"`
+	MaxRPS      int    `json:"maxRPS"`
+}
+
+// Summary stores the benchmarking summary
+type Summary struct {
+	ElapsedTimeSeconds float64 `json:"elapsedTimeSeconds"`
+	TotalRequests      int     `json:"totalRequests"`
+	RPS                float64 `json:"rps"`
+}
+
+// BenchmarkOutput stores benchmark settings and results for JSON output
+type BenchmarkOutput struct {
+	Parameters Parameters        `json:"benchmarkParameters"`
+	Latencies  map[string]string `json:"latencies"`
+	Summary    Summary           `json:"summary"`
+}
 
 // setGoMaxProcs sets runtime.GOMAXPROCS if the option is set
 // and returns the number of GOMAXPROCS configured.
@@ -112,13 +143,27 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 
 	goMaxProcs := opts.setGoMaxProcs()
 	numConns := opts.getNumConnections(goMaxProcs)
-	out.Printf("Benchmark parameters:\n")
-	out.Printf("  CPUs:            %v\n", goMaxProcs)
-	out.Printf("  Connections:     %v\n", numConns)
-	out.Printf("  Concurrency:     %v\n", opts.Concurrency)
-	out.Printf("  Max requests:    %v\n", opts.MaxRequests)
-	out.Printf("  Max duration:    %v\n", opts.MaxDuration)
-	out.Printf("  Max RPS:         %v\n", opts.RPS)
+
+	parameters := Parameters{
+		CPUs:        goMaxProcs,
+		Connections: numConns,
+		Concurrency: opts.Concurrency,
+		MaxRequests: opts.MaxRequests,
+		MaxDuration: opts.MaxDuration.String(),
+		MaxRPS:      opts.RPS,
+	}
+
+	// If format is JSON, benchmark parameters are printed after benchmark is run to maintain a single JSON blob
+	formatAsJSON := false
+	switch format := strings.ToLower(opts.Format); format {
+	case "text", "":
+		printParameters(out, parameters)
+	case "json":
+		formatAsJSON = true
+	default:
+		out.Warnf("Unrecognized format option %q, please specify 'json' for JSON output. Printing plaintext output as default.\n\n", opts.Format)
+		printParameters(out, parameters)
+	}
 
 	// Warm up number of connections.
 	logger.Debug("Warming up connections.", zap.Int("numConns", numConns))
@@ -170,9 +215,6 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 		}
 	}
 
-	// TODO: Support streaming updates.
-	// TOOD: Aggregate per-backend state for JSON output in future.
-
 	// Wait for all the worker goroutines to end.
 	wg.Wait()
 	total := time.Since(start)
@@ -188,12 +230,73 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 		zap.Time("startTime", start),
 	)
 
+	// Print out errors
+	// TODO: allow errors to be printed in JSON format for output consistency
 	overall.printErrors(out)
-	overall.printLatencies(out)
 
-	out.Printf("Elapsed time:      %v\n", (total / time.Millisecond * time.Millisecond))
-	out.Printf("Total requests:    %v\n", overall.totalRequests)
-	out.Printf("RPS:               %.2f\n", float64(overall.totalRequests)/total.Seconds())
+	latencyValues := overall.getLatencies()
+
+	// Rounding RPS value to the hundredths place
+	rps := float64(overall.totalRequests) / total.Seconds()
+	rps = (math.Round(rps * 100)) / 100
+
+	summary := Summary{
+		ElapsedTimeSeconds: (total / time.Millisecond * time.Millisecond).Seconds(),
+		TotalRequests:      overall.totalRequests,
+		RPS:                rps,
+	}
+
+	if formatAsJSON {
+		outputJSON(out, parameters, latencyValues, summary)
+	} else {
+		outputPlaintext(out, latencyValues, summary)
+	}
+}
+
+func outputJSON(out output, parameters Parameters, latencyValues map[float64]time.Duration, summary Summary) {
+	latencies := make(map[string]string, len(_quantiles))
+	for _, quantile := range _quantiles {
+		latencies[fmt.Sprintf("%.4f", quantile)] = latencyValues[quantile].String()
+	}
+
+	benchmarkOutput := BenchmarkOutput{
+		Parameters: parameters,
+		Latencies:  latencies,
+		Summary:    summary,
+	}
+
+	jsonOutput, err := json.MarshalIndent(&benchmarkOutput, "" /* prefix */, "  " /* indent */)
+	if err != nil {
+		out.Fatalf("Failed to marshal benchmark output: %v\n", err)
+	}
+	out.Printf("%s\n", jsonOutput)
+}
+
+func outputPlaintext(out output, latencyValues map[float64]time.Duration, summary Summary) {
+	// Print out latencies
+	printLatencies(out, latencyValues)
+
+	// Print out summary
+	out.Printf("Elapsed time (seconds):   %.2f\n", summary.ElapsedTimeSeconds)
+	out.Printf("Total requests:           %v\n", summary.TotalRequests)
+	out.Printf("RPS:                      %.2f\n", summary.RPS)
+}
+
+func printParameters(out output, parameters Parameters) {
+	out.Printf("Benchmark parameters:\n")
+	out.Printf("  CPUs:            %v\n", parameters.CPUs)
+	out.Printf("  Connections:     %v\n", parameters.Connections)
+	out.Printf("  Concurrency:     %v\n", parameters.Concurrency)
+	out.Printf("  Max requests:    %v\n", parameters.MaxRequests)
+	out.Printf("  Max duration:    %v\n", parameters.MaxDuration)
+	out.Printf("  Max RPS:         %v\n", parameters.MaxRPS)
+}
+
+func printLatencies(out output, latencyValues map[float64]time.Duration) {
+	out.Printf("Latencies:\n")
+	for _, quantile := range _quantiles {
+		out.Printf("  %.4f: %v\n", quantile, latencyValues[quantile])
+	}
 }
 
 // stopOnInterrupt sets up a signal that will trigger the run to stop.

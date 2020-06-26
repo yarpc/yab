@@ -102,7 +102,7 @@ func TestBenchmarkStateLatencies(t *testing.T) {
 	assert.Equal(t, state.totalSuccess, 10001, "Success count mismatch")
 	assert.Equal(t, state.totalRequests, 10001, "Request count mismatch")
 
-	state.printLatencies(out)
+	printLatencies(out, state.getLatencies())
 
 	expected := []string{
 		"0.5000: 5ms",
@@ -147,7 +147,8 @@ func TestBenchmarkStateMergeLatencies(t *testing.T) {
 	assert.Equal(t, state1.totalRequests, 10001, "Request count mismatch")
 
 	buf, _, out := getOutput(t)
-	state1.printLatencies(out)
+
+	printLatencies(out, state1.getLatencies())
 
 	expected := []string{
 		"0.5000: 5ms",
