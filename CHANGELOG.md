@@ -1,6 +1,9 @@
 Changelog
 =========
 
+# 0.18.0 (2020-06-26)
+* Add support for benchmark output in JSON format.
+
 # 0.17.0 (2020-03-24)
 * Fix gRPC reflection requests not propogating routing key and routing delegate.
 * When Thrift method is not found, list all available methdods in service::method
