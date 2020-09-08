@@ -3,6 +3,7 @@ package encoding
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/golang/protobuf/jsonpb"
 	"strings"
 
 	"github.com/yarpc/yab/encoding/encodingerror"
@@ -20,6 +21,53 @@ type protoSerializer struct {
 	serviceName string
 	methodName  string
 	method      *desc.MethodDescriptor
+	anyResolver jsonpb.AnyResolver
+}
+
+// a type to wrap a raw byte slice. Especially useful for any
+// types where we can't find the value in the registry.
+type bytesMsg struct {
+	V []byte
+}
+
+
+// A custom any resolver which will use the descriptor provider
+// and fallback to a simple byte array structure in the json.
+// This is the needed otherwise the default behaviour of protoreflect
+// is to fail with an error when it can't find a type.
+type anyResolver struct {
+	source protobuf.DescriptorProvider
+}
+
+func (*bytesMsg) ProtoMessage()             {}
+func (*bytesMsg) XXX_WellKnownType() string { return "BytesValue" }
+func (m *bytesMsg) Reset()                  { *m = bytesMsg{} }
+func (m *bytesMsg) String() string {
+	return fmt.Sprintf("%x", m.V) // not compatible w/ pb oct
+}
+func (m *bytesMsg) Unmarshal(b []byte) error {
+	m.V = append([]byte(nil), b...)
+	return nil
+}
+
+func (r anyResolver) Resolve(typeUrl string) (proto.Message, error) {
+	mname := typeUrl
+	if slash := strings.LastIndex(mname, "/"); slash >= 0 {
+		mname = mname[slash+1:]
+	}
+
+	msgDescriptor, err := r.source.FindMessage(mname)
+	if err != nil {
+		return nil, err
+	}
+	if msgDescriptor != nil {
+		// We found a registered descriptor for our type, return it for human
+		// readable format
+		return dynamic.NewMessage(msgDescriptor), nil
+	}
+	// If me couldn't find the msg descriptor then provide a default implementation which will just
+	// output the raw bytes as base64 - it's better than nothing.
+	return &bytesMsg{}, nil
 }
 
 // NewProtobuf returns a protobuf serializer.
@@ -43,6 +91,9 @@ func NewProtobuf(fullMethodName string, source protobuf.DescriptorProvider) (Ser
 		serviceName: serviceName,
 		methodName:  methodName,
 		method:      methodDescriptor,
+		anyResolver: anyResolver{
+			source: source,
+		},
 	}, nil
 }
 
@@ -75,7 +126,11 @@ func (p protoSerializer) Response(body *transport.Response) (interface{}, error)
 	if err := resp.Unmarshal(body.Body); err != nil {
 		return nil, fmt.Errorf("could not parse given response body as message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
 	}
-	str, err := resp.MarshalJSON()
+
+	marshaler := &jsonpb.Marshaler{
+		AnyResolver: p.anyResolver,
+	}
+	str, err := resp.MarshalJSONPB(marshaler)
 	if err != nil {
 		return nil, err
 	}

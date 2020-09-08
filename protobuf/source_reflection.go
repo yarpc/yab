@@ -74,6 +74,18 @@ type grpcreflectSource struct {
 	client *grpcreflect.Client
 }
 
+func (s *grpcreflectSource) FindMessage(messageType string) (*desc.MessageDescriptor, error) {
+	msg, err :=  s.client.ResolveMessage(messageType)
+
+	if grpcreflect.IsElementNotFoundError(err) {
+		// If we couldn't find the message through the client,
+		// return nil instead to follow the contract
+		return nil, nil
+	}
+
+	return msg, err
+}
+
 func (s *grpcreflectSource) FindService(fullyQualifiedName string) (*desc.ServiceDescriptor, error) {
 	service, err := s.client.ResolveService(fullyQualifiedName)
 	if err != nil {

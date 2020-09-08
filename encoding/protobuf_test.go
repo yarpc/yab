@@ -3,6 +3,7 @@ package encoding
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/jhump/protoreflect/dynamic"
 	"testing"
 
 	"github.com/yarpc/yab/protobuf"
@@ -185,6 +186,43 @@ func TestProtobufResponse(t *testing.T) {
 				require.Error(t, err, "%v", tt.desc)
 				assert.Contains(t, err.Error(), tt.errMsg, "%v: invalid error", tt.desc)
 			}
+		})
+	}
+}
+
+func Test_anyResolver_Resolve(t *testing.T) {
+	source, err := protobuf.NewDescriptorProviderFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
+	assert.NoError(t, err)
+	tests := []struct {
+		name    string
+		typeUrl string
+		resolveType interface{}
+		wantErr bool
+	}{
+
+		{
+			name: "simple resolving of a known type",
+			typeUrl: "schemas.test.proto/3ae3e282-1a1f-4921-91b4-12369cfc6036/Foo",
+			resolveType: &dynamic.Message{},
+		},
+		{
+			name: "unknown types should return byteMsg types",
+			typeUrl: "schemas.test.proto/3ae3e282-1a1f-4921-91b4-12369cfc6036/UnknownMessage",
+			resolveType: &bytesMsg{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := anyResolver{
+				source: source,
+			}
+			got, err := r.Resolve(tt.typeUrl)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Resolve() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			assert.IsType(t, tt.resolveType, got)
 		})
 	}
 }
