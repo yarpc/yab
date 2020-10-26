@@ -10,6 +10,7 @@ type DescriptorProvider interface {
 	// FindService returns a service descriptor for the given fully-qualified symbol name.
 	FindService(fullyQualifiedName string) (*desc.ServiceDescriptor, error)
 
+	// FindMessage return a message descriptor for the given fully-qualified symbol name.
 	FindMessage(messageType string) (*desc.MessageDescriptor, error)
 
 	Close()

@@ -3,8 +3,9 @@ package encoding
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/golang/protobuf/jsonpb"
 	"strings"
+
+	"github.com/golang/protobuf/jsonpb"
 
 	"github.com/yarpc/yab/encoding/encodingerror"
 	"github.com/yarpc/yab/protobuf"
@@ -24,12 +25,11 @@ type protoSerializer struct {
 	anyResolver jsonpb.AnyResolver
 }
 
-// a type to wrap a raw byte slice. Especially useful for any
-// types where we can't find the value in the registry.
+// bytesMsg wraps a raw byte slice for serialization purposes. Especially
+// useful for any types where we can't find the value in the registry.
 type bytesMsg struct {
 	V []byte
 }
-
 
 // A custom any resolver which will use the descriptor provider
 // and fallback to a simple byte array structure in the json.
@@ -52,6 +52,10 @@ func (m *bytesMsg) Unmarshal(b []byte) error {
 
 func (r anyResolver) Resolve(typeUrl string) (proto.Message, error) {
 	mname := typeUrl
+	// This resolver supports types based on the spec at https://developers.google.com/protocol-buffers/docs/proto3#any
+	// Example: type.googleapis.com/_packagename_._messagename_
+	// so we want to get the fully qualified name of the type that we are dealing with
+	// i.e. everything after the last '/'
 	if slash := strings.LastIndex(mname, "/"); slash >= 0 {
 		mname = mname[slash+1:]
 	}
@@ -102,13 +106,13 @@ func (p protoSerializer) Encoding() Encoding {
 }
 
 func (p protoSerializer) Request(body []byte) (*transport.Request, error) {
-	json, err := yaml.YAMLToJSON(body)
+	jsonContent, err := yaml.YAMLToJSON(body)
 	if err != nil {
 		return nil, err
 	}
 
 	req := dynamic.NewMessage(p.method.GetInputType())
-	if err := req.UnmarshalJSON(json); err != nil {
+	if err := req.UnmarshalJSON(jsonContent); err != nil {
 		return nil, fmt.Errorf("could not parse given request body as message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
 	}
 	bytes, err := proto.Marshal(req)

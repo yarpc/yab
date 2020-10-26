@@ -2,9 +2,12 @@ package encoding
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/jhump/protoreflect/dynamic"
+	"github.com/jhump/protoreflect/desc"
 	"testing"
+
+	"github.com/jhump/protoreflect/dynamic"
 
 	"github.com/yarpc/yab/protobuf"
 	"github.com/yarpc/yab/transport"
@@ -190,31 +193,55 @@ func TestProtobufResponse(t *testing.T) {
 	}
 }
 
+type erroringProvider struct {
+}
+
+func (e erroringProvider) FindService(fullyQualifiedName string) (*desc.ServiceDescriptor, error) {
+	return nil, errors.New("test error")
+}
+
+func (e erroringProvider) FindMessage(messageType string) (*desc.MessageDescriptor, error) {
+	return nil, errors.New("test error")
+}
+
+func (e erroringProvider) Close() {
+}
+
 func Test_anyResolver_Resolve(t *testing.T) {
 	source, err := protobuf.NewDescriptorProviderFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
 	assert.NoError(t, err)
 	tests := []struct {
-		name    string
-		typeUrl string
+		name        string
+		typeUrl     string
+		source      protobuf.DescriptorProvider
 		resolveType interface{}
-		wantErr bool
+		wantErr     bool
 	}{
 
 		{
-			name: "simple resolving of a known type",
-			typeUrl: "schemas.test.proto/3ae3e282-1a1f-4921-91b4-12369cfc6036/Foo",
+			name:        "simple resolving of a known type",
+			typeUrl:     "schemas.test.proto/3ae3e282-1a1f-4921-91b4-12369cfc6036/Foo",
+			source: source,
 			resolveType: &dynamic.Message{},
 		},
 		{
-			name: "unknown types should return byteMsg types",
-			typeUrl: "schemas.test.proto/3ae3e282-1a1f-4921-91b4-12369cfc6036/UnknownMessage",
+			name:        "unknown types should return byteMsg types",
+			typeUrl:     "schemas.test.proto/3ae3e282-1a1f-4921-91b4-12369cfc6036/UnknownMessage",
+			source:      source,
 			resolveType: &bytesMsg{},
+		},
+		{
+			name:        "sources from the error should result in an error",
+			typeUrl:     "schemas.test.proto/3ae3e282-1a1f-4921-91b4-12369cfc6036/UnknownMessage",
+			source: erroringProvider{},
+			resolveType: nil,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := anyResolver{
-				source: source,
+				source: tt.source,
 			}
 			got, err := r.Resolve(tt.typeUrl)
 			if (err != nil) != tt.wantErr {
