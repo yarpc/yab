@@ -4,13 +4,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/golang/protobuf/proto"
 	"github.com/jhump/protoreflect/desc"
+	"github.com/yarpc/yab/testdata/protobuf/simple"
+	tany "github.com/yarpc/yab/testdata/protobuf/any"
 	"testing"
 
 	"github.com/jhump/protoreflect/dynamic"
 
 	"github.com/yarpc/yab/protobuf"
 	"github.com/yarpc/yab/transport"
+
+	"github.com/golang/protobuf/ptypes/any"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -141,34 +146,63 @@ func TestProtobufRequest(t *testing.T) {
 }
 
 func TestProtobufResponse(t *testing.T) {
+	source, err := protobuf.NewDescriptorProviderFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
+	require.Nil(t, err)
+	anySource, err := protobuf.NewDescriptorProviderFileDescriptorSetBins("../testdata/protobuf/any/any.proto.bin")
+	require.Nil(t, err)
+
 	tests := []struct {
 		desc      string
 		bsIn      []byte
 		outAsJSON string
+		method string
+		source protobuf.DescriptorProvider
 		errMsg    string
 	}{
 		{
 			desc:      "pass",
 			bsIn:      nil,
+			source: source,
+			method: "Bar/Baz",
 			outAsJSON: "{}",
 		},
 		{
 			desc:      "pass with field",
 			bsIn:      []byte{0x8, 0xA},
+			source: source,
+			method: "Bar/Baz",
 			outAsJSON: `{"test":10}`,
 		},
 		{
 			desc:   "fail invalid response",
 			bsIn:   []byte{0xF, 0xF, 0xA, 0xB},
+			source: source,
+			method: "Bar/Baz",
 			errMsg: `could not parse given response body as message of type`,
+		},
+		{
+			desc: "convert the any type with the provided source properly",
+			source: anySource,
+			method: "BarAny/BazAny",
+			bsIn: getAnyType(t, "type.googleapis.com/FooAny", 	&tany.FooAny{
+				Value: 10,
+			}),
+			outAsJSON: `{"value":1, "nestedAny": {"@type": "type.googleapis.com/FooAny", "value": 10}}`,
+		},
+		{
+			desc: "convert the any as a simple base64 message when the type is not known in the source",
+			source: anySource,
+			method: "BarAny/BazAny",
+			bsIn: getAnyType(t, "type.googleapis.com/Foo", 	&simple.Foo{
+				Test: 10,
+			}),
+			outAsJSON: `{"value":1, "nestedAny": {"@type": "type.googleapis.com/Foo", "value": "CAo="}}`,
 		},
 	}
 
-	source, err := protobuf.NewDescriptorProviderFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
-	require.Nil(t, err)
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			serializer, err := NewProtobuf("Bar/Baz", source)
+			serializer, err := NewProtobuf(tt.method, tt.source)
 			require.NoError(t, err, "Failed to create serializer")
 
 			response := &transport.Response{
@@ -252,4 +286,23 @@ func Test_anyResolver_Resolve(t *testing.T) {
 			assert.IsType(t, tt.resolveType, got)
 		})
 	}
+}
+
+
+
+func getAnyType(t *testing.T, typeURL string, value proto.Message) []byte {
+	valueContent, err := proto.Marshal(value)
+	require.Nil(t, err)
+
+	a := &tany.FooAny{
+		Value: 1,
+		NestedAny: &any.Any{
+			TypeUrl: typeURL,
+			Value:   valueContent,
+		},
+	}
+	bytes, err := proto.Marshal(a)
+	require.Nil(t, err)
+
+	return bytes
 }

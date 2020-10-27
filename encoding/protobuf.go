@@ -31,10 +31,10 @@ type bytesMsg struct {
 	V []byte
 }
 
-// A custom any resolver which will use the descriptor provider
-// and fallback to a simple byte array structure in the json.
+// anyResolver is a custom resolver which will use the descriptor provider
+// and fallback to a simple byte array structure in the json encoding.
 // This is the needed otherwise the default behaviour of protoreflect
-// is to fail with an error when it can't find a type.
+// is to fail with an error when it can't find a type from protobuf.Any.
 type anyResolver struct {
 	source protobuf.DescriptorProvider
 }
@@ -72,6 +72,7 @@ func (r anyResolver) Resolve(typeUrl string) (proto.Message, error) {
 	// If me couldn't find the msg descriptor then provide a default implementation which will just
 	// output the raw bytes as base64 - it's better than nothing.
 	return &bytesMsg{}, nil
+	//return nil, nil
 }
 
 // NewProtobuf returns a protobuf serializer.
