@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"testing"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/jhump/protoreflect/desc"
-	"github.com/yarpc/yab/testdata/protobuf/simple"
 	tany "github.com/yarpc/yab/testdata/protobuf/any"
-	"testing"
+	"github.com/yarpc/yab/testdata/protobuf/simple"
 
 	"github.com/jhump/protoreflect/dynamic"
 
@@ -155,22 +156,22 @@ func TestProtobufResponse(t *testing.T) {
 		desc      string
 		bsIn      []byte
 		outAsJSON string
-		method string
-		source protobuf.DescriptorProvider
+		method    string
+		source    protobuf.DescriptorProvider
 		errMsg    string
 	}{
 		{
 			desc:      "pass",
 			bsIn:      nil,
-			source: source,
-			method: "Bar/Baz",
+			source:    source,
+			method:    "Bar/Baz",
 			outAsJSON: "{}",
 		},
 		{
 			desc:      "pass with field",
 			bsIn:      []byte{0x8, 0xA},
-			source: source,
-			method: "Bar/Baz",
+			source:    source,
+			method:    "Bar/Baz",
 			outAsJSON: `{"test":10}`,
 		},
 		{
@@ -181,19 +182,19 @@ func TestProtobufResponse(t *testing.T) {
 			errMsg: `could not parse given response body as message of type`,
 		},
 		{
-			desc: "convert the any type with the provided source properly",
+			desc:   "convert the any type with the provided source properly",
 			source: anySource,
 			method: "BarAny/BazAny",
-			bsIn: getAnyType(t, "type.googleapis.com/FooAny", 	&tany.FooAny{
+			bsIn: getAnyType(t, "type.googleapis.com/FooAny", &tany.FooAny{
 				Value: 10,
 			}),
 			outAsJSON: `{"value":1, "nestedAny": {"@type": "type.googleapis.com/FooAny", "value": 10}}`,
 		},
 		{
-			desc: "convert the any as a simple base64 message when the type is not known in the source",
+			desc:   "convert the any as a simple base64 message when the type is not known in the source",
 			source: anySource,
 			method: "BarAny/BazAny",
-			bsIn: getAnyType(t, "type.googleapis.com/Foo", 	&simple.Foo{
+			bsIn: getAnyType(t, "type.googleapis.com/Foo", &simple.Foo{
 				Test: 10,
 			}),
 			outAsJSON: `{"value":1, "nestedAny": {"@type": "type.googleapis.com/Foo", "value": "CAo="}}`,
@@ -255,7 +256,7 @@ func Test_anyResolver_Resolve(t *testing.T) {
 		{
 			name:        "simple resolving of a known type",
 			typeUrl:     "schemas.test.proto/3ae3e282-1a1f-4921-91b4-12369cfc6036/Foo",
-			source: source,
+			source:      source,
 			resolveType: &dynamic.Message{},
 		},
 		{
@@ -267,9 +268,9 @@ func Test_anyResolver_Resolve(t *testing.T) {
 		{
 			name:        "sources from the error should result in an error",
 			typeUrl:     "schemas.test.proto/3ae3e282-1a1f-4921-91b4-12369cfc6036/UnknownMessage",
-			source: erroringProvider{},
+			source:      erroringProvider{},
 			resolveType: nil,
-			wantErr: true,
+			wantErr:     true,
 		},
 	}
 	for _, tt := range tests {
@@ -287,8 +288,6 @@ func Test_anyResolver_Resolve(t *testing.T) {
 		})
 	}
 }
-
-
 
 func getAnyType(t *testing.T, typeURL string, value proto.Message) []byte {
 	valueContent, err := proto.Marshal(value)
