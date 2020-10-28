@@ -64,7 +64,7 @@ func TestReflection(t *testing.T) {
 	})
 
 	t.Run("return nil if the message type is not found", func(t *testing.T) {
-		msg, err :=source.FindMessage("not-to-be-found")
+		msg, err := source.FindMessage("not-to-be-found")
 		assert.NoError(t, err)
 		assert.Nil(t, msg)
 	})
