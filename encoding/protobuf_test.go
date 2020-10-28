@@ -6,18 +6,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/jhump/protoreflect/desc"
+	"github.com/yarpc/yab/protobuf"
 	tany "github.com/yarpc/yab/testdata/protobuf/any"
 	"github.com/yarpc/yab/testdata/protobuf/simple"
-
-	"github.com/jhump/protoreflect/dynamic"
-
-	"github.com/yarpc/yab/protobuf"
 	"github.com/yarpc/yab/transport"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/any"
-
+	"github.com/jhump/protoreflect/desc"
+	"github.com/jhump/protoreflect/dynamic"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -59,7 +56,7 @@ func TestNewProtobuf(t *testing.T) {
 		},
 	}
 	source, err := protobuf.NewDescriptorProviderFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			serializer, err := NewProtobuf(tt.method, source)
@@ -126,7 +123,7 @@ func TestProtobufRequest(t *testing.T) {
 	}
 
 	source, err := protobuf.NewDescriptorProviderFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			serializer, err := NewProtobuf("Bar/Baz", source)
@@ -148,9 +145,9 @@ func TestProtobufRequest(t *testing.T) {
 
 func TestProtobufResponse(t *testing.T) {
 	source, err := protobuf.NewDescriptorProviderFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	anySource, err := protobuf.NewDescriptorProviderFileDescriptorSetBins("../testdata/protobuf/any/any.proto.bin")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	tests := []struct {
 		desc      string
@@ -291,7 +288,7 @@ func Test_anyResolver_Resolve(t *testing.T) {
 
 func getAnyType(t *testing.T, typeURL string, value proto.Message) []byte {
 	valueContent, err := proto.Marshal(value)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	a := &tany.FooAny{
 		Value: 1,
@@ -301,7 +298,7 @@ func getAnyType(t *testing.T, typeURL string, value proto.Message) []byte {
 		},
 	}
 	bytes, err := proto.Marshal(a)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	return bytes
 }

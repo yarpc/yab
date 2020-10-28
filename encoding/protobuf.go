@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/golang/protobuf/jsonpb"
-
 	"github.com/yarpc/yab/encoding/encodingerror"
 	"github.com/yarpc/yab/protobuf"
 	"github.com/yarpc/yab/transport"
 
 	"github.com/ghodss/yaml"
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/dynamic"
