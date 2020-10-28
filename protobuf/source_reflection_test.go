@@ -1,11 +1,11 @@
 package protobuf
 
 import (
-	"github.com/jhump/protoreflect/desc"
 	"net"
 	"testing"
 	"time"
 
+	"github.com/jhump/protoreflect/desc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	ygrpc "go.uber.org/yarpc/transport/grpc"
@@ -55,6 +55,18 @@ func TestReflection(t *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, result)
 		assert.Contains(t, err.Error(), `could not find gRPC service "wat"`)
+	})
+
+	t.Run("valid message", func(t *testing.T) {
+		msg, err := source.FindMessage("ServerReflectionRequest")
+		assert.NoError(t, err)
+		assert.IsType(t, &desc.MessageDescriptor{}, msg)
+	})
+
+	t.Run("return nil if the message type is not found", func(t *testing.T) {
+		msg, err :=source.FindMessage("not-to-be-found")
+		assert.NoError(t, err)
+		assert.Nil(t, msg)
 	})
 }
 
@@ -178,60 +190,6 @@ func TestReflectionRoutingHeaders(t *testing.T) {
 			for k := range tt.want {
 				assert.Equal(t, []string{tt.want[k]}, drs.md.Get(k), "unexpected values for header %v", k)
 			}
-		})
-	}
-}
-
-func TestFindMessage(t *testing.T) {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer ln.Close()
-
-	s := grpc.NewServer()
-	reflection.Register(s)
-	go s.Serve(ln)
-
-	// Ensure that all streams are closed by the end of the test.
-	defer s.GracefulStop()
-
-	source, err := NewDescriptorProviderReflection(ReflectionArgs{
-		Timeout: time.Second,
-		Peers:   []string{ln.Addr().String()},
-	})
-	require.NoError(t, err)
-	require.NotNil(t, source)
-
-	// Close the streaming reflect call to ensure GracefulStop doesn't block.
-	defer source.Close()
-	tests := []struct {
-		name string
-		msgType string
-		resultType *desc.MessageDescriptor
-		wantErr bool
-	}{
-		{
-
-			name: "should be able to find messages through the client",
-			msgType: "ServerReflectionRequest",
-			resultType: &desc.MessageDescriptor{},
-		},
-		{
-			name: "should return nil if the message type is not found",
-			msgType: "not-to-be-found",
-			resultType: nil,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-			msg, err := source.FindMessage(tt.msgType)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("FindMessage() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
-			assert.IsType(t, tt.resultType, msg)
 		})
 	}
 }
