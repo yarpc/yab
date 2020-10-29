@@ -1,0 +1,14 @@
+
+Ý
+google/protobuf/any.protogoogle.protobuf"6
+Any
+type_url (	RtypeUrl
+value (RvalueBo
+com.google.protobufBAnyProtoPZ%github.com/golang/protobuf/ptypes/any¢GPBªGoogle.Protobuf.WellKnownTypesbproto3
+¨
+	any.protogoogle/protobuf/any.proto"R
+FooAny
+value (Rvalue2
+	nestedAny (2.google.protobuf.AnyR	nestedAny2$
+BarAny
+BazAny.FooAny.FooAnybproto3

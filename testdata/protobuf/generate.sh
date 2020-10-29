@@ -41,3 +41,10 @@ THIS_DIR="$(cd -P -- "$(dirname -- "$0")" && pwd -P)"
     --include_imports \
     --descriptor_set_out=combined.bin \
     main.proto)
+
+## any
+# as expected
+(cd "$THIS_DIR/any" && protoc \
+    --include_imports \
+    --descriptor_set_out=any.proto.bin \
+    any.proto)
