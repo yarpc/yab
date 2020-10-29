@@ -75,7 +75,7 @@ type grpcreflectSource struct {
 }
 
 func (s *grpcreflectSource) FindMessage(messageType string) (*desc.MessageDescriptor, error) {
-	msg, err :=  s.client.ResolveMessage(messageType)
+	msg, err := s.client.ResolveMessage(messageType)
 
 	if grpcreflect.IsElementNotFoundError(err) {
 		// If we couldn't find the message through the client,

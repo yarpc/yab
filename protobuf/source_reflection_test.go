@@ -58,8 +58,9 @@ func TestReflection(t *testing.T) {
 	})
 
 	t.Run("valid message", func(t *testing.T) {
-		msg, err := source.FindMessage("ServerReflectionRequest")
+		msg, err := source.FindMessage("grpc.reflection.v1alpha.ServerReflectionRequest")
 		assert.NoError(t, err)
+		assert.NotNil(t, msg)
 		assert.IsType(t, &desc.MessageDescriptor{}, msg)
 	})
 
