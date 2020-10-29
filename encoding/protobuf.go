@@ -71,7 +71,6 @@ func (r anyResolver) Resolve(typeUrl string) (proto.Message, error) {
 	// If me couldn't find the msg descriptor then provide a default implementation which will just
 	// output the raw bytes as base64 - it's better than nothing.
 	return &bytesMsg{}, nil
-	//return nil, nil
 }
 
 // NewProtobuf returns a protobuf serializer.
