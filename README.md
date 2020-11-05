@@ -119,7 +119,7 @@ Help Options:
 ```
 
 ### Making a single request
-
+#### Thrift
 The following examples assume that the Thrift service running looks like:
 ```thrift
 service KeyValue {
@@ -149,6 +149,33 @@ yab -t ~/keyvalue.thrift -P ~/hosts.json keyvalue KeyValue::get -r '{"key": "hel
 `yab` also supports HTTP, instead of the peer being a single `host:port`, you would use a URL:
 ```bash
 yab -t ~/keyvalue.thrift -p "http://localhost:8080/rpc" keyvalue KeyValue::get -r '{"key": "hello"}'
+```
+#### Proto
+The following examples assume that the Proto service running looks like:
+```proto
+service KeyValue {
+  rpc GetValue(Request) returns (Response) {}  
+}
+```
+
+If a gRPC service was running with name `keyvalue` on `localhost:12345` with proto package name `pkg.keyvalue` and 
+binary file containing a compiled protobuf FileDescriptorSet as `keyValue.proto.bin`, you can
+make a call to the `get` method by running:
+
+```bash
+yab keyvalue pkg.keyvalue/GetValue --file-descriptor-set-bin=keyValue.proto.bin -r '{"key": "hello"} -p localhost:12345'
+```
+
+This specifies a single `host:port` using `-p`, but you can also specify multiple peers
+by passing the `-p` flag multiple times:
+```bash
+yab keyvalue pkg.keyvalue/GetValue --file-descriptor-set-bin=keyValue.proto.bin -r '{"key": "hello"} -p localhost:12345 -p localhost:12346'
+```
+
+If you have a file containing a list of host:ports (either JSON or new line separated), you can
+specify the file using `-P`:
+```bash
+yab keyvalue pkg.keyvalue/GetValue --file-descriptor-set-bin=keyValue.proto.bin -r '{"key": "hello"} -p ~/hosts.json'
 ```
 
 ### Benchmarking
