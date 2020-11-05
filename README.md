@@ -158,9 +158,9 @@ service KeyValue {
 }
 ```
 
-If a gRPC service was running with name `keyvalue` on `localhost:12345` with proto package name `pkg.keyvalue` and 
+If a gRPC service was running with name `KeyValue` on `localhost:12345` with proto package name `pkg.keyvalue` and 
 binary file containing a compiled protobuf FileDescriptorSet as `keyValue.proto.bin`, you can
-make a call to the `get` method by running:
+make a call to the `GetValue` method by running:
 
 ```bash
 yab keyvalue pkg.keyvalue/GetValue --file-descriptor-set-bin=keyValue.proto.bin -r '{"key": "hello"} -p localhost:12345'
