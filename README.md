@@ -157,10 +157,10 @@ Note : If [Server Reflection](https://github.com/grpc/grpc/blob/master/doc/serve
 
 ```bash
 yab keyvalue pkg.keyvalue/GetValue -r '{"key": "hello"} -p localhost:12345'
-
+```
 
 #### Specifying Peers
-This specifies a single `host:port` using `-p`, but you can also specify multiple peers
+A single `host:port` is specified using `-p`, but you can also specify multiple peers
 by passing the `-p` flag multiple times:
 ```bash
 yab -t ~/keyvalue.thrift -p localhost:12345 -p localhost:12346 keyvalue KeyValue::get -r '{"key": "hello"}'
@@ -175,13 +175,14 @@ specify the file using `-P`:
 yab -t ~/keyvalue.thrift -P ~/hosts.json keyvalue KeyValue::get -r '{"key": "hello"}'
 ```
 ```bash
-yab keyvalue pkg.keyvalue/GetValue -r '{"key": "hello"} -p ~/hosts.json'
+yab keyvalue pkg.keyvalue/GetValue -r '{"key": "hello"} -P ~/hosts.json'
 ```
 
 `yab` also supports HTTP, instead of the peer being a single `host:port`, you would use a URL:
 ```bash
 yab -t ~/keyvalue.thrift -p "http://localhost:8080/rpc" keyvalue KeyValue::get -r '{"key": "hello"}'
 ```
+
 ### Benchmarking
 
 To benchmark an endpoint, you need all the command line arguments to describe the request,
