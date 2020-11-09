@@ -140,6 +140,14 @@ The following examples assume that the Proto service running looks like:
 service KeyValue {
   rpc GetValue(Request) returns (Response) {}  
 }
+
+message Request {
+    required string key = 1;
+}
+
+message Response {
+    required string value = 1;
+}
 ```
 
 If a gRPC service was running with name `KeyValue` on `localhost:12345` with proto package name `pkg.keyvalue` and 
