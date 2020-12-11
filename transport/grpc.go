@@ -83,7 +83,7 @@ func newGRPC(options GRPCOptions) (*grpcTransport, error) {
 	}
 
 	transportOptions := []grpc.TransportOption{grpc.Tracer(options.Tracer)}
-	if options.MaxResponseSize != 0 {
+	if options.MaxResponseSize > 0 {
 		transportOptions = append(transportOptions, grpc.ClientMaxRecvMsgSize(options.MaxResponseSize))
 	}
 

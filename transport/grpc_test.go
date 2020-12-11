@@ -21,6 +21,7 @@
 package transport
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -126,8 +127,7 @@ func TestGRPCMaxResponseSize(t *testing.T) {
 			request, err := newTestJSONRequest("example", "Foo::Bar", &testBarRequest{One: "hello", Size: 1024 * 1024 * 4})
 			require.NoError(t, err)
 			_, err = grpcTestEnv.Transport.Call(context.Background(), request)
-			require.Error(t, err)
-			require.Equal(t, yarpcerrors.CodeResourceExhausted, yarpcerrors.FromError(err).Code())
+			require.EqualError(t, err, "code:resource-exhausted message:grpc: received message larger than max (4194315 vs. 4194304)")
 		}, 0)
 	})
 	t.Run("With custom max response size", func(t *testing.T) {
@@ -165,13 +165,10 @@ func testBar(ctx context.Context, request *testBarRequest) (*testBarResponse, er
 }
 
 func testLargeResponse(ctx context.Context, request *testBarRequest) (*testBarResponse, error) {
-	body := make([]byte, request.Size)
 	// filling body with non-zero to avoid html-escape in json encoder
-	for i := range body {
-		body[i] = 'a'
-	}
+	body := string(bytes.Repeat([]byte("a"), request.Size))
 	return &testBarResponse{
-		One: string(body),
+		One: body,
 	}, nil
 }
 
