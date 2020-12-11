@@ -21,12 +21,12 @@
 package transport
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"testing"
 
 	"github.com/opentracing/opentracing-go"
@@ -165,10 +165,9 @@ func testBar(ctx context.Context, request *testBarRequest) (*testBarResponse, er
 }
 
 func testLargeResponse(ctx context.Context, request *testBarRequest) (*testBarResponse, error) {
-	// filling body with non-zero to avoid html-escape in json encoder
-	body := string(bytes.Repeat([]byte("a"), request.Size))
 	return &testBarResponse{
-		One: body,
+		// filling One with non-zero value to avoid html-escape in json encoder
+		One: strings.Repeat("a", request.Size),
 	}, nil
 }
 
@@ -219,10 +218,7 @@ func newGRPCTestEnv(
 	procedures []transport.Procedure,
 	maxResponseSize int,
 ) (_ *grpcTestEnv, err error) {
-	var options []grpc.TransportOption
-	if maxResponseSize > 0 {
-		options = append(options, grpc.ServerMaxSendMsgSize(maxResponseSize))
-	}
+	options := []grpc.TransportOption{grpc.ServerMaxSendMsgSize(1024 * 1024 * 10)}
 	yarpcTransport := grpc.NewTransport(options...)
 	if err := yarpcTransport.Start(); err != nil {
 		return nil, err
