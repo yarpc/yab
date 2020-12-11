@@ -84,6 +84,7 @@ type TransportOptions struct {
 	Jaeger           bool              `long:"jaeger" description:"Use the Jaeger tracing client to send Uber style traces and baggage headers"`
 	TransportHeaders map[string]string `short:"T" long:"topt" description:"Transport options for TChannel, protocol headers for HTTP"`
 	HTTPMethod       string            `long:"http-method" description:"The HTTP method to use"`
+	MaxResponseSize  int               `long:"max-response-size" description:"Maximum response size, applicable for gRPC requests only. Default value is 4MB"`
 
 	// This is a hack to work around go-flags not allowing disabling flags:
 	// https://github.com/jessevdk/go-flags/issues/191
