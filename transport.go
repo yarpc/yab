@@ -171,7 +171,7 @@ func getTransport(opts TransportOptions, resolved resolvedProtocolEncoding, trac
 			Encoding:        resolved.enc.String(),
 			RoutingKey:      opts.RoutingKey,
 			RoutingDelegate: opts.RoutingDelegate,
-			MaxResponseSize: opts.MaxResponseSize,
+			MaxResponseSize: opts.GRPCMaxResponseSize,
 		})
 	}
 

@@ -74,17 +74,17 @@ type RequestOptions struct {
 
 // TransportOptions are transport related options.
 type TransportOptions struct {
-	ServiceName      string            `short:"s" long:"service" description:"The TChannel/Hyperbahn service name"`
-	Peers            []string          `short:"p" long:"peer" description:"The host:port of the service to call"`
-	PeerList         string            `short:"P" long:"peer-list" description:"Path or URL of a JSON, YAML, or flat file containing a list of host:ports. -P? for supported protocols."`
-	CallerName       string            `long:"caller" description:"Caller will override the default caller name (which is yab-$USER)."`
-	RoutingKey       string            `long:"rk" description:"The routing key overrides the service name traffic group for proxies."`
-	RoutingDelegate  string            `long:"rd" description:"The routing delegate overrides the routing key traffic group for proxies."`
-	ShardKey         string            `long:"sk" description:"The shard key is a transport header that clues where to send a request within a clustered traffic group."`
-	Jaeger           bool              `long:"jaeger" description:"Use the Jaeger tracing client to send Uber style traces and baggage headers"`
-	TransportHeaders map[string]string `short:"T" long:"topt" description:"Transport options for TChannel, protocol headers for HTTP"`
-	HTTPMethod       string            `long:"http-method" description:"The HTTP method to use"`
-	MaxResponseSize  int               `long:"max-response-size" description:"Maximum response size, applicable for gRPC requests only. Default value is 4MB"`
+	ServiceName         string            `short:"s" long:"service" description:"The TChannel/Hyperbahn service name"`
+	Peers               []string          `short:"p" long:"peer" description:"The host:port of the service to call"`
+	PeerList            string            `short:"P" long:"peer-list" description:"Path or URL of a JSON, YAML, or flat file containing a list of host:ports. -P? for supported protocols."`
+	CallerName          string            `long:"caller" description:"Caller will override the default caller name (which is yab-$USER)."`
+	RoutingKey          string            `long:"rk" description:"The routing key overrides the service name traffic group for proxies."`
+	RoutingDelegate     string            `long:"rd" description:"The routing delegate overrides the routing key traffic group for proxies."`
+	ShardKey            string            `long:"sk" description:"The shard key is a transport header that clues where to send a request within a clustered traffic group."`
+	Jaeger              bool              `long:"jaeger" description:"Use the Jaeger tracing client to send Uber style traces and baggage headers"`
+	TransportHeaders    map[string]string `short:"T" long:"topt" description:"Transport options for TChannel, protocol headers for HTTP"`
+	HTTPMethod          string            `long:"http-method" description:"The HTTP method to use"`
+	GRPCMaxResponseSize int               `long:"grpc-max-response-size" description:"Maximum response size for gRPC requests. Default value is 4MB"`
 
 	// This is a hack to work around go-flags not allowing disabling flags:
 	// https://github.com/jessevdk/go-flags/issues/191
