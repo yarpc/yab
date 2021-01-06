@@ -582,7 +582,7 @@ func TestGetRequestReader(t *testing.T) {
 		assert.NotNil(t, reader, "unexpected nil reader")
 		assert.NoError(t, err, "unexpected getreader error")
 		bytes, err := reader.next()
-		assert.Equal(t, []byte(`{"k1":"v1","k2":5}`), bytes, "unexpected body")
+		assert.Equal(t, []byte(`{"k1": "v1", "k2": 5}`), bytes, "unexpected body")
 		assert.NoError(t, err, "unexpected request body parse error")
 	})
 }

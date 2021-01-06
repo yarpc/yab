@@ -28,28 +28,35 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// requestReader parses multiple JSON or YAML objects from any given reader
-// including non-seekable readers such as STDIN by wrapping under a buffer
-// YAML objects must be delimited by `---` and JSON objects can be delimited by
-// space or newline
-type requestReader struct {
-	yamlDecoder *yaml.Decoder
-	jsonDecoder *json.Decoder
+type requestReader interface {
+	next() ([]byte, error)
 }
+
+// jsonRequestReader parses multiple JSON objects from given reader
+// JSON objects can be delimited by space or newline
+type jsonRequestReader struct{ *json.Decoder }
+
+func (r *jsonRequestReader) next() ([]byte, error) {
+	if !r.More() {
+		return nil, io.EOF
+	}
+	var v json.RawMessage
+	err := r.Decode(&v)
+	if err != nil {
+		return nil, err
+	}
+	return []byte(v), nil
+}
+
+// yamlRequestReader parses multiple YAML objects from given reader
+// YAML objects must be delimited by `---`
+type yamlRequestReader struct{ *yaml.Decoder }
 
 // next decodes the request from the reader as YAML or JSON and returns
 // JSON encoded byte
-func (r *requestReader) next() ([]byte, error) {
+func (r *yamlRequestReader) next() ([]byte, error) {
 	var v interface{}
-	if r.jsonDecoder != nil {
-		err := r.jsonDecoder.Decode(&v)
-		if err != nil {
-			return nil, err
-		}
-		return json.Marshal(v)
-	}
-
-	err := r.yamlDecoder.Decode(&v)
+	err := r.Decode(&v)
 	if err != nil {
 		return nil, err
 	}
@@ -62,29 +69,25 @@ func (r *requestReader) next() ([]byte, error) {
 
 // isJSONInput returns true if input reader can be parsed into JSON correctly
 func isJSONInput(reader io.Reader) bool {
-	var v interface{}
+	var v json.RawMessage
 	jsonDecoder := json.NewDecoder(reader)
 	err := jsonDecoder.Decode(&v)
 	return err == nil
 }
 
-// newRequestReader creates request reader by detecting if the input is JSON
-// compatible or falls back to yaml
-func newRequestReader(reader io.Reader) *requestReader {
-	var jsonDecoder *json.Decoder
-	var yamlDecoder *yaml.Decoder
+// newRequestReader detects the input encoding type, returns either
+// json or yaml request decoder
+// note: wraps reader under buffer to seek to the beginning for readers
+// which do not support seeking such as io.STDIN
+func newRequestReader(reader io.Reader) requestReader {
 	bufReader := newBufferReader(reader)
-	if isJSONInput(bufReader) {
-		jsonDecoder = json.NewDecoder(bufReader)
-	} else {
-		yamlDecoder = yaml.NewDecoder(bufReader)
-	}
+	isJSON := isJSONInput(bufReader)
 	// reset reader to the beginning as it was used to find JSON compatibility earlier
 	bufReader.reset()
-	return &requestReader{
-		yamlDecoder: yamlDecoder,
-		jsonDecoder: jsonDecoder,
+	if isJSON {
+		return &jsonRequestReader{json.NewDecoder(bufReader)}
 	}
+	return &yamlRequestReader{yaml.NewDecoder(bufReader)}
 }
 
 // bufferReader wraps io.Reader to provide seeking to the beginning of buffer

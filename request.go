@@ -44,7 +44,7 @@ var (
 )
 
 // getRequestReader create request reader from inline bytes passed, through a file or stdin
-func getRequestReader(inline, file string) (*requestReader, error) {
+func getRequestReader(inline, file string) (requestReader, error) {
 	var reader io.Reader
 	if file == "-" || inline == "-" {
 		reader = os.Stdin
