@@ -287,9 +287,9 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 		return
 	}
 
-	reqInput, err := getRequestInput(opts.ROpts.RequestJSON, opts.ROpts.RequestFile)
+	reqReader, err := getRequestReader(opts.ROpts.RequestJSON, opts.ROpts.RequestFile)
 	if err != nil {
-		out.Fatalf("Failed while loading body input: %v\n", err)
+		out.Fatalf("Failed while creating request reader: %v\n", err)
 	}
 
 	headers, err := getHeaders(opts.ROpts.HeadersJSON, opts.ROpts.HeadersFile, opts.ROpts.Headers)
@@ -338,11 +338,15 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 		out.Fatalf("Failed while parsing options: %v\n", err)
 	}
 
-	// req is the transport.Request that will be used to make a call.
-	req, err := serializer.Request(reqInput)
+	bytes, err := reqReader.next()
+	if err != nil && err != io.EOF {
+		out.Fatalf("Failed while parsing body input: %v\n", err)
+	}
+	req, err := serializer.Request(bytes)
 	if err != nil {
 		out.Fatalf("Failed while parsing request input: %v\n", err)
 	}
+
 	req, err = prepareRequest(req, headers, opts)
 	if err != nil {
 		out.Fatalf("Failed while preparing the request: %v\n", err)

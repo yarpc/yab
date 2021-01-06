@@ -21,9 +21,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -40,6 +42,25 @@ var (
 	errUnrecognizedEncoding = errors.New("unrecognized encoding, must be one of: json, thrift, raw")
 	errMissingProcedure     = errors.New("no procedure specified, specify --procedure [procedure]")
 )
+
+// getRequestReader create request reader from inline bytes passed, through a file or stdin
+func getRequestReader(inline, file string) (*requestReader, error) {
+	var reader io.Reader
+	if file == "-" || inline == "-" {
+		reader = os.Stdin
+	} else if file != "" {
+		f, err := os.Open(file)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open request file: %v", err)
+		}
+		reader = f
+	} else {
+		reader = bytes.NewReader([]byte(inline))
+	}
+
+	// It is valid to have an empty body.
+	return newRequestReader(reader), nil
+}
 
 // getRequestInput gets the byte body passed in by the user via flags or through a file.
 func getRequestInput(inline, file string) ([]byte, error) {

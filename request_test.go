@@ -548,6 +548,45 @@ func TestPrepareRequestErr(t *testing.T) {
 	assert.Nil(t, req)
 }
 
+func TestGetRequestReader(t *testing.T) {
+	t.Run("inline json", func(t *testing.T) {
+		reader, err := getRequestReader("{}", "")
+		assert.NotNil(t, reader, "unexpected nil reader")
+		assert.NoError(t, err, "unexpected error")
+		bytes, err := reader.next()
+		assert.Equal(t, []byte("{}"), bytes, "unexpected request json body")
+		assert.NoError(t, err, "unexpected request body parse error")
+	})
+	t.Run("invalid file", func(t *testing.T) {
+		reader, err := getRequestReader("", "/fake/file")
+		assert.Nil(t, reader, "expected nil reader")
+		assert.EqualError(t, err, "failed to open request file: open /fake/file: no such file or directory")
+	})
+	t.Run("valid json file", func(t *testing.T) {
+		reader, err := getRequestReader("", "testdata/valid.json")
+		assert.NotNil(t, reader, "unexpected nil reader")
+		assert.NoError(t, err, "unexpected getreader error")
+		bytes, err := reader.next()
+		assert.NotNil(t, bytes, "unexpected nil body")
+		assert.NoError(t, err, "unexpected request body parse error")
+	})
+	t.Run("use stdin", func(t *testing.T) {
+		orgStdin := os.Stdin
+		defer func() {
+			os.Stdin = orgStdin
+		}()
+		file, err := os.Open("testdata/valid.json")
+		assert.NoError(t, err)
+		os.Stdin = file
+		reader, err := getRequestReader("-", "")
+		assert.NotNil(t, reader, "unexpected nil reader")
+		assert.NoError(t, err, "unexpected getreader error")
+		bytes, err := reader.next()
+		assert.Equal(t, []byte(`{"k1":"v1","k2":5}`), bytes, "unexpected body")
+		assert.NoError(t, err, "unexpected request body parse error")
+	})
+}
+
 func resolveOpts(t *testing.T, opts Options) (Options, resolvedProtocolEncoding) {
 	scheme, peers, err := loadTransportPeers(opts.TOpts)
 	require.NoError(t, err, "failed to load peers")
