@@ -113,11 +113,6 @@ func (p protoSerializer) Encoding() Encoding {
 }
 
 func (p protoSerializer) Request() (*transport.Request, error) {
-	if p.method.IsClientStreaming() || p.method.IsServerStreaming() {
-		return &transport.Request{
-			Method: procedure.ToName(p.serviceName, p.methodName),
-		}, nil
-	}
 	bytes, err := p.reqDecoder.Next()
 	if err != nil && err != io.EOF {
 		return nil, err
