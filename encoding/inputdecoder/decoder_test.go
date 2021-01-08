@@ -37,7 +37,7 @@ func TestIsJSONInput(t *testing.T) {
 		assert.NoError(t, err, "unexpected error")
 	})
 	t.Run("invalid json", func(t *testing.T) {
-		buf := bufio.NewReader(bytes.NewBuffer([]byte(`test: json`)))
+		buf := bufio.NewReader(bytes.NewReader([]byte(`test: json`)))
 		isJSON, err := isJSONInput(buf)
 		assert.False(t, isJSON, "expected false")
 		assert.NoError(t, err, "exepected error")
@@ -46,19 +46,19 @@ func TestIsJSONInput(t *testing.T) {
 
 func TestRequestReader(t *testing.T) {
 	t.Run("Use json decoder", func(t *testing.T) {
-		buf := bytes.NewBuffer([]byte(`{}{}{}`))
+		buf := bytes.NewReader([]byte(`{}{}{}`))
 		reader, err := New(buf)
 		assert.IsTypef(t, &jsonInputDecoder{}, reader, "expected json decoder")
 		assert.NoError(t, err, "unexpected error")
 	})
 	t.Run("Use yaml decoder", func(t *testing.T) {
-		buf := bytes.NewBuffer([]byte(`a:b`))
+		buf := bytes.NewReader([]byte(`a:b`))
 		reader, err := New(buf)
 		assert.IsTypef(t, &yamlInputDecoder{}, reader, "expected yaml decoder")
 		assert.NoError(t, err, "unexpected error")
 	})
 	t.Run("Parse json request", func(t *testing.T) {
-		buf := bytes.NewBuffer([]byte(`{"test":1} {"test":2}`))
+		buf := bytes.NewReader([]byte(`{"test":1} {"test":2}`))
 		reader, err := New(buf)
 		assert.NotNil(t, reader, "expected non-nil reader")
 		assert.NoError(t, err)
@@ -73,7 +73,7 @@ func TestRequestReader(t *testing.T) {
 		assert.EqualError(t, err, io.EOF.Error())
 	})
 	t.Run("Parse yaml request", func(t *testing.T) {
-		buf := bytes.NewBuffer([]byte(`test: 1
+		buf := bytes.NewReader([]byte(`test: 1
 ---
 test: 2`))
 		reader, err := New(buf)
@@ -90,7 +90,7 @@ test: 2`))
 		assert.EqualError(t, err, io.EOF.Error())
 	})
 	t.Run("error parsing request", func(t *testing.T) {
-		buf := bytes.NewBuffer([]byte(`{"test": 1}
+		buf := bytes.NewReader([]byte(`{"test": 1}
 ---
 test: 2`))
 		reader, err := New(buf)

@@ -49,7 +49,7 @@ func benchmarkMethodForROpts(t *testing.T, rOpts RequestOptions, p transport.Pro
 	serializer, err := NewSerializer(Options{ROpts: rOpts}, resolvedProtocolEncoding{
 		protocol: p,
 		enc:      encoding.Thrift,
-	}, bytes.NewBuffer(nil))
+	}, bytes.NewReader(nil))
 	require.NoError(t, err, "Failed to create Thrift serializer")
 
 	req, err := serializer.Request()
