@@ -342,3 +342,38 @@ func TestWithoutEnvelopes(t *testing.T) {
 		assert.Equal(t, tt.want, got.Body, "%v: got unexpected bytes", tt.desc)
 	}
 }
+
+func TestThriftStreamMethods(t *testing.T) {
+	t.Run("ClientStreaming must be false", func(t *testing.T) {
+		serializer, err := NewThrift(ThriftParams{
+			File:        validThrift,
+			Method:      "Simple::foo",
+			Multiplexed: false,
+			Envelope:    true,
+		}, nil)
+		assert.NoError(t, err)
+		assert.False(t, serializer.IsClientStreaming())
+	})
+	t.Run("ServerStreaming must be false", func(t *testing.T) {
+		serializer, err := NewThrift(ThriftParams{
+			File:        validThrift,
+			Method:      "Simple::foo",
+			Multiplexed: false,
+			Envelope:    true,
+		}, nil)
+		assert.NoError(t, err)
+		assert.False(t, serializer.IsServerStreaming())
+	})
+	t.Run("StreamRequest must return error", func(t *testing.T) {
+		serializer, err := NewThrift(ThriftParams{
+			File:        validThrift,
+			Method:      "Simple::foo",
+			Multiplexed: false,
+			Envelope:    true,
+		}, nil)
+		assert.NoError(t, err)
+		req, err := serializer.StreamRequest()
+		assert.Nil(t, req)
+		assert.EqualError(t, err, "thrift serializer does not support streaming requests")
+	})
+}

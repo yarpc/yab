@@ -190,3 +190,36 @@ func TestJSONEncodingResponse(t *testing.T) {
 		}
 	}
 }
+func TestJSONStreamMethods(t *testing.T) {
+	t.Run("ClientStreaming must be false", func(t *testing.T) {
+		serializer := &jsonSerializer{}
+		assert.False(t, serializer.IsClientStreaming())
+	})
+	t.Run("ServerStreaming must be false", func(t *testing.T) {
+		serializer := &jsonSerializer{}
+		assert.False(t, serializer.IsServerStreaming())
+	})
+	t.Run("StreamRequest must return error", func(t *testing.T) {
+		serializer := &jsonSerializer{}
+		req, err := serializer.StreamRequest()
+		assert.Nil(t, req)
+		assert.EqualError(t, err, "json serializer does not support streaming requests")
+	})
+}
+
+func TestRawStreamMethods(t *testing.T) {
+	t.Run("ClientStreaming must be false", func(t *testing.T) {
+		serializer := &rawSerializer{}
+		assert.False(t, serializer.IsClientStreaming())
+	})
+	t.Run("ServerStreaming must be false", func(t *testing.T) {
+		serializer := &rawSerializer{}
+		assert.False(t, serializer.IsServerStreaming())
+	})
+	t.Run("StreamRequest must return error", func(t *testing.T) {
+		serializer := &rawSerializer{}
+		req, err := serializer.StreamRequest()
+		assert.Nil(t, req)
+		assert.EqualError(t, err, "raw serializer does not support streaming requests")
+	})
+}

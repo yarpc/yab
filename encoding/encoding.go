@@ -49,6 +49,15 @@ type Serializer interface {
 	// CheckSuccess checks whether the response body is a success, and if not, returns an
 	// error with the failure reason.
 	CheckSuccess(body *transport.Response) error
+
+	// StreamRequest returns serializer encoded stream request body
+	StreamRequest() ([]byte, error)
+
+	// IsClientStreaming returns true for client streaming methods
+	IsClientStreaming() bool
+
+	// IsServerStreaming returns true for server streaming methods
+	IsServerStreaming() bool
 }
 
 // The list of supported encodings.
@@ -143,6 +152,18 @@ func (e jsonSerializer) CheckSuccess(res *transport.Response) error {
 	return err
 }
 
+func (e jsonSerializer) StreamRequest() ([]byte, error) {
+	return nil, errors.New("json serializer does not support streaming requests")
+}
+
+func (e jsonSerializer) IsClientStreaming() bool {
+	return false
+}
+
+func (e jsonSerializer) IsServerStreaming() bool {
+	return false
+}
+
 type rawSerializer struct {
 	methodName string
 	reqBody    []byte
@@ -170,4 +191,16 @@ func (e rawSerializer) Response(res *transport.Response) (interface{}, error) {
 
 func (e rawSerializer) CheckSuccess(res *transport.Response) error {
 	return nil
+}
+
+func (e rawSerializer) StreamRequest() ([]byte, error) {
+	return nil, errors.New("raw serializer does not support streaming requests")
+}
+
+func (e rawSerializer) IsClientStreaming() bool {
+	return false
+}
+
+func (e rawSerializer) IsServerStreaming() bool {
+	return false
 }

@@ -2,6 +2,7 @@ package encoding
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -112,19 +113,42 @@ func (p protoSerializer) Encoding() Encoding {
 	return Protobuf
 }
 
+func (p protoSerializer) IsClientStreaming() bool {
+	return p.method.IsClientStreaming()
+}
+
+func (p protoSerializer) IsServerStreaming() bool {
+	return p.method.IsServerStreaming()
+}
+
+func (p protoSerializer) StreamRequest() ([]byte, error) {
+	if !p.IsClientStreaming() && !p.IsServerStreaming() {
+		return nil, errors.New("proto method does not support streaming")
+	}
+	jsonBytes, err := p.reqDecoder.Next()
+	if err != nil {
+		return nil, err
+	}
+	return p.encode(jsonBytes)
+}
+
 func (p protoSerializer) Request() (*transport.Request, error) {
+	if p.IsClientStreaming() || p.IsServerStreaming() {
+		return &transport.Request{
+			Method: procedure.ToName(p.serviceName, p.methodName),
+		}, nil
+	}
+
 	bytes, err := p.reqDecoder.Next()
 	if err != nil && err != io.EOF {
 		return nil, err
 	}
-	req := dynamic.NewMessage(p.method.GetInputType())
-	if err := req.UnmarshalJSON(bytes); err != nil {
-		return nil, fmt.Errorf("could not parse given request body as message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
-	}
-	bytes, err = proto.Marshal(req)
+
+	bytes, err = p.encode(bytes)
 	if err != nil {
-		return nil, fmt.Errorf("could marshal message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
+		return nil, err
 	}
+
 	return &transport.Request{
 		Method: procedure.ToName(p.serviceName, p.methodName),
 		Body:   bytes,
@@ -149,6 +173,18 @@ func (p protoSerializer) Response(body *transport.Response) (interface{}, error)
 		return nil, err
 	}
 	return unmarshaledJSON, nil
+}
+
+func (p protoSerializer) encode(body []byte) ([]byte, error) {
+	req := dynamic.NewMessage(p.method.GetInputType())
+	if err := req.UnmarshalJSON(body); err != nil {
+		return nil, fmt.Errorf("could not parse given request body as message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
+	}
+	bytes, err := proto.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("could marshal message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
+	}
+	return bytes, err
 }
 
 func (p protoSerializer) CheckSuccess(body *transport.Response) error {

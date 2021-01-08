@@ -11,4 +11,5 @@ message Foo {
 
 service Bar{
     rpc Baz(Foo) returns (Foo);
+    rpc BazStream(stream Foo) returns (stream Foo);
 }

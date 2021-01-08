@@ -33,12 +33,12 @@ func TestNewProtobuf(t *testing.T) {
 		{
 			desc:   "no method",
 			method: "Bar",
-			errMsg: "no gRPC method specified, specify --method package.Service/Method. Available gRPC method in service \"Bar\":\n\tBar/Baz",
+			errMsg: "no gRPC method specified, specify --method package.Service/Method. Available gRPC methods in service \"Bar\":\n\tBar/Baz\n\tBar/BazStream",
 		},
 		{
 			desc:   "missing method for service",
 			method: "Bar/baq",
-			errMsg: fmt.Sprintf("gRPC service %q does not contain method %q. Available gRPC method in service %q:\n\tBar/Baz", "Bar", "baq", "Bar"),
+			errMsg: fmt.Sprintf("gRPC service %q does not contain method %q. Available gRPC methods in service %q:\n\tBar/Baz\n\tBar/BazStream", "Bar", "baq", "Bar"),
 		},
 		{
 			desc:   "invalid method format",
@@ -74,53 +74,110 @@ func TestNewProtobuf(t *testing.T) {
 	}
 }
 
+func TestProtobufStreamRequest(t *testing.T) {
+	tests := []struct {
+		desc   string
+		method string
+		errMsg string
+
+		input  []byte
+		output []byte
+	}{{
+		desc:   "Non streaming method must fail",
+		method: "Bar/Baz",
+		errMsg: "proto method does not support streaming",
+	}, {
+		desc:   "success request",
+		method: "Bar/BazStream",
+		input:  []byte(`{"test": 1}`),
+		output: []byte{8, 1},
+	}, {
+		desc:   "eof",
+		method: "Bar/BazStream",
+		input:  []byte(nil),
+		errMsg: "EOF",
+	}}
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			source, err := protobuf.NewDescriptorProviderFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
+			require.NoError(t, err)
+			serializer, err := NewProtobuf(tt.method, source, bytes.NewReader(tt.input))
+			require.NoError(t, err)
+			bytes, err := serializer.StreamRequest()
+			if tt.errMsg == "" {
+				require.Equal(t, tt.output, bytes)
+				require.NoError(t, err)
+			} else {
+				require.Nil(t, bytes)
+				require.EqualError(t, err, tt.errMsg)
+			}
+
+		})
+	}
+}
+
 func TestProtobufRequest(t *testing.T) {
 	tests := []struct {
+		method string
 		desc   string
 		bsIn   []byte
 		bsOut  []byte
 		errMsg string
 	}{
 		{
+			method: "Bar/Baz",
 			desc:   "invalid json",
 			bsIn:   []byte("{"),
 			errMsg: `unexpected EOF`,
 		},
 		{
+			method: "Bar/Baz",
 			desc:   "invalid field in request input",
 			bsIn:   []byte(`{"foo": "1"}`),
 			errMsg: "Message type Foo has no known field named foo",
 		},
 		{
+			method: "Bar/Baz",
 			desc:   "fail correct json incorrect proto",
 			bsIn:   []byte(`{"test": 8589934592}`), // 2^33
 			errMsg: "numeric value is out of range",
 		},
 		{
-			desc:  "pass",
-			bsIn:  []byte(`{}`),
-			bsOut: nil,
+			method: "Bar/Baz",
+			desc:   "pass",
+			bsIn:   []byte(`{}`),
+			bsOut:  nil,
 		},
 		{
-			desc:  "pass with field",
-			bsIn:  []byte(`{"test":10}`),
-			bsOut: []byte{0x8, 0xA},
+			method: "Bar/Baz",
+			desc:   "pass with field",
+			bsIn:   []byte(`{"test":10}`),
+			bsOut:  []byte{0x8, 0xA},
 		},
 		{
-			desc:  "pass with yaml",
-			bsIn:  []byte(`test: 10`),
-			bsOut: []byte{0x8, 0xA},
+			method: "Bar/Baz",
+			desc:   "pass with yaml",
+			bsIn:   []byte(`test: 10`),
+			bsOut:  []byte{0x8, 0xA},
 		},
 		{
-			desc: "nested yaml",
+			method: "Bar/Baz",
+			desc:   "nested yaml",
 			bsIn: []byte(`---
 {test: 1, nested: {value: 1}}`),
 			bsOut: []byte{0x8, 0x1, 0x12, 0x2, 0x8, 0x1},
 		},
 		{
-			desc:  "nested json",
-			bsIn:  []byte(`{"test": 1, "nested": {"value": 1}}`),
-			bsOut: []byte{0x8, 0x1, 0x12, 0x2, 0x8, 0x1},
+			method: "Bar/Baz",
+			desc:   "nested json",
+			bsIn:   []byte(`{"test": 1, "nested": {"value": 1}}`),
+			bsOut:  []byte{0x8, 0x1, 0x12, 0x2, 0x8, 0x1},
+		},
+		{
+			method: "Bar/BazStream",
+			desc:   "empty body for streaming method",
+			bsIn:   []byte(`{}`),
+			bsOut:  nil,
 		},
 	}
 
@@ -129,7 +186,7 @@ func TestProtobufRequest(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			req := bytes.NewReader(tt.bsIn)
-			serializer, err := NewProtobuf("Bar/Baz", source, req)
+			serializer, err := NewProtobuf(tt.method, source, req)
 			require.NoError(t, err, "Failed to create serializer")
 
 			got, err := serializer.Request()

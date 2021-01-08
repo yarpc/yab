@@ -99,6 +99,14 @@ func (e thriftSerializer) Encoding() Encoding {
 	return Thrift
 }
 
+func (e thriftSerializer) IsClientStreaming() bool {
+	return false
+}
+
+func (e thriftSerializer) IsServerStreaming() bool {
+	return false
+}
+
 func (e thriftSerializer) Request() (*transport.Request, error) {
 	reqMap, err := unmarshal.YAML(e.reqBody)
 	if err != nil {
@@ -118,6 +126,10 @@ func (e thriftSerializer) Request() (*transport.Request, error) {
 
 func (e thriftSerializer) Response(res *transport.Response) (interface{}, error) {
 	return thrift.ResponseBytesToMap(e.spec, res.Body, e.opts)
+}
+
+func (e thriftSerializer) StreamRequest() ([]byte, error) {
+	return nil, errors.New("thrift serializer does not support streaming requests")
 }
 
 func findService(parsed *compile.Module, svcName string) (*compile.ServiceSpec, error) {

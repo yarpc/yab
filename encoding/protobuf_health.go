@@ -55,3 +55,15 @@ func (p protoHealthSerializer) CheckSuccess(body *transport.Response) error {
 	_, err := p.Response(body)
 	return err
 }
+
+func (p protoHealthSerializer) IsClientStreaming() bool {
+	return false
+}
+
+func (p protoHealthSerializer) IsServerStreaming() bool {
+	return false
+}
+
+func (p protoHealthSerializer) StreamRequest() ([]byte, error) {
+	return nil, errors.New("protohealth serializer does not support streaming requests")
+}
