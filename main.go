@@ -21,10 +21,13 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"regexp"
@@ -42,6 +45,7 @@ import (
 	"github.com/uber/jaeger-client-go"
 	jaeger_config "github.com/uber/jaeger-client-go/config"
 	"github.com/uber/tchannel-go"
+	yarpctransport "go.uber.org/yarpc/api/transport"
 	"go.uber.org/zap"
 )
 
@@ -349,9 +353,16 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 		out.Fatalf("Failed while preparing the request: %v\n", err)
 	}
 
+	isStreamingCall := serializer.IsClientStreaming() || serializer.IsServerStreaming()
+
 	// Only make the request if the user hasn't specified 0 warmup.
 	if !(opts.BOpts.enabled() && opts.BOpts.WarmupRequests == 0) {
-		makeInitialRequest(out, transport, serializer, req)
+		if isStreamingCall {
+			makeInitialStreamRequest(out, transport, serializer, req)
+		} else {
+			makeInitialRequest(out, transport, serializer, req)
+		}
+
 	}
 
 	runBenchmark(out, logger, opts, resolved, benchmarkMethod{
@@ -460,6 +471,11 @@ func makeRequestWithTracePriority(t transport.Transport, request *transport.Requ
 	ctx, cancel := tchannel.NewContext(request.Timeout)
 	defer cancel()
 
+	ctx = makeContextWithTrace(ctx, t, request, trace)
+	return t.Call(ctx, request)
+}
+
+func makeContextWithTrace(ctx context.Context, t transport.Transport, request *transport.Request, trace uint16) context.Context {
 	if tracer := t.Tracer(); tracer != nil {
 		span := tracer.StartSpan(request.Method)
 		opentracing_ext.SamplingPriority.Set(span, trace)
@@ -468,8 +484,109 @@ func makeRequestWithTracePriority(t transport.Transport, request *transport.Requ
 		}
 		ctx = opentracing.ContextWithSpan(ctx, span)
 	}
+	return ctx
+}
 
-	return t.Call(ctx, request)
+func sendStreamRequest(ctx context.Context, stream *yarpctransport.ClientStream, body []byte) error {
+	return stream.SendMessage(ctx, &yarpctransport.StreamMessage{Body: ioutil.NopCloser(bytes.NewReader(body))})
+}
+
+func receiveStreamResponse(ctx context.Context, stream *yarpctransport.ClientStream, serializer encoding.Serializer) (interface{}, error) {
+	msg, err := stream.ReceiveMessage(ctx)
+	if err != nil {
+		return nil, err
+	}
+	bytes, err := ioutil.ReadAll(msg.Body)
+	if err != nil {
+		return nil, err
+	}
+	return serializer.Response(&transport.Response{Body: bytes})
+}
+
+func makeInitialStreamRequest(out output, t transport.Transport, serializer encoding.Serializer, req *transport.Request) {
+	ctx, cancel := tchannel.NewContext(req.Timeout)
+	defer cancel()
+	ctx = makeContextWithTrace(ctx, t, req, 0)
+
+	stream, err := t.CallStream(ctx, req)
+	if err != nil {
+		out.Fatalf("Failed while making stream call: %v\n", err)
+	}
+
+	firstRequest := true
+	readAndSendStreamRequest := func() (eofReached bool) {
+		streamReq, err := serializer.StreamRequest()
+		if err == io.EOF {
+			// Ignore EOF for initial request, useful when no input is provided
+			// and we can use empty body to send first stream request
+			if firstRequest {
+				err = nil
+			} else {
+				return true
+			}
+		}
+		if err != nil {
+			out.Fatalf("Failed while reading stream request: %v\n", err)
+		}
+		firstRequest = false
+		if err = sendStreamRequest(ctx, stream, streamReq); err != nil {
+			out.Fatalf("Failed while sending stream request: %v\n", err)
+		}
+		return false
+	}
+
+	receiveAndPrintStreamRequest := func() (eofReached bool) {
+		res, err := receiveStreamResponse(ctx, stream, serializer)
+		if err == io.EOF {
+			return true
+		}
+		if err != nil {
+			out.Fatalf("Failed while receiving stream response: %v\n", err)
+		}
+		bs, err := json.MarshalIndent(res, "", "  ")
+		if err != nil {
+			out.Fatalf("Failed to convert map to JSON: %v\nMap: %+v\n", err, res)
+		}
+		out.Printf("%s\n\n", bs)
+		return false
+	}
+
+	closeStream := func() {
+		if err := stream.Close(ctx); err != nil {
+			out.Fatalf("Failed to close send stream: %v\n", err)
+		}
+	}
+
+	// bi-directional stream
+	if serializer.IsClientStreaming() && serializer.IsServerStreaming() {
+		for {
+			if eof := readAndSendStreamRequest(); eof {
+				closeStream()
+				break
+			}
+			if eof := receiveAndPrintStreamRequest(); eof {
+				out.Fatalf("Failed while receiving stream response: %v\n", io.EOF)
+			}
+		}
+	} else if serializer.IsClientStreaming() { // client side streaming only
+		for {
+			if eof := readAndSendStreamRequest(); eof {
+				break
+			}
+		}
+		closeStream()
+		if eof := receiveAndPrintStreamRequest(); eof {
+			out.Fatalf("Failed while receiving stream request: %v\n", io.EOF)
+		}
+	} else { // server side streaming only
+		readAndSendStreamRequest()
+		closeStream()
+		for {
+			if eof := receiveAndPrintStreamRequest(); eof {
+				break
+			}
+		}
+	}
 }
 
 func makeInitialRequest(out output, transport transport.Transport, serializer encoding.Serializer, req *transport.Request) {

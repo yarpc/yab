@@ -25,6 +25,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -359,7 +360,9 @@ func setupYARPCServer(t *testing.T, inbound ytransport.Inbound, opts ...ythrift.
 	return dispatcher
 }
 
-type simpleService struct{}
+type simpleService struct {
+	errStart error
+}
 
 func (s *simpleService) Baz(c context.Context, in *simple.Foo) (*simple.Foo, error) {
 	if in.Test > 0 {
@@ -368,23 +371,227 @@ func (s *simpleService) Baz(c context.Context, in *simple.Foo) (*simple.Foo, err
 	return nil, fmt.Errorf("negative input")
 }
 
-func (s *simpleService) BidiStream(stream simple.Bar_BidiStreamServer) error {
+func (s *simpleService) BazClientStream(stream simple.Bar_BazClientStreamServer) error {
+	counter := 0
+	for {
+		_, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		counter++
+	}
+	return stream.SendAndClose(&simple.Foo{Test: int32(counter)})
+}
+
+func (s *simpleService) BazServerStream(req *simple.Foo, stream simple.Bar_BazServerStreamServer) error {
+	for i := 0; i < int(req.Test); i++ {
+		if err := stream.Send(&simple.Foo{Test: int32(i + 1)}); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
-func setupGRPCServer(t *testing.T) (net.Addr, *grpc.Server) {
+func (s *simpleService) BidiStream(stream simple.Bar_BidiStreamServer) error {
+	if s.errStart != nil {
+		return s.errStart
+	}
+	for {
+		msg, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		msg.Test += 100
+		if err = stream.Send(msg); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func setupGRPCServer(t *testing.T) (net.Addr, *grpc.Server, *simpleService) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 
+	simpleSvc := &simpleService{}
 	s := grpc.NewServer()
-	simple.RegisterBarServer(s, &simpleService{})
+	simple.RegisterBarServer(s, simpleSvc)
 	reflection.Register(s)
 	go s.Serve(ln)
-	return ln.Addr(), s
+	return ln.Addr(), s, simpleSvc
+}
+
+func TestGRPCStream(t *testing.T) {
+	addr, server, simpleSvc := setupGRPCServer(t)
+	defer server.Stop()
+
+	tests := []struct {
+		desc    string
+		opts    Options
+		wantRes string
+		wantErr string
+
+		errStart error
+	}{
+		{
+			desc: "client streaming",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/BazClientStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `{"test":1}{"test":2}{"test":-1} {"test":10}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+					Peers:       []string{"grpc://" + addr.String()},
+				},
+			},
+			wantRes: `{
+  "test": 4
+}
+
+`,
+		},
+		{
+			desc: "client streaming with empty input",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/BazClientStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       ``,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+					Peers:       []string{"grpc://" + addr.String()},
+				},
+			},
+			wantRes: `{
+  "test": 1
+}
+
+`,
+		},
+		{
+			desc: "client streaming with invalid input",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/BazClientStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `{`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+					Peers:       []string{"grpc://" + addr.String()},
+				},
+			},
+			wantRes: ``,
+			wantErr: "Failed while reading stream request: unexpected EOF\n",
+		},
+
+		{
+			desc: "bidi streaming with immidiate error",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/BazBidiStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `{}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+					Peers:       []string{"grpc://" + addr.String()},
+				},
+			},
+			wantRes: ``,
+			wantErr: "Failed while receiving stream response: code:unknown message:test error\n",
+
+			errStart: errors.New("test error"),
+		},
+		{
+			desc: "error on stream call due to timeout",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/BazBidiStream",
+					Timeout:           timeMillisFlag(time.Nanosecond),
+					RequestJSON:       `{}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+					Peers:       []string{"grpc://" + addr.String()},
+				},
+			},
+			wantRes: ``,
+			wantErr: "Failed while making stream call: code:unavailable message:roundrobin peer list timed out waiting for peer: context deadline exceeded\n",
+		},
+		{
+			desc: "server streaming",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/BazServerStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `{"test":2}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+					Peers:       []string{"grpc://" + addr.String()},
+				},
+			},
+			wantRes: `{
+  "test": 1
+}
+
+{
+  "test": 2
+}
+
+`,
+		},
+		{
+			desc: "bidirectional streaming",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/BazBidiStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `{"test":250}{"test":1}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+					Peers:       []string{"grpc://" + addr.String()},
+				},
+			},
+			wantRes: `{
+  "test": 350
+}
+
+{
+  "test": 101
+}
+
+`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			simpleSvc.errStart = tt.errStart
+
+			gotOut, gotErr := runTestWithOpts(tt.opts)
+			assert.Equal(t, tt.wantErr, gotErr)
+			assert.Equal(t, tt.wantRes, gotOut)
+		})
+	}
 }
 
 func TestGRPCReflectionSource(t *testing.T) {
-	addr, server := setupGRPCServer(t)
+	addr, server, _ := setupGRPCServer(t)
 	defer server.GracefulStop()
 
 	tests := []struct {
