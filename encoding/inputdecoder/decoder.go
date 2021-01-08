@@ -36,7 +36,7 @@ type Decoder interface {
 	Next() ([]byte, error)
 }
 
-// jsonRequestReader parses multiple JSON objects from given reader
+// jsonInputDecoder parses multiple JSON objects from given reader
 // JSON objects can be delimited by space or newline
 type jsonInputDecoder struct{ dec *json.Decoder }
 
@@ -46,10 +46,7 @@ func (r *jsonInputDecoder) Next() ([]byte, error) {
 	}
 	var v json.RawMessage
 	err := r.dec.Decode(&v)
-	if err != nil {
-		return nil, err
-	}
-	return []byte(v), nil
+	return []byte(v), err
 }
 
 // yamlInputDecoder parses multiple YAML objects from given reader
