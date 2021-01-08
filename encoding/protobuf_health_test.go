@@ -46,8 +46,8 @@ func TestProtobufHealthRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			serializer := &protoHealthSerializer{serviceName: tt.serviceName}
-			got, err := serializer.Request(tt.reqBody)
+			serializer := &protoHealthSerializer{serviceName: tt.serviceName, reqBody: tt.reqBody}
+			got, err := serializer.Request()
 			if tt.errMsg == "" {
 				assert.NoError(t, err, "%v", tt.desc)
 				require.NotNil(t, got, "%v: Invalid request")

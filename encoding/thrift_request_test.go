@@ -96,7 +96,7 @@ func TestNewThriftSerializer(t *testing.T) {
 				Multiplexed: tt.multiplexed,
 				Envelope:    true,
 			}
-			got, err := NewThrift(p)
+			got, err := NewThrift(p, nil)
 			if tt.errMsg == "" {
 				require.NoError(t, err)
 				require.NotNil(t, got, "successful case should return Serializer")
@@ -144,16 +144,15 @@ func TestRequest(t *testing.T) {
 		if method == "" {
 			method = "foo"
 		}
-
 		serializer, err := NewThrift(ThriftParams{
 			File:        validThrift,
 			Method:      "Simple::" + method,
 			Multiplexed: false,
 			Envelope:    true,
-		})
+		}, tt.bs)
 		require.NoError(t, err, "Failed to create serializer")
 
-		got, err := serializer.Request(tt.bs)
+		got, err := serializer.Request()
 		if tt.errMsg == "" {
 			assert.NoError(t, err, "%v", tt.desc)
 			assert.NotNil(t, got, "%v: Invalid request")
@@ -335,10 +334,10 @@ func TestWithoutEnvelopes(t *testing.T) {
 			Method:      "Simple::foo",
 			Multiplexed: tt.multiplexed,
 			Envelope:    tt.envelope,
-		})
+		}, []byte("{}"))
 		require.NoError(t, err, "Failed to create serializer")
 
-		got, err := serializer.Request([]byte("{}"))
+		got, err := serializer.Request()
 		require.NoError(t, err, "%v: serialize failed", tt.desc)
 		assert.Equal(t, tt.want, got.Body, "%v: got unexpected bytes", tt.desc)
 	}

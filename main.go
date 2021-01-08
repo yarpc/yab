@@ -287,10 +287,11 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 		return
 	}
 
-	reqReader, err := getRequestReader(opts.ROpts.RequestJSON, opts.ROpts.RequestFile)
+	reqReader, err := getRequestInput(opts.ROpts.RequestJSON, opts.ROpts.RequestFile)
 	if err != nil {
 		out.Fatalf("Failed while creating request reader: %v\n", err)
 	}
+	defer reqReader.Close()
 
 	headers, err := getHeaders(opts.ROpts.HeadersJSON, opts.ROpts.HeadersFile, opts.ROpts.Headers)
 	if err != nil {
@@ -322,7 +323,7 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 
 	resolved := resolveProtocolEncoding(protocolScheme, opts.ROpts)
 
-	serializer, err := NewSerializer(opts, resolved)
+	serializer, err := NewSerializer(opts, resolved, reqReader)
 	if err != nil {
 		out.Fatalf("Failed while parsing input: %v\n", err)
 	}
@@ -338,11 +339,7 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 		out.Fatalf("Failed while parsing options: %v\n", err)
 	}
 
-	bytes, err := reqReader.next()
-	if err != nil && err != io.EOF {
-		out.Fatalf("Failed while parsing body input: %v\n", err)
-	}
-	req, err := serializer.Request(bytes)
+	req, err := serializer.Request()
 	if err != nil {
 		out.Fatalf("Failed while parsing request input: %v\n", err)
 	}

@@ -21,6 +21,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io/ioutil"
@@ -60,7 +61,7 @@ func TestGetRequestInput(t *testing.T) {
 		want   []byte
 	}{
 		{
-			want: nil,
+			want: []byte{},
 		},
 		{
 			file:   "/fake/file",
@@ -94,7 +95,7 @@ func TestGetRequestInput(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i, tt := range tests {
 		if tt.stdin != "" {
 			filename := writeFile(t, "stdin", tt.stdin)
 			defer os.Remove(filename)
@@ -114,7 +115,9 @@ func TestGetRequestInput(t *testing.T) {
 		}
 
 		if assert.NoError(t, err, "getRequestInput(%v, %v) should not fail", tt.inline, tt.file) {
-			assert.Equal(t, tt.want, got, "getRequestInput(%v, %v) mismatch", tt.inline, tt.file)
+			contents, err := ioutil.ReadAll(got)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, contents, "%d getRequestInput(%v, %v) mismatch", i, tt.inline, tt.file)
 		}
 	}
 }
@@ -372,7 +375,8 @@ func TestNewSerializer(t *testing.T) {
 
 		t.Run(tt.msg, func(t *testing.T) {
 			opts := Options{ROpts: tt.opts, TOpts: tOpts}
-			got, err := NewSerializer(resolveOpts(t, opts))
+			opts, resolved := resolveOpts(t, opts)
+			got, err := NewSerializer(opts, resolved, bytes.NewReader(nil))
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.wantErr, "unexpected error")
@@ -395,13 +399,14 @@ func TestNewSerializerProtobufReflection(t *testing.T) {
 	reflection.Register(s)
 	go s.Serve(ln)
 
-	serializer, err := NewSerializer(resolveOpts(t, Options{
+	opts, resolved := resolveOpts(t, Options{
 		ROpts: RequestOptions{
 			Procedure: "grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo",
 			Timeout:   timeMillisFlag(time.Millisecond * 100),
 		},
 		TOpts: TransportOptions{Peers: []string{ln.Addr().String()}},
-	}))
+	})
+	serializer, err := NewSerializer(opts, resolved, bytes.NewReader(nil))
 	assert.NoError(t, err)
 	require.NotNil(t, serializer)
 	assert.Equal(t, encoding.Protobuf, serializer.Encoding())
@@ -546,45 +551,6 @@ func TestPrepareRequestErr(t *testing.T) {
 	req, err := prepareRequest(req, nil /* headers */, Options{})
 	assert.Error(t, err)
 	assert.Nil(t, req)
-}
-
-func TestGetRequestReader(t *testing.T) {
-	t.Run("inline json", func(t *testing.T) {
-		reader, err := getRequestReader("{}", "")
-		assert.NotNil(t, reader, "unexpected nil reader")
-		assert.NoError(t, err, "unexpected error")
-		bytes, err := reader.next()
-		assert.Equal(t, []byte("{}"), bytes, "unexpected request json body")
-		assert.NoError(t, err, "unexpected request body parse error")
-	})
-	t.Run("invalid file", func(t *testing.T) {
-		reader, err := getRequestReader("", "/fake/file")
-		assert.Nil(t, reader, "expected nil reader")
-		assert.EqualError(t, err, "failed to open request file: open /fake/file: no such file or directory")
-	})
-	t.Run("valid json file", func(t *testing.T) {
-		reader, err := getRequestReader("", "testdata/valid.json")
-		assert.NotNil(t, reader, "unexpected nil reader")
-		assert.NoError(t, err, "unexpected getreader error")
-		bytes, err := reader.next()
-		assert.NotNil(t, bytes, "unexpected nil body")
-		assert.NoError(t, err, "unexpected request body parse error")
-	})
-	t.Run("use stdin", func(t *testing.T) {
-		orgStdin := os.Stdin
-		defer func() {
-			os.Stdin = orgStdin
-		}()
-		file, err := os.Open("testdata/valid.json")
-		assert.NoError(t, err)
-		os.Stdin = file
-		reader, err := getRequestReader("-", "")
-		assert.NotNil(t, reader, "unexpected nil reader")
-		assert.NoError(t, err, "unexpected getreader error")
-		bytes, err := reader.next()
-		assert.Equal(t, []byte(`{"k1": "v1", "k2": 5}`), bytes, "unexpected body")
-		assert.NoError(t, err, "unexpected request body parse error")
-	})
 }
 
 func resolveOpts(t *testing.T, opts Options) (Options, resolvedProtocolEncoding) {

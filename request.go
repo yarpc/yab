@@ -43,49 +43,31 @@ var (
 	errMissingProcedure     = errors.New("no procedure specified, specify --procedure [procedure]")
 )
 
-// getRequestReader create request reader from inline bytes passed, through a file or stdin
-func getRequestReader(inline, file string) (requestReader, error) {
-	var reader io.Reader
+// getRequestInput gets the byte body passed in by the user via flags or through a file.
+func getRequestInput(inline, file string) (io.ReadCloser, error) {
 	if file == "-" || inline == "-" {
-		reader = os.Stdin
-	} else if file != "" {
+		return os.Stdin, nil
+	}
+
+	if file != "" {
 		f, err := os.Open(file)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open request file: %v", err)
 		}
-		reader = f
-	} else {
-		reader = bytes.NewReader([]byte(inline))
+		return f, nil
 	}
 
-	// It is valid to have an empty body.
-	return newRequestReader(reader), nil
-}
-
-// getRequestInput gets the byte body passed in by the user via flags or through a file.
-func getRequestInput(inline, file string) ([]byte, error) {
-	if file == "-" || inline == "-" {
-		return ioutil.ReadAll(os.Stdin)
-	}
-
-	if file != "" {
-		bs, err := ioutil.ReadFile(file)
-		if err != nil {
-			return nil, fmt.Errorf("failed to open request file: %v", err)
-		}
-		return bs, nil
-	}
-
-	if inline != "" {
-		return []byte(inline), nil
-	}
-
-	// It is valid to have an empty body.
-	return nil, nil
+	return ioutil.NopCloser(bytes.NewReader([]byte(inline))), nil
 }
 
 func getHeaders(inline, file string, override map[string]string) (map[string]string, error) {
-	contents, err := getRequestInput(inline, file)
+	r, err := getRequestInput(inline, file)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Close()
+
+	contents, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
@@ -107,13 +89,16 @@ func getHeaders(inline, file string, override map[string]string) (map[string]str
 }
 
 // NewSerializer creates a Serializer for the specific encoding.
-func NewSerializer(opts Options, resolved resolvedProtocolEncoding) (encoding.Serializer, error) {
+func NewSerializer(opts Options, resolved resolvedProtocolEncoding, reqReader io.Reader) (encoding.Serializer, error) {
 	if opts.ROpts.Health {
 		if opts.ROpts.Procedure != "" {
 			return nil, errHealthAndProcedure
 		}
-
-		return resolved.enc.GetHealth(opts.TOpts.ServiceName)
+		body, err := ioutil.ReadAll(reqReader)
+		if err != nil {
+			return nil, err
+		}
+		return resolved.enc.GetHealth(opts.TOpts.ServiceName, body)
 	}
 
 	// Thrift & Protobuf return available methods if one is not specified, while
@@ -127,13 +112,16 @@ func NewSerializer(opts Options, resolved resolvedProtocolEncoding) (encoding.Se
 		if resolved.protocol == transport.TChannel || resolved.protocol == transport.GRPC {
 			envelope = false
 		}
-
+		body, err := ioutil.ReadAll(reqReader)
+		if err != nil {
+			return nil, err
+		}
 		return encoding.NewThrift(encoding.ThriftParams{
 			File:        opts.ROpts.ThriftFile,
 			Method:      opts.ROpts.Procedure,
 			Envelope:    envelope,
 			Multiplexed: opts.ROpts.ThriftMultiplexed,
-		})
+		}, body)
 	case encoding.Protobuf:
 		descSource, err := newProtoDescriptorProvider(opts.ROpts, opts.TOpts, resolved)
 		if err != nil {
@@ -143,18 +131,21 @@ func NewSerializer(opts Options, resolved resolvedProtocolEncoding) (encoding.Se
 		// The descriptor is only used in the New function, so it's safe to defer Close.
 		defer descSource.Close()
 
-		return encoding.NewProtobuf(opts.ROpts.Procedure, descSource)
+		return encoding.NewProtobuf(opts.ROpts.Procedure, descSource, reqReader)
 	}
 
 	if opts.ROpts.Procedure == "" {
 		return nil, errMissingProcedure
 	}
-
+	body, err := ioutil.ReadAll(reqReader)
+	if err != nil {
+		return nil, err
+	}
 	switch resolved.enc {
 	case encoding.JSON:
-		return encoding.NewJSON(opts.ROpts.Procedure), nil
+		return encoding.NewJSON(opts.ROpts.Procedure, body), nil
 	case encoding.Raw:
-		return encoding.NewRaw(opts.ROpts.Procedure), nil
+		return encoding.NewRaw(opts.ROpts.Procedure, body), nil
 	}
 
 	return nil, errUnrecognizedEncoding

@@ -13,14 +13,15 @@ import (
 
 type protoHealthSerializer struct {
 	serviceName string
+	reqBody     []byte
 }
 
 func (p protoHealthSerializer) Encoding() Encoding {
 	return Protobuf
 }
 
-func (p protoHealthSerializer) Request(body []byte) (*transport.Request, error) {
-	if len(body) > 0 {
+func (p protoHealthSerializer) Request() (*transport.Request, error) {
+	if len(p.reqBody) > 0 {
 		return nil, errors.New("cannot specify --health and a request body")
 	}
 	bytes, err := proto.Marshal(&grpc_health_v1.HealthCheckRequest{Service: p.serviceName})

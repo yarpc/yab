@@ -1,6 +1,7 @@
 package encoding
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -59,7 +60,7 @@ func TestNewProtobuf(t *testing.T) {
 	require.NoError(t, err)
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			serializer, err := NewProtobuf(tt.method, source)
+			serializer, err := NewProtobuf(tt.method, source, bytes.NewReader(nil))
 			if tt.errMsg == "" {
 				require.NoError(t, err)
 				require.NotNil(t, serializer)
@@ -83,7 +84,7 @@ func TestProtobufRequest(t *testing.T) {
 		{
 			desc:   "invalid json",
 			bsIn:   []byte("{"),
-			errMsg: `did not find expected node content`,
+			errMsg: `unexpected EOF`,
 		},
 		{
 			desc:   "invalid field in request input",
@@ -111,8 +112,9 @@ func TestProtobufRequest(t *testing.T) {
 			bsOut: []byte{0x8, 0xA},
 		},
 		{
-			desc:  "nested yaml",
-			bsIn:  []byte(`{test: 1, nested: {value: 1}}`),
+			desc: "nested yaml",
+			bsIn: []byte(`---
+{test: 1, nested: {value: 1}}`),
 			bsOut: []byte{0x8, 0x1, 0x12, 0x2, 0x8, 0x1},
 		},
 		{
@@ -126,10 +128,11 @@ func TestProtobufRequest(t *testing.T) {
 	require.NoError(t, err)
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			serializer, err := NewProtobuf("Bar/Baz", source)
+			req := bytes.NewReader(tt.bsIn)
+			serializer, err := NewProtobuf("Bar/Baz", source, req)
 			require.NoError(t, err, "Failed to create serializer")
 
-			got, err := serializer.Request(tt.bsIn)
+			got, err := serializer.Request()
 			if tt.errMsg == "" {
 				assert.NoError(t, err, "%v", tt.desc)
 				require.NotNil(t, got, "%v: Invalid request")
@@ -200,7 +203,7 @@ func TestProtobufResponse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			serializer, err := NewProtobuf(tt.method, tt.source)
+			serializer, err := NewProtobuf(tt.method, tt.source, bytes.NewReader(nil))
 			require.NoError(t, err, "Failed to create serializer")
 
 			response := &transport.Response{

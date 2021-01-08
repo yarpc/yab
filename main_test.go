@@ -1060,10 +1060,10 @@ func TestDetectThriftEnvelopes(t *testing.T) {
 				protocol: tt.protocol,
 				enc:      encoding.Thrift,
 			}
-			serializer, err := NewSerializer(Options{ROpts: tt.rOpts}, resolved)
+			serializer, err := NewSerializer(Options{ROpts: tt.rOpts}, resolved, bytes.NewReader(nil))
 			require.NoError(t, err, "Failed to create serializer for %+v", tt.rOpts)
 
-			req, err := serializer.Request(nil)
+			req, err := serializer.Request()
 			require.NoError(t, err, "Failed to serialize request for %+v", tt.rOpts)
 
 			assert.Equal(t, tt.want, req.Body, "Body mismatch for %+v", tt.rOpts)

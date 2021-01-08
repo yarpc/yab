@@ -39,8 +39,8 @@ type Serializer interface {
 	// Encoding returns the encoding for this serializer.
 	Encoding() Encoding
 
-	// Request creates a transport.Request from the given []byte input.
-	Request(body []byte) (*transport.Request, error)
+	// Request creates a transport.Request from the request input
+	Request() (*transport.Request, error)
 
 	// Response converts a transport.Response into something that can be displayed to a user.
 	// For non-raw encodings, this is typically a map[string]interface{}.
@@ -87,14 +87,14 @@ func (e *Encoding) UnmarshalFlag(s string) error {
 }
 
 // GetHealth returns a serializer for the Health endpoint.
-func (e Encoding) GetHealth(serviceName string) (Serializer, error) {
+func (e Encoding) GetHealth(serviceName string, reqBody []byte) (Serializer, error) {
 	switch e {
 	case Thrift:
 		method, spec := getHealthSpec()
 		opts := thrift.Options{} // Meta::health is TChannel-specific, which doesn't use envelopes.
-		return thriftSerializer{method, spec, opts}, nil
+		return thriftSerializer{method, spec, opts, reqBody}, nil
 	case Protobuf:
-		return protoHealthSerializer{serviceName: serviceName}, nil
+		return protoHealthSerializer{serviceName: serviceName, reqBody: reqBody}, nil
 	default:
 		return nil, fmt.Errorf("--health not supported with encoding %q, please specify -e (thrift|proto)", e.String())
 	}
@@ -102,11 +102,12 @@ func (e Encoding) GetHealth(serviceName string) (Serializer, error) {
 
 type jsonSerializer struct {
 	methodName string
+	reqBody    []byte
 }
 
 // NewJSON returns a JSON serializer.
-func NewJSON(methodName string) Serializer {
-	return jsonSerializer{methodName}
+func NewJSON(methodName string, requestBody []byte) Serializer {
+	return jsonSerializer{methodName, requestBody}
 }
 
 func (e jsonSerializer) Encoding() Encoding {
@@ -116,8 +117,8 @@ func (e jsonSerializer) Encoding() Encoding {
 // Request unmarshals the input to make sure it's valid JSON, and then
 // Marshals the map to produce consistent output with whitespace removed
 // and sorted field order.
-func (e jsonSerializer) Request(input []byte) (*transport.Request, error) {
-	data, err := unmarshal.JSON(input)
+func (e jsonSerializer) Request() (*transport.Request, error) {
+	data, err := unmarshal.JSON(e.reqBody)
 	if err != nil {
 		return nil, err
 	}
@@ -144,21 +145,22 @@ func (e jsonSerializer) CheckSuccess(res *transport.Response) error {
 
 type rawSerializer struct {
 	methodName string
+	reqBody    []byte
 }
 
 // NewRaw returns a raw serializer.
-func NewRaw(methodName string) Serializer {
-	return rawSerializer{methodName}
+func NewRaw(methodName string, reqBody []byte) Serializer {
+	return rawSerializer{methodName, reqBody}
 }
 
 func (e rawSerializer) Encoding() Encoding {
 	return Raw
 }
 
-func (e rawSerializer) Request(input []byte) (*transport.Request, error) {
+func (e rawSerializer) Request() (*transport.Request, error) {
 	return &transport.Request{
 		Method: e.methodName,
-		Body:   input,
+		Body:   e.reqBody,
 	}, nil
 }
 
