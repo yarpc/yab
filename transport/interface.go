@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
+	"go.uber.org/yarpc/api/transport"
 	"golang.org/x/net/context"
 )
 
@@ -64,6 +65,7 @@ const (
 // calls are made.
 type Transport interface {
 	Call(ctx context.Context, request *Request) (*Response, error)
+	CallStream(ctx context.Context, request *Request) (*transport.ClientStream, error)
 	Protocol() Protocol
 	Tracer() opentracing.Tracer
 }

@@ -14,6 +14,7 @@ require (
 	github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568 // indirect
 	github.com/ghodss/yaml v1.0.0
 	github.com/gogo/googleapis v1.3.1-0.20190914144012-b8d18e97a9a1 // indirect
+	github.com/gogo/protobuf v1.3.0
 	github.com/gogo/status v1.1.0 // indirect
 	github.com/golang/mock v1.3.1-0.20190508161146-9fa652df1129 // indirect
 	github.com/golang/protobuf v1.3.2

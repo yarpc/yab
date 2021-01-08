@@ -254,3 +254,11 @@ func TestHTTPCall(t *testing.T) {
 		})
 	}
 }
+
+func TestHTTPStreamCallMustFail(t *testing.T) {
+	http, err := NewHTTP(HTTPOptions{TargetService: "svc", URLs: []string{"http://localhost"}})
+	assert.NoError(t, err)
+	stream, err := http.CallStream(context.Background(), nil)
+	assert.Nil(t, stream)
+	assert.EqualError(t, err, "http does not support streams")
+}

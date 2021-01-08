@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
+	"go.uber.org/yarpc/api/transport"
 	"golang.org/x/net/context"
 )
 
@@ -174,4 +175,8 @@ func (h *httpTransport) Call(ctx context.Context, r *Request) (*Response, error)
 			"statusCode": resp.StatusCode,
 		},
 	}, nil
+}
+
+func (h *httpTransport) CallStream(ctx context.Context, request *Request) (*transport.ClientStream, error) {
+	return nil, errors.New("http does not support streams")
 }

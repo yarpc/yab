@@ -80,7 +80,7 @@ func setupServerAndTransport(t *testing.T, changeOpts ...func(*TChannelOptions))
 	opts := TChannelOptions{
 		SourceService: "yab",
 		TargetService: svr.ServiceName(),
-		Peers:     []string{svr.PeerInfo().HostPort},
+		Peers:         []string{svr.PeerInfo().HostPort},
 		Encoding:      "raw",
 	}
 
@@ -340,4 +340,12 @@ func thriftEncodedHeaders(t *testing.T, headers map[string]string) []byte {
 	var buf bytes.Buffer
 	require.NoError(t, thrift.WriteHeaders(&buf, headers), "WriteHeaders failed")
 	return buf.Bytes()
+}
+
+func TestTChannelStreamCallMustFail(t *testing.T) {
+	tchan, err := NewTChannel(TChannelOptions{SourceService: "svc", Peers: []string{"1.1.1.1:1"}})
+	assert.NoError(t, err)
+	stream, err := tchan.CallStream(context.Background(), nil)
+	assert.Nil(t, stream)
+	assert.EqualError(t, err, "tchannel does not support streams")
 }
