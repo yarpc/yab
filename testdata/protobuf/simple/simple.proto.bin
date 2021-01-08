@@ -1,11 +1,13 @@
 
-©
+ï
 simple.proto"
 Nested
 value (Rvalue":
 Foo
 test (Rtest
-nested (2.NestedRnested25
+nested (2.NestedRnested2{
 Bar
-Baz.Foo.Foo
-	BazStream.Foo.Foo(0bproto3
+Baz.Foo.Foo
+BazClientStream.Foo.Foo(
+BazServerStream.Foo.Foo0
+BazBidiStream.Foo.Foo(0bproto3

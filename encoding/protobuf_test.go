@@ -33,12 +33,12 @@ func TestNewProtobuf(t *testing.T) {
 		{
 			desc:   "no method",
 			method: "Bar",
-			errMsg: "no gRPC method specified, specify --method package.Service/Method. Available gRPC methods in service \"Bar\":\n\tBar/Baz\n\tBar/BazStream",
+			errMsg: "no gRPC method specified, specify --method package.Service/Method. Available gRPC methods in service \"Bar\":\n\tBar/Baz\n\tBar/BazBidiStream\n\tBar/BazClientStream\n\tBar/BazServerStream",
 		},
 		{
 			desc:   "missing method for service",
 			method: "Bar/baq",
-			errMsg: fmt.Sprintf("gRPC service %q does not contain method %q. Available gRPC methods in service %q:\n\tBar/Baz\n\tBar/BazStream", "Bar", "baq", "Bar"),
+			errMsg: fmt.Sprintf("gRPC service %q does not contain method %q. Available gRPC methods in service %q:\n\tBar/Baz\n\tBar/BazBidiStream\n\tBar/BazClientStream\n\tBar/BazServerStream", "Bar", "baq", "Bar"),
 		},
 		{
 			desc:   "invalid method format",
@@ -88,12 +88,12 @@ func TestProtobufStreamRequest(t *testing.T) {
 		errMsg: "proto method does not support streaming",
 	}, {
 		desc:   "success request",
-		method: "Bar/BazStream",
+		method: "Bar/BazBidiStream",
 		input:  []byte(`{"test": 1}`),
 		output: []byte{8, 1},
 	}, {
 		desc:   "eof",
-		method: "Bar/BazStream",
+		method: "Bar/BazBidiStream",
 		input:  []byte(nil),
 		errMsg: "EOF",
 	}}
@@ -174,7 +174,7 @@ func TestProtobufRequest(t *testing.T) {
 			bsOut:  []byte{0x8, 0x1, 0x12, 0x2, 0x8, 0x1},
 		},
 		{
-			method: "Bar/BazStream",
+			method: "Bar/BazBidiStream",
 			desc:   "empty body for streaming method",
 			bsIn:   []byte(`{}`),
 			bsOut:  nil,
