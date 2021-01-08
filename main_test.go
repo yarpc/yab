@@ -209,6 +209,22 @@ func TestRunWithOptions(t *testing.T) {
 			},
 			errMsg: "Disallowed caller name: testBlockedCallerName",
 		},
+		{
+			desc: "Fail due to incorrect file",
+			opts: Options{
+				ROpts: RequestOptions{
+					ThriftFile:  validThrift,
+					Procedure:   fooMethod,
+					Timeout:     timeMillisFlag(time.Nanosecond),
+					RequestFile: "invalid",
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+					Peers:       []string{echoServer(t, fooMethod, nil)},
+				},
+			},
+			errMsg: "Failed while creating request reader: failed to open request file: open invalid: no such file or directory",
+		},
 	}
 
 	var errBuf bytes.Buffer
