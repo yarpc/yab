@@ -361,7 +361,8 @@ func setupYARPCServer(t *testing.T, inbound ytransport.Inbound, opts ...ythrift.
 }
 
 type simpleService struct {
-	errStart error
+	errOnStart  error
+	exitOnStart bool
 }
 
 func (s *simpleService) Baz(c context.Context, in *simple.Foo) (*simple.Foo, error) {
@@ -372,6 +373,12 @@ func (s *simpleService) Baz(c context.Context, in *simple.Foo) (*simple.Foo, err
 }
 
 func (s *simpleService) ClientStream(stream simple.Bar_ClientStreamServer) error {
+	if s.exitOnStart {
+		return nil
+	}
+	if s.errOnStart != nil {
+		return s.errOnStart
+	}
 	counter := 0
 	for {
 		_, err := stream.Recv()
@@ -384,6 +391,9 @@ func (s *simpleService) ClientStream(stream simple.Bar_ClientStreamServer) error
 }
 
 func (s *simpleService) ServerStream(req *simple.Foo, stream simple.Bar_ServerStreamServer) error {
+	if s.errOnStart != nil {
+		return s.errOnStart
+	}
 	for i := 0; i < int(req.Test); i++ {
 		if err := stream.Send(&simple.Foo{Test: int32(i + 1)}); err != nil {
 			return err
@@ -393,8 +403,11 @@ func (s *simpleService) ServerStream(req *simple.Foo, stream simple.Bar_ServerSt
 }
 
 func (s *simpleService) BidiStream(stream simple.Bar_BidiStreamServer) error {
-	if s.errStart != nil {
-		return s.errStart
+	if s.exitOnStart {
+		return nil
+	}
+	if s.errOnStart != nil {
+		return s.errOnStart
 	}
 	for {
 		msg, err := stream.Recv()
@@ -434,7 +447,8 @@ func TestGRPCStream(t *testing.T) {
 		wantRes string
 		wantErr string
 
-		errStart error
+		errOnStart  error
+		exitOnStart bool
 	}{
 		{
 			desc: "client streaming",
@@ -493,7 +507,6 @@ func TestGRPCStream(t *testing.T) {
 			wantRes: ``,
 			wantErr: "Failed while reading stream request: unexpected EOF\n",
 		},
-
 		{
 			desc: "bidi streaming with immidiate error",
 			opts: Options{
@@ -511,7 +524,43 @@ func TestGRPCStream(t *testing.T) {
 			wantRes: ``,
 			wantErr: "Failed while receiving stream response: code:unknown message:test error\n",
 
-			errStart: errors.New("test error"),
+			errOnStart: errors.New("test error"),
+		},
+		{
+			desc: "bidi streaming with EOF",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/BidiStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `{}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+					Peers:       []string{"grpc://" + addr.String()},
+				},
+			},
+			wantRes:     ``,
+			wantErr:     "Failed while receiving stream response: EOF\n",
+			exitOnStart: true,
+		},
+		{
+			desc: "client streaming with EOF",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/ClientStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `{}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+					Peers:       []string{"grpc://" + addr.String()},
+				},
+			},
+			wantRes:     ``,
+			wantErr:     "Failed while receiving stream response: EOF\n",
+			exitOnStart: true,
 		},
 		{
 			desc: "error on stream call due to timeout",
@@ -581,7 +630,8 @@ func TestGRPCStream(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			simpleSvc.errStart = tt.errStart
+			simpleSvc.errOnStart = tt.errOnStart
+			simpleSvc.exitOnStart = tt.exitOnStart
 
 			gotOut, gotErr := runTestWithOpts(tt.opts)
 			assert.Equal(t, tt.wantErr, gotErr)

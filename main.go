@@ -539,7 +539,7 @@ func makeInitialStreamRequest(out output, t transport.Transport, serializer enco
 
 	// receives and prints a stream response
 	// returns true if EOF is reached while receiving response
-	receiveAndPrintStreamRequest := func() bool {
+	receiveAndPrintStreamResponse := func() bool {
 		res, err := receiveStreamResponse(ctx, stream, serializer)
 		if err == io.EOF {
 			return true
@@ -568,7 +568,7 @@ func makeInitialStreamRequest(out output, t transport.Transport, serializer enco
 				closeStream()
 				break
 			}
-			if eof := receiveAndPrintStreamRequest(); eof {
+			if eof := receiveAndPrintStreamResponse(); eof {
 				out.Fatalf("Failed while receiving stream response: %v\n", io.EOF)
 			}
 		}
@@ -580,15 +580,15 @@ func makeInitialStreamRequest(out output, t transport.Transport, serializer enco
 			}
 		}
 		closeStream()
-		if eof := receiveAndPrintStreamRequest(); eof {
-			out.Fatalf("Failed while receiving stream request: %v\n", io.EOF)
+		if eof := receiveAndPrintStreamResponse(); eof {
+			out.Fatalf("Failed while receiving stream response: %v\n", io.EOF)
 		}
 	} else {
 		// server side streaming only
 		readAndSendStreamRequest()
 		closeStream()
 		for {
-			if eof := receiveAndPrintStreamRequest(); eof {
+			if eof := receiveAndPrintStreamResponse(); eof {
 				break
 			}
 		}
