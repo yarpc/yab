@@ -368,6 +368,10 @@ func (s *simpleService) Baz(c context.Context, in *simple.Foo) (*simple.Foo, err
 	return nil, fmt.Errorf("negative input")
 }
 
+func (s *simpleService) BidiStream(stream simple.Bar_BidiStreamServer) error {
+	return nil
+}
+
 func setupGRPCServer(t *testing.T) (net.Addr, *grpc.Server) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
