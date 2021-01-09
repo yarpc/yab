@@ -26,20 +26,22 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"testing"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
+	"github.com/golang/protobuf/proto"
 	"github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/yarpc/yab/testdata/protobuf/simple"
+	googleGrpc "google.golang.org/grpc"
+
 	"go.uber.org/multierr"
 	"go.uber.org/yarpc/api/transport"
 	yarpcjson "go.uber.org/yarpc/encoding/json"
-	"go.uber.org/yarpc/encoding/protobuf"
 	"go.uber.org/yarpc/transport/grpc"
 	"go.uber.org/yarpc/yarpcerrors"
 )
@@ -113,52 +115,67 @@ func TestGRPCSuccess(t *testing.T) {
 		})
 }
 
-func TestGRPCStream(t *testing.T) {
-	streamOpened := false
-	duplex := func(serverStream *protobuf.ServerStream) error {
-		streamOpened = true
-		msg, err := serverStream.Receive(func() proto.Message {
-			return &types.StringValue{}
-		})
-		assert.NoError(t, err)
-		err = serverStream.Send(msg)
-		assert.NoError(t, err)
-		return nil
-	}
-	procedure := protobuf.BuildProcedures(protobuf.BuildProceduresParams{
-		ServiceName: "uber.Test",
-		StreamHandlerParams: []protobuf.BuildProceduresStreamHandlerParams{
-			{
+type simpleSvc struct {
+	streamsOpened int
+}
 
-				MethodName: "Duplex",
-				Handler: protobuf.NewStreamHandler(
-					protobuf.StreamHandlerParams{
-						Handle: duplex,
-					},
-				),
-			},
-		},
+func (s *simpleSvc) Baz(c context.Context, in *simple.Foo) (*simple.Foo, error) {
+	return in, nil
+}
+
+func (s *simpleSvc) BidiStream(stream simple.Bar_BidiStreamServer) error {
+	s.streamsOpened++
+	for {
+		msg, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		stream.Send(msg)
+	}
+	return nil
+}
+
+func TestGRPCStream(t *testing.T) {
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	assert.NoError(t, err)
+
+	server := googleGrpc.NewServer()
+	svc := &simpleSvc{}
+	simple.RegisterBarServer(server, svc)
+	go func() {
+		assert.NoError(t, server.Serve(lis))
+	}()
+	defer server.Stop()
+
+	client, err := NewGRPC(GRPCOptions{
+		Addresses: []string{lis.Addr().String()},
+		Tracer:    opentracing.NoopTracer{},
+		Caller:    "test",
+		Encoding:  "proto",
 	})
-	procedure[0].Service = "uber.Test"
-	doWithGRPCTestEnv(t, "example-stream-caller", 1, procedure, "proto", func(t *testing.T, env *grpcTestEnv) {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-		defer cancel()
-		stream, err := env.Transport.CallStream(ctx, &Request{
-			TargetService: "uber.Test",
-			Method:        "uber.Test::Duplex",
-		})
-		assert.NoError(t, err)
-		b, err := proto.Marshal(&types.StringValue{Value: "test"})
-		assert.NoError(t, err)
-		err = stream.SendMessage(ctx, &transport.StreamMessage{
-			Body: ioutil.NopCloser(bytes.NewReader(b)),
-		})
-		assert.NoError(t, err)
-		msg, err := stream.ReceiveMessage(ctx)
-		assert.NoError(t, err)
-		assert.NotNil(t, msg)
+	assert.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	stream, err := client.CallStream(ctx, &Request{
+		TargetService: "Bar",
+		Method:        "Bar::BidiStream",
 	})
-	assert.True(t, streamOpened)
+	assert.NoError(t, err)
+	req, err := proto.Marshal(&simple.Foo{})
+	assert.NoError(t, err)
+	err = stream.SendMessage(ctx, &transport.StreamMessage{
+		Body: ioutil.NopCloser(bytes.NewReader(req)),
+	})
+	assert.NoError(t, err)
+	msg, err := stream.ReceiveMessage(ctx)
+	assert.NoError(t, err)
+	assert.NotNil(t, msg)
+	assert.NoError(t, stream.Close(ctx))
+	assert.Equal(t, 1, svc.streamsOpened)
 }
 
 func TestGRPCError(t *testing.T) {
