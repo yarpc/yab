@@ -33,12 +33,12 @@ func TestNewProtobuf(t *testing.T) {
 		{
 			desc:   "no method",
 			method: "Bar",
-			errMsg: "no gRPC method specified, specify --method package.Service/Method. Available gRPC methods in service \"Bar\":\n\tBar/Baz\n\tBar/BidiStream",
+			errMsg: "no gRPC method specified, specify --method package.Service/Method. Available gRPC methods in service \"Bar\":\n\tBar/Baz\n\tBar/BidiStream\n\tBar/ClientStream\n\tBar/ServerStream",
 		},
 		{
 			desc:   "missing method for service",
 			method: "Bar/baq",
-			errMsg: fmt.Sprintf("gRPC service %q does not contain method %q. Available gRPC methods in service %q:\n\tBar/Baz\n\tBar/BidiStream", "Bar", "baq", "Bar"),
+			errMsg: fmt.Sprintf("gRPC service %q does not contain method %q. Available gRPC methods in service %q:\n\tBar/Baz\n\tBar/BidiStream\n\tBar/ClientStream\n\tBar/ServerStream", "Bar", "baq", "Bar"),
 		},
 		{
 			desc:   "invalid method format",

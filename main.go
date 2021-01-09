@@ -514,7 +514,9 @@ func makeInitialStreamRequest(out output, t transport.Transport, serializer enco
 	}
 
 	firstRequest := true
-	readAndSendStreamRequest := func() (eofReached bool) {
+	// reads a request and sends the stream request
+	// returns true if EOF is reached while reading request
+	readAndSendStreamRequest := func() bool {
 		streamReq, err := serializer.StreamRequest()
 		if err == io.EOF {
 			// Ignore EOF for initial request, useful when no input is provided
@@ -535,7 +537,9 @@ func makeInitialStreamRequest(out output, t transport.Transport, serializer enco
 		return false
 	}
 
-	receiveAndPrintStreamRequest := func() (eofReached bool) {
+	// receives and prints a stream response
+	// returns true if EOF is reached while receiving response
+	receiveAndPrintStreamRequest := func() bool {
 		res, err := receiveStreamResponse(ctx, stream, serializer)
 		if err == io.EOF {
 			return true
@@ -557,8 +561,8 @@ func makeInitialStreamRequest(out output, t transport.Transport, serializer enco
 		}
 	}
 
-	// bi-directional stream
 	if serializer.IsClientStreaming() && serializer.IsServerStreaming() {
+		// bi-directional stream
 		for {
 			if eof := readAndSendStreamRequest(); eof {
 				closeStream()
@@ -568,7 +572,8 @@ func makeInitialStreamRequest(out output, t transport.Transport, serializer enco
 				out.Fatalf("Failed while receiving stream response: %v\n", io.EOF)
 			}
 		}
-	} else if serializer.IsClientStreaming() { // client side streaming only
+	} else if serializer.IsClientStreaming() {
+		// client side streaming only
 		for {
 			if eof := readAndSendStreamRequest(); eof {
 				break
@@ -578,7 +583,8 @@ func makeInitialStreamRequest(out output, t transport.Transport, serializer enco
 		if eof := receiveAndPrintStreamRequest(); eof {
 			out.Fatalf("Failed while receiving stream request: %v\n", io.EOF)
 		}
-	} else { // server side streaming only
+	} else {
+		// server side streaming only
 		readAndSendStreamRequest()
 		closeStream()
 		for {

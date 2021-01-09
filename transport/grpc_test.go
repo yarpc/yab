@@ -123,6 +123,14 @@ func (s *simpleSvc) Baz(c context.Context, in *simple.Foo) (*simple.Foo, error) 
 	return in, nil
 }
 
+func (s *simpleSvc) ClientStream(stream simple.Bar_ClientStreamServer) error {
+	return nil
+}
+
+func (s *simpleSvc) ServerStream(req *simple.Foo, stream simple.Bar_ServerStreamServer) error {
+	return nil
+}
+
 func (s *simpleSvc) BidiStream(stream simple.Bar_BidiStreamServer) error {
 	s.streamsOpened++
 	for {

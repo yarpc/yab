@@ -371,7 +371,7 @@ func (s *simpleService) Baz(c context.Context, in *simple.Foo) (*simple.Foo, err
 	return nil, fmt.Errorf("negative input")
 }
 
-func (s *simpleService) BazClientStream(stream simple.Bar_BazClientStreamServer) error {
+func (s *simpleService) ClientStream(stream simple.Bar_ClientStreamServer) error {
 	counter := 0
 	for {
 		_, err := stream.Recv()
@@ -383,7 +383,7 @@ func (s *simpleService) BazClientStream(stream simple.Bar_BazClientStreamServer)
 	return stream.SendAndClose(&simple.Foo{Test: int32(counter)})
 }
 
-func (s *simpleService) BazServerStream(req *simple.Foo, stream simple.Bar_BazServerStreamServer) error {
+func (s *simpleService) ServerStream(req *simple.Foo, stream simple.Bar_ServerStreamServer) error {
 	for i := 0; i < int(req.Test); i++ {
 		if err := stream.Send(&simple.Foo{Test: int32(i + 1)}); err != nil {
 			return err
@@ -441,7 +441,7 @@ func TestGRPCStream(t *testing.T) {
 			opts: Options{
 				ROpts: RequestOptions{
 					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-					Procedure:         "Bar/BazClientStream",
+					Procedure:         "Bar/ClientStream",
 					Timeout:           timeMillisFlag(time.Second),
 					RequestJSON:       `{"test":1}{"test":2}{"test":-1} {"test":10}`,
 				},
@@ -461,7 +461,7 @@ func TestGRPCStream(t *testing.T) {
 			opts: Options{
 				ROpts: RequestOptions{
 					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-					Procedure:         "Bar/BazClientStream",
+					Procedure:         "Bar/ClientStream",
 					Timeout:           timeMillisFlag(time.Second),
 					RequestJSON:       ``,
 				},
@@ -481,7 +481,7 @@ func TestGRPCStream(t *testing.T) {
 			opts: Options{
 				ROpts: RequestOptions{
 					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-					Procedure:         "Bar/BazClientStream",
+					Procedure:         "Bar/ClientStream",
 					Timeout:           timeMillisFlag(time.Second),
 					RequestJSON:       `{`,
 				},
@@ -499,7 +499,7 @@ func TestGRPCStream(t *testing.T) {
 			opts: Options{
 				ROpts: RequestOptions{
 					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-					Procedure:         "Bar/BazBidiStream",
+					Procedure:         "Bar/BidiStream",
 					Timeout:           timeMillisFlag(time.Second),
 					RequestJSON:       `{}`,
 				},
@@ -518,7 +518,7 @@ func TestGRPCStream(t *testing.T) {
 			opts: Options{
 				ROpts: RequestOptions{
 					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-					Procedure:         "Bar/BazBidiStream",
+					Procedure:         "Bar/BidiStream",
 					Timeout:           timeMillisFlag(time.Nanosecond),
 					RequestJSON:       `{}`,
 				},
@@ -535,7 +535,7 @@ func TestGRPCStream(t *testing.T) {
 			opts: Options{
 				ROpts: RequestOptions{
 					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-					Procedure:         "Bar/BazServerStream",
+					Procedure:         "Bar/ServerStream",
 					Timeout:           timeMillisFlag(time.Second),
 					RequestJSON:       `{"test":2}`,
 				},
@@ -559,7 +559,7 @@ func TestGRPCStream(t *testing.T) {
 			opts: Options{
 				ROpts: RequestOptions{
 					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-					Procedure:         "Bar/BazBidiStream",
+					Procedure:         "Bar/BidiStream",
 					Timeout:           timeMillisFlag(time.Second),
 					RequestJSON:       `{"test":250}{"test":1}`,
 				},
