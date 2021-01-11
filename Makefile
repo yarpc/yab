@@ -28,6 +28,5 @@ docs:
 
 .PHONY: test_ci
 test_ci: install build
-	go test -race -coverprofile=cover_temp.out -coverpkg=./... ./...
-	grep -v "^github.com/yarpc/yab/testdata/*" cover_temp.out > cover.out
+	go test -race -coverprofile=cover.out -coverpkg=./... ./...
 	go tool cover -html=cover.out -o cover.html
