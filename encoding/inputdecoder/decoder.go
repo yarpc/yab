@@ -49,8 +49,8 @@ func (r *jsonInputDecoder) Next() ([]byte, error) {
 	return []byte(v), err
 }
 
-// yamlInputDecoder parses multiple YAML objects from given reader
-// YAML objects must be delimited by `---`
+// yamlInputDecoder parses multiple YAML objects from the given reader
+// consecutive YAML objects must be delimited by `---`
 type yamlInputDecoder struct{ dec *yaml.Decoder }
 
 func (r *yamlInputDecoder) Next() ([]byte, error) {
@@ -66,7 +66,8 @@ func (r *yamlInputDecoder) Next() ([]byte, error) {
 	return gyaml.YAMLToJSON(bytes)
 }
 
-// isJSONInput returns true if input reader can be parsed into JSON correctly
+// isJSONInput assumes the input is JSON compatible if the initial
+// byte read is `{`
 func isJSONInput(r *bufio.Reader) (bool, error) {
 	b, err := r.ReadByte()
 	if err != nil {

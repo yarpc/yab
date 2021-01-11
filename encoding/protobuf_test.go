@@ -74,6 +74,20 @@ func TestNewProtobuf(t *testing.T) {
 	}
 }
 
+type errReader struct {
+	err error
+}
+
+func (r errReader) Read([]byte) (int, error) { return 0, r.err }
+
+func TestNewProtobufDecoderError(t *testing.T) {
+	source, err := protobuf.NewDescriptorProviderFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
+	assert.NoError(t, err)
+	proto, err := NewProtobuf("Bar/Baz", source, errReader{err: errors.New("test error")})
+	assert.Nil(t, proto)
+	assert.EqualError(t, err, "test error")
+}
+
 func TestProtobufRequest(t *testing.T) {
 	tests := []struct {
 		desc   string
