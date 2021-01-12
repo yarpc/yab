@@ -53,6 +53,7 @@ type GRPCOptions struct {
 	Encoding        string
 	RoutingKey      string
 	RoutingDelegate string
+	MaxResponseSize int
 }
 
 // NewGRPC returns a transport that calls a GRPC service.
@@ -81,7 +82,12 @@ func newGRPC(options GRPCOptions) (*grpcTransport, error) {
 		return nil, errGRPCNoCaller
 	}
 
-	transport := grpc.NewTransport(grpc.Tracer(options.Tracer))
+	transportOptions := []grpc.TransportOption{grpc.Tracer(options.Tracer)}
+	if options.MaxResponseSize > 0 {
+		transportOptions = append(transportOptions, grpc.ClientMaxRecvMsgSize(options.MaxResponseSize))
+	}
+
+	transport := grpc.NewTransport(transportOptions...)
 	outbound := transport.NewOutbound(peer.Bind(roundrobin.New(transport), peer.BindPeers(peersToIdentifiers(options.Addresses))))
 	if err := transport.Start(); err != nil {
 		return nil, err
