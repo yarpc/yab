@@ -347,7 +347,8 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 	var req *transport.Request
 	// streamMsgReader is non-nil if the procedure is a streaming rpc
 	var streamMsgReader encoding.StreamRequestReader
-	if isStreamingMethod(serializer) {
+	isStreaming := isStreamingMethod(serializer)
+	if isStreaming {
 		req, streamMsgReader, err = getStreamRequest(reqReader, serializer)
 		if err != nil {
 			out.Fatalf("Failed to create streaming request: %v\n", err)
@@ -364,18 +365,33 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 		out.Fatalf("Failed while preparing the request: %v\n", err)
 	}
 
+	var streamRequests [][]byte
+
 	// Only make the request if the user hasn't specified 0 warmup.
 	if !(opts.BOpts.enabled() && opts.BOpts.WarmupRequests == 0) {
-		if streamMsgReader != nil {
-			makeInitialStreamRequest(out, t, serializer, streamMsgReader, req)
+		if isStreaming {
+			streamRequests = makeInitialStreamRequest(out, t, serializer, streamMsgReader, req)
 		} else {
 			makeInitialRequest(out, t, serializer, req)
+		}
+	} else if isStreaming {
+		// if there is no warmup, we need to read all the stream requests
+		for {
+			msg, err := streamMsgReader.NextBody()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				out.Fatalf("Failed to read stream request: %v\n", err)
+			}
+			streamRequests = append(streamRequests, msg)
 		}
 	}
 
 	runBenchmark(out, logger, opts, resolved, benchmarkMethod{
-		serializer: serializer,
-		req:        req,
+		serializer:     serializer,
+		req:            req,
+		streamRequests: streamRequests,
 	})
 }
 
@@ -498,6 +514,47 @@ func resolveProtocolEncoding(protocolScheme string, rOpts RequestOptions) resolv
 	return resolvedProtocolEncoding{transport.Unknown, enc}
 }
 
+func makeStreamRequest(t transport.Transport, req *transport.Request, streamRequests [][]byte) ([][]byte, error) {
+	var responses [][]byte
+	ctx, cancel := tchannel.NewContext(req.Timeout)
+	defer cancel()
+	ctx = makeContextWithTrace(ctx, t, req, 0)
+
+	streamTransport, ok := t.(transport.StreamTransport)
+	if !ok {
+		return nil, fmt.Errorf("Transport does not support stream calls: %q", t.Protocol())
+	}
+
+	stream, err := streamTransport.CallStream(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	for _, req := range streamRequests {
+		body := ioutil.NopCloser(bytes.NewReader(req))
+		if err = stream.SendMessage(ctx, &yarpctransport.StreamMessage{Body: body}); err != nil {
+			return nil, err
+		}
+	}
+	if err = stream.Close(ctx); err != nil {
+		return nil, err
+	}
+	for {
+		res, err := stream.ReceiveMessage(ctx)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return nil, err
+		}
+		responses = append(responses, body)
+	}
+	return responses, nil
+}
+
 // makeRequest makes a request using the given transport.
 func makeRequest(t transport.Transport, request *transport.Request) (*transport.Response, error) {
 	return makeRequestWithTracePriority(t, request, 0)
@@ -525,20 +582,11 @@ func makeContextWithTrace(ctx context.Context, t transport.Transport, request *t
 
 // sendStreamMessage reads and sends the stream message
 // return true if there are no more messages to be read
-func sendStreamMessage(ctx context.Context, stream *yarpctransport.ClientStream, streamMsgReader encoding.StreamRequestReader, out output) bool {
-	msg, err := streamMsgReader.NextBody()
-	if err == io.EOF {
-		return true
-	}
-	if err != nil {
-		out.Fatalf("Failed while reading stream input: %v\n", err)
-	}
-
+func sendStreamMessage(ctx context.Context, stream *yarpctransport.ClientStream, msg []byte, out output) {
 	req := &yarpctransport.StreamMessage{Body: ioutil.NopCloser(bytes.NewReader(msg))}
 	if err := stream.SendMessage(ctx, req); err != nil {
 		out.Fatalf("Failed while sending stream request: %v\n", err)
 	}
-	return false
 }
 
 // receiveStreamMessage receives and prints the stream message response
@@ -575,7 +623,7 @@ func closeStream(ctx context.Context, stream *yarpctransport.ClientStream, out o
 	}
 }
 
-func makeInitialStreamRequest(out output, t transport.Transport, serializer encoding.Serializer, streamMsgReader encoding.StreamRequestReader, req *transport.Request) {
+func makeInitialStreamRequest(out output, t transport.Transport, serializer encoding.Serializer, streamMsgReader encoding.StreamRequestReader, req *transport.Request) [][]byte {
 	streamTransport, ok := t.(transport.StreamTransport)
 	if !ok {
 		out.Fatalf("Transport does not support stream calls: %q", t.Protocol())
@@ -593,13 +641,21 @@ func makeInitialStreamRequest(out output, t transport.Transport, serializer enco
 		out.Fatalf("Failed while making stream call: %v\n", err)
 	}
 
+	var streamRequests [][]byte
+
 	if streamSerializer.IsClientStreaming() && streamSerializer.IsServerStreaming() {
 		// bi-directional stream
 		for {
-			if eof := sendStreamMessage(ctx, stream, streamMsgReader, out); eof {
+			req, err := streamMsgReader.NextBody()
+			if err == io.EOF {
 				closeStream(ctx, stream, out)
 				break
 			}
+			if err != nil {
+				out.Fatalf("Failed while reading stream input: %v\n", err)
+			}
+			streamRequests = append(streamRequests, req)
+			sendStreamMessage(ctx, stream, req, out)
 			if eof := receiveStreamMessage(ctx, stream, serializer, out); eof {
 				out.Fatalf("Received EOF while receiving bi-directional stream response: %v\n", io.EOF)
 			}
@@ -608,10 +664,18 @@ func makeInitialStreamRequest(out output, t transport.Transport, serializer enco
 		serverStreaming := streamSerializer.IsServerStreaming()
 		clientStreaming := streamSerializer.IsClientStreaming()
 		for {
-			eof := sendStreamMessage(ctx, stream, streamMsgReader, out)
+			req, err := streamMsgReader.NextBody()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				out.Fatalf("Failed while reading stream input: %v\n", err)
+			}
+			streamRequests = append(streamRequests, req)
+			sendStreamMessage(ctx, stream, req, out)
 			// send message only once if the method is server streaming
 			// since server streaming method expects only one request
-			if eof || serverStreaming {
+			if serverStreaming {
 				break
 			}
 		}
@@ -625,6 +689,7 @@ func makeInitialStreamRequest(out output, t transport.Transport, serializer enco
 			}
 		}
 	}
+	return streamRequests
 }
 
 func makeInitialRequest(out output, transport transport.Transport, serializer encoding.Serializer, req *transport.Request) {

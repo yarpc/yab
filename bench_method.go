@@ -37,8 +37,9 @@ type peerTransport struct {
 }
 
 type benchmarkMethod struct {
-	serializer encoding.Serializer
-	req        *transport.Request
+	serializer     encoding.Serializer
+	req            *transport.Request
+	streamRequests [][]byte
 }
 
 // WarmTransport warms up a transport and returns it. The transport is warmed
@@ -50,7 +51,7 @@ func (m benchmarkMethod) WarmTransport(opts TransportOptions, resolved resolvedP
 	}
 
 	for i := 0; i < warmupRequests; i++ {
-		_, err := makeRequest(transport, m.req)
+		_, err := m.call(transport)
 		if err != nil {
 			return nil, err
 		}
@@ -60,12 +61,34 @@ func (m benchmarkMethod) WarmTransport(opts TransportOptions, resolved resolvedP
 }
 
 func (m benchmarkMethod) call(t transport.Transport) (time.Duration, error) {
+	if isStreamingMethod(m.serializer) {
+		return m.callStream(t)
+	}
+	return m.callUnary(t)
+}
+
+func (m benchmarkMethod) callUnary(t transport.Transport) (time.Duration, error) {
 	start := time.Now()
 	res, err := makeRequest(t, m.req)
 	duration := time.Since(start)
 
 	if err == nil {
 		err = m.serializer.CheckSuccess(res)
+	}
+	return duration, err
+}
+
+func (m benchmarkMethod) callStream(t transport.Transport) (time.Duration, error) {
+	start := time.Now()
+	responses, err := makeStreamRequest(t, m.req, m.streamRequests)
+	duration := time.Since(start)
+	if err != nil {
+		return duration, err
+	}
+	for _, res := range responses {
+		if err = m.serializer.CheckSuccess(&transport.Response{Body: res}); err != nil {
+			return duration, err
+		}
 	}
 	return duration, err
 }

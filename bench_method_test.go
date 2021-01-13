@@ -55,7 +55,7 @@ func benchmarkMethodForROpts(t *testing.T, rOpts RequestOptions, p transport.Pro
 	require.NoError(t, err, "Failed to serialize Thrift body")
 
 	req.Timeout = time.Second
-	return benchmarkMethod{serializer, req}
+	return benchmarkMethod{serializer, req, nil}
 }
 
 func TestBenchmarkMethodWarmTransport(t *testing.T) {
