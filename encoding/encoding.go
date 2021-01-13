@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/yarpc/yab/thrift"
@@ -39,8 +40,8 @@ type Serializer interface {
 	// Encoding returns the encoding for this serializer.
 	Encoding() Encoding
 
-	// Request creates a transport.Request from the request input
-	Request() (*transport.Request, error)
+	// Request creates a transport.Request from the given []byte input.
+	Request(body []byte) (*transport.Request, error)
 
 	// Response converts a transport.Response into something that can be displayed to a user.
 	// For non-raw encodings, this is typically a map[string]interface{}.
@@ -49,9 +50,22 @@ type Serializer interface {
 	// CheckSuccess checks whether the response body is a success, and if not, returns an
 	// error with the failure reason.
 	CheckSuccess(body *transport.Response) error
+}
 
-	// StreamRequest returns serializer encoded stream request body
-	StreamRequest() ([]byte, error)
+// StreamRequestReader interface exposes method to read multiple request body
+type StreamRequestReader interface {
+	// NextBody returns the encoded request body if available, and if not, returns an
+	// io.EOF error
+	NextBody() ([]byte, error)
+}
+
+// StreamSerializer interface exposes additional methods to handle stream requests
+type StreamSerializer interface {
+	Serializer
+
+	// StreamRequest creates a root stream request, a stream request reader using
+	// body reader provided
+	StreamRequest(body io.Reader) (*transport.Request, StreamRequestReader, error)
 
 	// IsClientStreaming returns true for client streaming methods
 	IsClientStreaming() bool
@@ -96,14 +110,14 @@ func (e *Encoding) UnmarshalFlag(s string) error {
 }
 
 // GetHealth returns a serializer for the Health endpoint.
-func (e Encoding) GetHealth(serviceName string, reqBody []byte) (Serializer, error) {
+func (e Encoding) GetHealth(serviceName string) (Serializer, error) {
 	switch e {
 	case Thrift:
 		method, spec := getHealthSpec()
 		opts := thrift.Options{} // Meta::health is TChannel-specific, which doesn't use envelopes.
-		return thriftSerializer{method, spec, opts, reqBody}, nil
+		return thriftSerializer{method, spec, opts}, nil
 	case Protobuf:
-		return protoHealthSerializer{serviceName: serviceName, reqBody: reqBody}, nil
+		return protoHealthSerializer{serviceName: serviceName}, nil
 	default:
 		return nil, fmt.Errorf("--health not supported with encoding %q, please specify -e (thrift|proto)", e.String())
 	}
@@ -111,12 +125,11 @@ func (e Encoding) GetHealth(serviceName string, reqBody []byte) (Serializer, err
 
 type jsonSerializer struct {
 	methodName string
-	reqBody    []byte
 }
 
 // NewJSON returns a JSON serializer.
-func NewJSON(methodName string, requestBody []byte) Serializer {
-	return jsonSerializer{methodName, requestBody}
+func NewJSON(methodName string) Serializer {
+	return jsonSerializer{methodName}
 }
 
 func (e jsonSerializer) Encoding() Encoding {
@@ -126,8 +139,8 @@ func (e jsonSerializer) Encoding() Encoding {
 // Request unmarshals the input to make sure it's valid JSON, and then
 // Marshals the map to produce consistent output with whitespace removed
 // and sorted field order.
-func (e jsonSerializer) Request() (*transport.Request, error) {
-	data, err := unmarshal.JSON(e.reqBody)
+func (e jsonSerializer) Request(input []byte) (*transport.Request, error) {
+	data, err := unmarshal.JSON(input)
 	if err != nil {
 		return nil, err
 	}
@@ -152,36 +165,23 @@ func (e jsonSerializer) CheckSuccess(res *transport.Response) error {
 	return err
 }
 
-func (e jsonSerializer) StreamRequest() ([]byte, error) {
-	return nil, errors.New("json serializer does not support streaming requests")
-}
-
-func (e jsonSerializer) IsClientStreaming() bool {
-	return false
-}
-
-func (e jsonSerializer) IsServerStreaming() bool {
-	return false
-}
-
 type rawSerializer struct {
 	methodName string
-	reqBody    []byte
 }
 
 // NewRaw returns a raw serializer.
-func NewRaw(methodName string, reqBody []byte) Serializer {
-	return rawSerializer{methodName, reqBody}
+func NewRaw(methodName string) Serializer {
+	return rawSerializer{methodName}
 }
 
 func (e rawSerializer) Encoding() Encoding {
 	return Raw
 }
 
-func (e rawSerializer) Request() (*transport.Request, error) {
+func (e rawSerializer) Request(input []byte) (*transport.Request, error) {
 	return &transport.Request{
 		Method: e.methodName,
-		Body:   e.reqBody,
+		Body:   input,
 	}, nil
 }
 
@@ -191,16 +191,4 @@ func (e rawSerializer) Response(res *transport.Response) (interface{}, error) {
 
 func (e rawSerializer) CheckSuccess(res *transport.Response) error {
 	return nil
-}
-
-func (e rawSerializer) StreamRequest() ([]byte, error) {
-	return nil, errors.New("raw serializer does not support streaming requests")
-}
-
-func (e rawSerializer) IsClientStreaming() bool {
-	return false
-}
-
-func (e rawSerializer) IsServerStreaming() bool {
-	return false
 }

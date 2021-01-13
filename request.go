@@ -89,11 +89,34 @@ func getHeaders(inline, file string, override map[string]string) (map[string]str
 }
 
 // NewSerializer creates a Serializer for the specific encoding.
-func NewSerializer(opts Options, resolved resolvedProtocolEncoding, reqReader io.Reader) (encoding.Serializer, error) {
+func NewSerializer(opts Options, resolved resolvedProtocolEncoding) (encoding.Serializer, error) {
+	if opts.ROpts.Health {
+		if opts.ROpts.Procedure != "" {
+			return nil, errHealthAndProcedure
+		}
+
+		return resolved.enc.GetHealth(opts.TOpts.ServiceName)
+	}
+
 	// Thrift & Protobuf return available methods if one is not specified, while
 	// the other encodings will just return an error, so only do the empty
 	// procedure check for non-Thrift encodings.
-	if !opts.ROpts.Health && resolved.enc == encoding.Protobuf {
+	switch resolved.enc {
+	case encoding.Thrift:
+		envelope := !opts.ROpts.ThriftDisableEnvelopes
+
+		// TChannel and gRPC never use envelopes.
+		if resolved.protocol == transport.TChannel || resolved.protocol == transport.GRPC {
+			envelope = false
+		}
+
+		return encoding.NewThrift(encoding.ThriftParams{
+			File:        opts.ROpts.ThriftFile,
+			Method:      opts.ROpts.Procedure,
+			Envelope:    envelope,
+			Multiplexed: opts.ROpts.ThriftMultiplexed,
+		})
+	case encoding.Protobuf:
 		descSource, err := newProtoDescriptorProvider(opts.ROpts, opts.TOpts, resolved)
 		if err != nil {
 			return nil, err
@@ -102,44 +125,18 @@ func NewSerializer(opts Options, resolved resolvedProtocolEncoding, reqReader io
 		// The descriptor is only used in the New function, so it's safe to defer Close.
 		defer descSource.Close()
 
-		return encoding.NewProtobuf(opts.ROpts.Procedure, descSource, reqReader)
-	}
-
-	body, err := ioutil.ReadAll(reqReader)
-	if err != nil {
-		return nil, err
-	}
-
-	if opts.ROpts.Health {
-		if opts.ROpts.Procedure != "" {
-			return nil, errHealthAndProcedure
-		}
-		return resolved.enc.GetHealth(opts.TOpts.ServiceName, body)
-	}
-
-	if resolved.enc == encoding.Thrift {
-		envelope := !opts.ROpts.ThriftDisableEnvelopes
-
-		// TChannel and gRPC never use envelopes.
-		if resolved.protocol == transport.TChannel || resolved.protocol == transport.GRPC {
-			envelope = false
-		}
-		return encoding.NewThrift(encoding.ThriftParams{
-			File:        opts.ROpts.ThriftFile,
-			Method:      opts.ROpts.Procedure,
-			Envelope:    envelope,
-			Multiplexed: opts.ROpts.ThriftMultiplexed,
-		}, body)
+		return encoding.NewProtobuf(opts.ROpts.Procedure, descSource)
 	}
 
 	if opts.ROpts.Procedure == "" {
 		return nil, errMissingProcedure
 	}
+
 	switch resolved.enc {
 	case encoding.JSON:
-		return encoding.NewJSON(opts.ROpts.Procedure, body), nil
+		return encoding.NewJSON(opts.ROpts.Procedure), nil
 	case encoding.Raw:
-		return encoding.NewRaw(opts.ROpts.Procedure, body), nil
+		return encoding.NewRaw(opts.ROpts.Procedure), nil
 	}
 
 	return nil, errUnrecognizedEncoding

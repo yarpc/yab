@@ -46,8 +46,8 @@ func TestProtobufHealthRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			serializer := &protoHealthSerializer{serviceName: tt.serviceName, reqBody: tt.reqBody}
-			got, err := serializer.Request()
+			serializer := &protoHealthSerializer{serviceName: tt.serviceName}
+			got, err := serializer.Request(tt.reqBody)
 			if tt.errMsg == "" {
 				assert.NoError(t, err, "%v", tt.desc)
 				require.NotNil(t, got, "%v: Invalid request")
@@ -103,21 +103,4 @@ func TestProtobufHealthResponse(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestProtobufHealthStreamMethods(t *testing.T) {
-	t.Run("ClientStreaming must be false", func(t *testing.T) {
-		serializer := &protoHealthSerializer{}
-		assert.False(t, serializer.IsClientStreaming())
-	})
-	t.Run("ServerStreaming must be false", func(t *testing.T) {
-		serializer := &protoHealthSerializer{}
-		assert.False(t, serializer.IsServerStreaming())
-	})
-	t.Run("StreamRequest must return error", func(t *testing.T) {
-		serializer := &protoHealthSerializer{}
-		req, err := serializer.StreamRequest()
-		assert.Nil(t, req)
-		assert.EqualError(t, err, "protohealth serializer does not support streaming requests")
-	})
 }

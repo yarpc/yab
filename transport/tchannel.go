@@ -23,7 +23,6 @@ package transport
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -32,7 +31,6 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/uber/tchannel-go"
 	"github.com/uber/tchannel-go/thrift"
-	"go.uber.org/yarpc/api/transport"
 	"golang.org/x/net/context"
 )
 
@@ -169,10 +167,6 @@ func (t *tchan) Call(ctx context.Context, r *Request) (*Response, error) {
 	tchSpan := tchannel.CurrentSpan(ctx)
 	res.TransportFields["trace"] = fmt.Sprintf("%x", tchSpan.TraceID())
 	return res, nil
-}
-
-func (t *tchan) CallStream(ctx context.Context, request *Request) (*transport.ClientStream, error) {
-	return nil, errors.New("tchannel does not support streams")
 }
 
 func (t *tchan) readResponse(call *tchannel.OutboundCall) (*Response, error) {

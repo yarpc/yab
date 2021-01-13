@@ -21,7 +21,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"io/ioutil"
@@ -95,7 +94,7 @@ func TestGetRequestInput(t *testing.T) {
 		},
 	}
 
-	for i, tt := range tests {
+	for _, tt := range tests {
 		if tt.stdin != "" {
 			filename := writeFile(t, "stdin", tt.stdin)
 			defer os.Remove(filename)
@@ -117,7 +116,7 @@ func TestGetRequestInput(t *testing.T) {
 		if assert.NoError(t, err, "getRequestInput(%v, %v) should not fail", tt.inline, tt.file) {
 			contents, err := ioutil.ReadAll(got)
 			assert.NoError(t, err)
-			assert.Equal(t, tt.want, contents, "%d getRequestInput(%v, %v) mismatch", i, tt.inline, tt.file)
+			assert.Equal(t, tt.want, contents, "getRequestInput(%v, %v) mismatch", tt.inline, tt.file)
 		}
 	}
 }
@@ -375,8 +374,7 @@ func TestNewSerializer(t *testing.T) {
 
 		t.Run(tt.msg, func(t *testing.T) {
 			opts := Options{ROpts: tt.opts, TOpts: tOpts}
-			opts, resolved := resolveOpts(t, opts)
-			got, err := NewSerializer(opts, resolved, bytes.NewReader(nil))
+			got, err := NewSerializer(resolveOpts(t, opts))
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.wantErr, "unexpected error")
@@ -399,14 +397,13 @@ func TestNewSerializerProtobufReflection(t *testing.T) {
 	reflection.Register(s)
 	go s.Serve(ln)
 
-	opts, resolved := resolveOpts(t, Options{
+	serializer, err := NewSerializer(resolveOpts(t, Options{
 		ROpts: RequestOptions{
 			Procedure: "grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo",
 			Timeout:   timeMillisFlag(time.Millisecond * 100),
 		},
 		TOpts: TransportOptions{Peers: []string{ln.Addr().String()}},
-	})
-	serializer, err := NewSerializer(opts, resolved, bytes.NewReader(nil))
+	}))
 	assert.NoError(t, err)
 	require.NotNil(t, serializer)
 	assert.Equal(t, encoding.Protobuf, serializer.Encoding())
