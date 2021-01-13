@@ -61,8 +61,6 @@ type StreamRequestReader interface {
 
 // StreamSerializer interface exposes additional methods to handle stream requests
 type StreamSerializer interface {
-	Serializer
-
 	// StreamRequest creates a root stream request, a stream request reader using
 	// body reader provided
 	StreamRequest(body io.Reader) (*transport.Request, StreamRequestReader, error)
