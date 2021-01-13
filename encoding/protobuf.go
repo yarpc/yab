@@ -154,7 +154,7 @@ func (p protoSerializer) Response(body *transport.Response) (interface{}, error)
 }
 
 func (p protoSerializer) StreamRequest(body io.Reader) (*transport.Request, StreamRequestReader, error) {
-	if !p.IsClientStreaming() || !p.IsServerStreaming() {
+	if !p.IsClientStreaming() && !p.IsServerStreaming() {
 		return nil, nil, fmt.Errorf("streamrequest method must not be called for unary rpc method: %q", p.method.GetInputType().GetFullyQualifiedName())
 	}
 	decoder, err := inputdecoder.New(body)
