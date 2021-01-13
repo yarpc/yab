@@ -338,34 +338,29 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 	}
 
 	// transport abstracts the underlying wire protocol used to make the call.
-	transport, err := getTransport(opts.TOpts, resolved, tracer)
+	t, err := getTransport(opts.TOpts, resolved, tracer)
 	if err != nil {
 		out.Fatalf("Failed while parsing options: %v\n", err)
 	}
 
-	reqInput, err := ioutil.ReadAll(reqReader)
+	// req is the transport.Request that will be used to make a call.
+	// streamMsgReader is non-nil if the method is a streaming
+	req, streamMsgReader, err := getRequest(reqReader, serializer)
 	if err != nil {
-		out.Fatalf("Failed while reading body input: %v\n", err)
+		out.Fatalf("Failed while creating request: %v\n", err)
 	}
 
-	// req is the transport.Request that will be used to make a call.
-	req, err := serializer.Request(reqInput)
-	if err != nil {
-		out.Fatalf("Failed while parsing request input: %v\n", err)
-	}
 	req, err = prepareRequest(req, headers, opts)
 	if err != nil {
 		out.Fatalf("Failed while preparing the request: %v\n", err)
 	}
 
-	isStreamingCall := serializer.IsClientStreaming() || serializer.IsServerStreaming()
-
 	// Only make the request if the user hasn't specified 0 warmup.
 	if !(opts.BOpts.enabled() && opts.BOpts.WarmupRequests == 0) {
-		if isStreamingCall {
-			makeInitialStreamRequest(out, transport, serializer, req)
+		if streamMsgReader != nil {
+			makeInitialStreamRequest(out, t, serializer, streamMsgReader, req)
 		} else {
-			makeInitialRequest(out, transport, serializer, req)
+			makeInitialRequest(out, t, serializer, req)
 		}
 
 	}
@@ -374,6 +369,29 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 		serializer: serializer,
 		req:        req,
 	})
+}
+
+func getRequest(body io.Reader, serializer encoding.Serializer) (*transport.Request, encoding.StreamRequestReader, error) {
+	if !isStreaming(serializer) {
+		reqInput, err := ioutil.ReadAll(body)
+		if err != nil {
+			return nil, nil, err
+		}
+		req, err := serializer.Request(reqInput)
+		if err != nil {
+			return nil, nil, err
+		}
+		return req, nil, nil
+	}
+	return serializer.(encoding.StreamSerializer).StreamRequest(body)
+}
+
+func isStreaming(serializer encoding.Serializer) bool {
+	streamSerializer, ok := serializer.(encoding.StreamSerializer)
+	if !ok {
+		return false
+	}
+	return streamSerializer.IsClientStreaming() || streamSerializer.IsServerStreaming()
 }
 
 func createJaegerTracer(opts Options, out output) (opentracing.Tracer, io.Closer) {
@@ -492,108 +510,103 @@ func makeContextWithTrace(ctx context.Context, t transport.Transport, request *t
 	return ctx
 }
 
-func sendStreamRequest(ctx context.Context, stream *yarpctransport.ClientStream, body []byte) error {
-	return stream.SendMessage(ctx, &yarpctransport.StreamMessage{Body: ioutil.NopCloser(bytes.NewReader(body))})
+// sendStreamMessage reads and sends the stream message
+// return true if there are no more messages to be read
+func sendStreamMessage(ctx context.Context, stream *yarpctransport.ClientStream, streamMsgReader encoding.StreamRequestReader, out output) bool {
+	msg, err := streamMsgReader.NextBody()
+	if err == io.EOF {
+		return true
+	}
+	if err != nil {
+		out.Fatalf("Failed while reading stream input: %v\n", err)
+	}
+	req := &yarpctransport.StreamMessage{Body: ioutil.NopCloser(bytes.NewReader(msg))}
+	if err := stream.SendMessage(ctx, req); err != nil {
+		out.Fatalf("Failed while sending stream request: %v\n", err)
+	}
+	return false
 }
 
-func receiveStreamResponse(ctx context.Context, stream *yarpctransport.ClientStream, serializer encoding.Serializer) (interface{}, error) {
+// receiveStreamMessage receives and prints the stream message response
+// returns true if stream ends with EOF
+func receiveStreamMessage(ctx context.Context, stream *yarpctransport.ClientStream, serializer encoding.Serializer, out output) bool {
 	msg, err := stream.ReceiveMessage(ctx)
-	if err != nil {
-		return nil, err
+	if err == io.EOF {
+		return true
 	}
+	if err != nil {
+		out.Fatalf("Failed while receiving stream response: %v\n", err)
+	}
+
 	bytes, err := ioutil.ReadAll(msg.Body)
 	if err != nil {
-		return nil, err
+		out.Fatalf("Failed while reading stream response: %v\n", err)
 	}
-	return serializer.Response(&transport.Response{Body: bytes})
+	res, err := serializer.Response(&transport.Response{Body: bytes})
+	if err != nil {
+		out.Fatalf("Failed while serializing stream response: %v\n", err)
+	}
+
+	bs, err := json.MarshalIndent(res, "", "  ")
+	if err != nil {
+		out.Fatalf("Failed to convert map to JSON: %v\nMap: %+v\n", err, res)
+	}
+	out.Printf("%s\n\n", bs)
+	return false
 }
 
-func makeInitialStreamRequest(out output, t transport.Transport, serializer encoding.Serializer, req *transport.Request) {
+func closeStream(ctx context.Context, stream *yarpctransport.ClientStream, out output) {
+	if err := stream.Close(ctx); err != nil {
+		out.Fatalf("Failed to close send stream: %v\n", err)
+	}
+}
+
+func makeInitialStreamRequest(out output, t transport.Transport, serializer encoding.Serializer, streamMsgReader encoding.StreamRequestReader, req *transport.Request) {
+	streamTransport, ok := t.(transport.StreamTransport)
+	if !ok {
+		out.Fatalf("Transport does not support stream calls: %q", t.Protocol())
+	}
+	streamSerializer, ok := serializer.(encoding.StreamSerializer)
+	if !ok {
+		out.Fatalf("Serializer does not support stream calls: %q", serializer.Encoding())
+	}
+
 	ctx, cancel := tchannel.NewContext(req.Timeout)
 	defer cancel()
 	ctx = makeContextWithTrace(ctx, t, req, 0)
-
-	stream, err := t.CallStream(ctx, req)
+	stream, err := streamTransport.CallStream(ctx, req)
 	if err != nil {
 		out.Fatalf("Failed while making stream call: %v\n", err)
 	}
 
-	firstRequest := true
-	// reads a request and sends the stream request
-	// returns true if EOF is reached while reading request
-	readAndSendStreamRequest := func() bool {
-		streamReq, err := serializer.StreamRequest()
-		if err == io.EOF {
-			// Ignore EOF for initial request, useful when no input is provided
-			// and we can use empty body to send first stream request
-			if firstRequest {
-				err = nil
-			} else {
-				return true
-			}
-		}
-		if err != nil {
-			out.Fatalf("Failed while reading stream request: %v\n", err)
-		}
-		firstRequest = false
-		if err = sendStreamRequest(ctx, stream, streamReq); err != nil {
-			out.Fatalf("Failed while sending stream request: %v\n", err)
-		}
-		return false
-	}
-
-	// receives and prints a stream response
-	// returns true if EOF is reached while receiving response
-	receiveAndPrintStreamResponse := func() bool {
-		res, err := receiveStreamResponse(ctx, stream, serializer)
-		if err == io.EOF {
-			return true
-		}
-		if err != nil {
-			out.Fatalf("Failed while receiving stream response: %v\n", err)
-		}
-		bs, err := json.MarshalIndent(res, "", "  ")
-		if err != nil {
-			out.Fatalf("Failed to convert map to JSON: %v\nMap: %+v\n", err, res)
-		}
-		out.Printf("%s\n\n", bs)
-		return false
-	}
-
-	closeStream := func() {
-		if err := stream.Close(ctx); err != nil {
-			out.Fatalf("Failed to close send stream: %v\n", err)
-		}
-	}
-
-	if serializer.IsClientStreaming() && serializer.IsServerStreaming() {
+	if streamSerializer.IsClientStreaming() && streamSerializer.IsServerStreaming() {
 		// bi-directional stream
 		for {
-			if eof := readAndSendStreamRequest(); eof {
-				closeStream()
+			if eof := sendStreamMessage(ctx, stream, streamMsgReader, out); eof {
+				closeStream(ctx, stream, out)
 				break
 			}
-			if eof := receiveAndPrintStreamResponse(); eof {
-				out.Fatalf("Failed while receiving stream response: %v\n", io.EOF)
+			if eof := receiveStreamMessage(ctx, stream, serializer, out); eof {
+				out.Fatalf("Received EOF while receiving bi-directional stream response: %v\n", io.EOF)
 			}
-		}
-	} else if serializer.IsClientStreaming() {
-		// client side streaming only
-		for {
-			if eof := readAndSendStreamRequest(); eof {
-				break
-			}
-		}
-		closeStream()
-		if eof := receiveAndPrintStreamResponse(); eof {
-			out.Fatalf("Failed while receiving stream response: %v\n", io.EOF)
 		}
 	} else {
-		// server side streaming only
-		readAndSendStreamRequest()
-		closeStream()
+		serverStreaming := streamSerializer.IsServerStreaming()
+		clientStreaming := streamSerializer.IsClientStreaming()
 		for {
-			if eof := receiveAndPrintStreamResponse(); eof {
+			eof := sendStreamMessage(ctx, stream, streamMsgReader, out)
+			// send message only once if the method is server streaming
+			// since server streaming method expects only one request
+			if eof || serverStreaming {
+				break
+			}
+		}
+		closeStream(ctx, stream, out)
+		for {
+			eof := receiveStreamMessage(ctx, stream, streamSerializer, out)
+			// receive message only once if the method is client streaming
+			// since client streaming method expects only one response
+			if eof || clientStreaming {
 				break
 			}
 		}
