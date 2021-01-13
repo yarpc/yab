@@ -45,7 +45,7 @@ func getSpec(t *testing.T, thriftFile string) compile.TypeSpec {
 	return spec
 }
 
-func getSerializer(typeSpec compile.TypeSpec, content []byte) thriftSerializer {
+func getSerializer(typeSpec compile.TypeSpec) thriftSerializer {
 	// Not inline to avoid go vet unkeyed literal error.
 	argSpec := compile.ArgsSpec{{
 		ID:       0,
@@ -62,7 +62,6 @@ func getSerializer(typeSpec compile.TypeSpec, content []byte) thriftSerializer {
 				ReturnType: typeSpec,
 			},
 		},
-		reqBody: content,
 	}
 }
 
@@ -89,8 +88,8 @@ func TestYAMLToThrift(t *testing.T) {
 		inContents, err := ioutil.ReadFile(inFile)
 		require.NoError(t, err, "Failed to read input file: %v", inFile)
 
-		serializer := getSerializer(getSpec(t, thriftFile), inContents)
-		req, err := serializer.Request()
+		serializer := getSerializer(getSpec(t, thriftFile))
+		req, err := serializer.Request(inContents)
 		require.NoError(t, err, "Failed to get request")
 
 		res := &transport.Response{Body: req.Body}

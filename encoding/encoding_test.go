@@ -57,10 +57,10 @@ func TestEncodingUnmarshalNil(t *testing.T) {
 }
 
 func TestRawEncoding(t *testing.T) {
-	serializer := NewRaw("method", []byte("asd"))
+	serializer := NewRaw("method")
 	require.Equal(t, Raw, serializer.Encoding(), "Encoding mismatch")
 
-	got, err := serializer.Request()
+	got, err := serializer.Request([]byte("asd"))
 	require.NoError(t, err, "raw.Request failed")
 
 	want := &transport.Request{
@@ -89,7 +89,7 @@ func TestEncodingGetHealth(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		health, err := tt.encoding.GetHealth("", []byte{})
+		health, err := tt.encoding.GetHealth("")
 		if tt.success {
 			assert.NoError(t, err, "%v.GetHealth should succeed", tt.encoding)
 			assert.NotNil(t, health, "%v.GetHealth should succeed")
@@ -100,7 +100,7 @@ func TestEncodingGetHealth(t *testing.T) {
 }
 
 func TestJSONEncodingRequest(t *testing.T) {
-	serializer := NewJSON("method", nil)
+	serializer := NewJSON("method")
 	require.Equal(t, JSON, serializer.Encoding(), "Encoding mismatch")
 
 	tests := []struct {
@@ -125,8 +125,7 @@ func TestJSONEncodingRequest(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		serializer := NewJSON("method", []byte(tt.data))
-		req, err := serializer.Request()
+		req, err := serializer.Request([]byte(tt.data))
 		if tt.errMsg == "" {
 			assert.NoError(t, err, "Request(%s) failed", tt.data)
 			assert.Equal(t, tt.want, req, "Request(%s) request mismatch", tt.data)
@@ -141,7 +140,8 @@ func TestJSONEncodingRequest(t *testing.T) {
 }
 
 func TestJSONEncodingResponse(t *testing.T) {
-	serializer := NewJSON("method", nil)
+	serializer := NewJSON("method")
+
 	tests := []struct {
 		data   string
 		want   interface{}

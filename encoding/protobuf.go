@@ -11,6 +11,7 @@ import (
 	"github.com/yarpc/yab/protobuf"
 	"github.com/yarpc/yab/transport"
 
+	"github.com/ghodss/yaml"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/jhump/protoreflect/desc"
@@ -23,8 +24,6 @@ type protoSerializer struct {
 	methodName  string
 	method      *desc.MethodDescriptor
 	anyResolver jsonpb.AnyResolver
-
-	reqDecoder inputdecoder.Decoder
 }
 
 // bytesMsg wraps a raw byte slice for serialization purposes. Especially
@@ -77,7 +76,7 @@ func (r anyResolver) Resolve(typeUrl string) (proto.Message, error) {
 }
 
 // NewProtobuf returns a protobuf serializer.
-func NewProtobuf(fullMethodName string, source protobuf.DescriptorProvider, r io.Reader) (Serializer, error) {
+func NewProtobuf(fullMethodName string, source protobuf.DescriptorProvider) (Serializer, error) {
 	serviceName, methodName, err := splitMethod(fullMethodName)
 	if err != nil {
 		return nil, err
@@ -93,10 +92,6 @@ func NewProtobuf(fullMethodName string, source protobuf.DescriptorProvider, r io
 		return nil, err
 	}
 
-	reqDecoder, err := inputdecoder.New(r)
-	if err != nil {
-		return nil, err
-	}
 	return &protoSerializer{
 		serviceName: serviceName,
 		methodName:  methodName,
@@ -104,7 +99,6 @@ func NewProtobuf(fullMethodName string, source protobuf.DescriptorProvider, r io
 		anyResolver: anyResolver{
 			source: source,
 		},
-		reqDecoder: reqDecoder,
 	}, nil
 }
 
@@ -112,18 +106,14 @@ func (p protoSerializer) Encoding() Encoding {
 	return Protobuf
 }
 
-func (p protoSerializer) Request() (*transport.Request, error) {
-	bytes, err := p.reqDecoder.Next()
-	if err != nil && err != io.EOF {
+func (p protoSerializer) Request(body []byte) (*transport.Request, error) {
+	jsonContent, err := yaml.YAMLToJSON(body)
+	if err != nil {
 		return nil, err
 	}
-	req := dynamic.NewMessage(p.method.GetInputType())
-	if err := req.UnmarshalJSON(bytes); err != nil {
-		return nil, fmt.Errorf("could not parse given request body as message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
-	}
-	bytes, err = proto.Marshal(req)
+	bytes, err := p.encode(jsonContent)
 	if err != nil {
-		return nil, fmt.Errorf("could marshal message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
+		return nil, err
 	}
 	return &transport.Request{
 		Method: procedure.ToName(p.serviceName, p.methodName),
@@ -151,9 +141,49 @@ func (p protoSerializer) Response(body *transport.Response) (interface{}, error)
 	return unmarshaledJSON, nil
 }
 
+func (p protoSerializer) StreamRequest(body io.Reader) (*transport.Request, StreamRequestReader, error) {
+	decoder, err := inputdecoder.New(body)
+	if err != nil {
+		return nil, nil, err
+	}
+	reader := protoStreamRequestReader{
+		decoder: decoder,
+		proto:   p,
+	}
+	streamReq := &transport.Request{
+		Method: procedure.ToName(p.serviceName, p.methodName),
+	}
+	return streamReq, reader, nil
+}
+
 func (p protoSerializer) CheckSuccess(body *transport.Response) error {
 	_, err := p.Response(body)
 	return err
+}
+
+func (p protoSerializer) encode(jsonBytes []byte) ([]byte, error) {
+	req := dynamic.NewMessage(p.method.GetInputType())
+	if err := req.UnmarshalJSON(jsonBytes); err != nil {
+		return nil, fmt.Errorf("could not parse given request body as message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
+	}
+	bytes, err := proto.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("could marshal message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
+	}
+	return bytes, nil
+}
+
+type protoStreamRequestReader struct {
+	decoder inputdecoder.Decoder
+	proto   protoSerializer
+}
+
+func (p protoStreamRequestReader) NextBody() ([]byte, error) {
+	body, err := p.decoder.Next()
+	if err != nil {
+		return nil, err
+	}
+	return p.proto.encode(body)
 }
 
 func splitMethod(fullMethod string) (svc, method string, err error) {

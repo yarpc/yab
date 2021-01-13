@@ -44,7 +44,6 @@ type thriftSerializer struct {
 	methodName string
 	spec       *compile.FunctionSpec
 	opts       thrift.Options
-	reqBody    []byte
 }
 
 // ThriftParams contains the parameters for the NewThrift function.
@@ -57,7 +56,7 @@ type ThriftParams struct {
 }
 
 // NewThrift returns a Thrift serializer.
-func NewThrift(p ThriftParams, reqBody []byte) (Serializer, error) {
+func NewThrift(p ThriftParams) (Serializer, error) {
 	if p.File == "" {
 		return nil, ErrSpecifyThriftFile
 	}
@@ -92,15 +91,15 @@ func NewThrift(p ThriftParams, reqBody []byte) (Serializer, error) {
 		opts.EnvelopeMethodPrefix = thriftSvc + _multiplexedSeparator
 	}
 
-	return thriftSerializer{p.Method, spec, opts, reqBody}, nil
+	return thriftSerializer{p.Method, spec, opts}, nil
 }
 
 func (e thriftSerializer) Encoding() Encoding {
 	return Thrift
 }
 
-func (e thriftSerializer) Request() (*transport.Request, error) {
-	reqMap, err := unmarshal.YAML(e.reqBody)
+func (e thriftSerializer) Request(input []byte) (*transport.Request, error) {
+	reqMap, err := unmarshal.YAML(input)
 	if err != nil {
 		return nil, err
 	}

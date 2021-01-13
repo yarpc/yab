@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"regexp"
@@ -323,7 +324,7 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 
 	resolved := resolveProtocolEncoding(protocolScheme, opts.ROpts)
 
-	serializer, err := NewSerializer(opts, resolved, reqReader)
+	serializer, err := NewSerializer(opts, resolved)
 	if err != nil {
 		out.Fatalf("Failed while parsing input: %v\n", err)
 	}
@@ -339,11 +340,16 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 		out.Fatalf("Failed while parsing options: %v\n", err)
 	}
 
-	req, err := serializer.Request()
+	reqInput, err := ioutil.ReadAll(reqReader)
+	if err != nil {
+		out.Fatalf("Failed while reading body input: %v\n", err)
+	}
+
+	// req is the transport.Request that will be used to make a call.
+	req, err := serializer.Request(reqInput)
 	if err != nil {
 		out.Fatalf("Failed while parsing request input: %v\n", err)
 	}
-
 	req, err = prepareRequest(req, headers, opts)
 	if err != nil {
 		out.Fatalf("Failed while preparing the request: %v\n", err)
