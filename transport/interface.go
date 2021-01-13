@@ -65,9 +65,14 @@ const (
 // calls are made.
 type Transport interface {
 	Call(ctx context.Context, request *Request) (*Response, error)
-	CallStream(ctx context.Context, request *Request) (*transport.ClientStream, error)
 	Protocol() Protocol
 	Tracer() opentracing.Tracer
+}
+
+// StreamTransport defines the interface for the underlying transport which
+// supports streaming
+type StreamTransport interface {
+	CallStream(ctx context.Context, request *Request) (*transport.ClientStream, error)
 }
 
 // TransportCloser is a Transport that can be closed.
