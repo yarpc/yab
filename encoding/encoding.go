@@ -165,18 +165,6 @@ func (e jsonSerializer) CheckSuccess(res *transport.Response) error {
 	return err
 }
 
-func (e jsonSerializer) StreamRequest() ([]byte, error) {
-	return nil, errors.New("json serializer does not support streaming requests")
-}
-
-func (e jsonSerializer) IsClientStreaming() bool {
-	return false
-}
-
-func (e jsonSerializer) IsServerStreaming() bool {
-	return false
-}
-
 type rawSerializer struct {
 	methodName string
 }
@@ -203,16 +191,4 @@ func (e rawSerializer) Response(res *transport.Response) (interface{}, error) {
 
 func (e rawSerializer) CheckSuccess(res *transport.Response) error {
 	return nil
-}
-
-func (e rawSerializer) StreamRequest() ([]byte, error) {
-	return nil, errors.New("raw serializer does not support streaming requests")
-}
-
-func (e rawSerializer) IsClientStreaming() bool {
-	return false
-}
-
-func (e rawSerializer) IsServerStreaming() bool {
-	return false
 }

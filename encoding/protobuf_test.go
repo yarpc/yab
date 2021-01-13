@@ -120,9 +120,10 @@ func TestProtobufRequest(t *testing.T) {
 			bsOut:  []byte{0x8, 0xA},
 		},
 		{
-			desc:  "nested yaml",
-			bsIn:  []byte(`{test: 1, nested: {value: 1}}`),
-			bsOut: []byte{0x8, 0x1, 0x12, 0x2, 0x8, 0x1},
+			method: "Bar/Baz",
+			desc:   "nested yaml",
+			bsIn:   []byte(`{test: 1, nested: {value: 1}}`),
+			bsOut:  []byte{0x8, 0x1, 0x12, 0x2, 0x8, 0x1},
 		},
 		{
 			method: "Bar/Baz",
@@ -133,8 +134,7 @@ func TestProtobufRequest(t *testing.T) {
 		{
 			method: "Bar/BidiStream",
 			desc:   "empty body for streaming method",
-			bsIn:   []byte(`{}`),
-			bsOut:  nil,
+			errMsg: `request method must not be invoked for a streaming rpc method: "Foo"`,
 		},
 	}
 
@@ -142,7 +142,7 @@ func TestProtobufRequest(t *testing.T) {
 	require.NoError(t, err)
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			serializer, err := NewProtobuf("Bar/Baz", source)
+			serializer, err := NewProtobuf(tt.method, source)
 			require.NoError(t, err, "Failed to create serializer")
 
 			got, err := serializer.Request(tt.bsIn)
@@ -315,13 +315,13 @@ func TestProtobufStreamReader(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("pass", func(t *testing.T) {
-		serializer, err := NewProtobuf("Bar/Baz", source)
+		serializer, err := NewProtobuf("Bar/BidiStream", source)
 		assert.NoError(t, err)
 		streamSerializer, ok := serializer.(StreamSerializer)
 		assert.True(t, ok)
 		req, reader, err := streamSerializer.StreamRequest(bytes.NewReader([]byte(`{"test": 10}`)))
 		assert.NoError(t, err)
-		assert.Equal(t, &transport.Request{Method: "Bar::Baz"}, req)
+		assert.Equal(t, &transport.Request{Method: "Bar::BidiStream"}, req)
 		body, err := reader.NextBody()
 		assert.NoError(t, err)
 		assert.Equal(t, []byte{0x8, 0xa}, body)
@@ -330,19 +330,18 @@ func TestProtobufStreamReader(t *testing.T) {
 	})
 
 	t.Run("invalid input", func(t *testing.T) {
-		serializer, err := NewProtobuf("Bar/Baz", source)
+		serializer, err := NewProtobuf("Bar/BidiStream", source)
 		assert.NoError(t, err)
 		streamSerializer := serializer.(StreamSerializer)
-		req, reader, err := streamSerializer.StreamRequest(bytes.NewReader([]byte(`{`)))
+		_, reader, err := streamSerializer.StreamRequest(bytes.NewReader([]byte(`{`)))
 		assert.NoError(t, err)
-		assert.Equal(t, &transport.Request{Method: "Bar::Baz"}, req)
 		body, err := reader.NextBody()
 		assert.EqualError(t, err, "unexpected EOF")
 		assert.Nil(t, body)
 	})
 
 	t.Run("reader error", func(t *testing.T) {
-		serializer, err := NewProtobuf("Bar/Baz", source)
+		serializer, err := NewProtobuf("Bar/BidiStream", source)
 		assert.NoError(t, err)
 		streamSerializer := serializer.(StreamSerializer)
 		reader := errorReader{err: errors.New("test error")}
@@ -351,7 +350,7 @@ func TestProtobufStreamReader(t *testing.T) {
 	})
 
 	t.Run("reader error", func(t *testing.T) {
-		serializer, err := NewProtobuf("Bar/Baz", source)
+		serializer, err := NewProtobuf("Bar/BidiStream", source)
 		assert.NoError(t, err)
 		streamSerializer := serializer.(StreamSerializer)
 		reader := &errorReader{err: io.EOF}
@@ -360,6 +359,14 @@ func TestProtobufStreamReader(t *testing.T) {
 		reader.err = errors.New("test error")
 		_, err = streamReqReader.NextBody()
 		assert.EqualError(t, err, "yaml: input error: test error")
+	})
+
+	t.Run("fail on unary method", func(t *testing.T) {
+		serializer, err := NewProtobuf("Bar/Baz", source)
+		assert.NoError(t, err)
+		streamSerializer := serializer.(StreamSerializer)
+		_, _, err = streamSerializer.StreamRequest(nil)
+		assert.EqualError(t, err, `streamrequest method must not be called for unary rpc method: "Foo"`)
 	})
 }
 

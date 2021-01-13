@@ -115,6 +115,9 @@ func (p protoSerializer) IsServerStreaming() bool {
 }
 
 func (p protoSerializer) Request(body []byte) (*transport.Request, error) {
+	if p.IsClientStreaming() || p.IsServerStreaming() {
+		return nil, fmt.Errorf("request method must not be invoked for a streaming rpc method: %q", p.method.GetInputType().GetFullyQualifiedName())
+	}
 	jsonContent, err := yaml.YAMLToJSON(body)
 	if err != nil {
 		return nil, err
@@ -151,6 +154,9 @@ func (p protoSerializer) Response(body *transport.Response) (interface{}, error)
 }
 
 func (p protoSerializer) StreamRequest(body io.Reader) (*transport.Request, StreamRequestReader, error) {
+	if !p.IsClientStreaming() || !p.IsServerStreaming() {
+		return nil, nil, fmt.Errorf("streamrequest method must not be called for unary rpc method: %q", p.method.GetInputType().GetFullyQualifiedName())
+	}
 	decoder, err := inputdecoder.New(body)
 	if err != nil {
 		return nil, nil, err

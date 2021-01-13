@@ -119,10 +119,6 @@ func (e thriftSerializer) Response(res *transport.Response) (interface{}, error)
 	return thrift.ResponseBytesToMap(e.spec, res.Body, e.opts)
 }
 
-func (e thriftSerializer) StreamRequest() ([]byte, error) {
-	return nil, errors.New("thrift serializer does not support streaming requests")
-}
-
 func findService(parsed *compile.Module, svcName string) (*compile.ServiceSpec, error) {
 	if service, err := parsed.LookupService(svcName); err == nil {
 		return service, nil
