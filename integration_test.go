@@ -484,28 +484,9 @@ func TestGRPCStream(t *testing.T) {
 					Peers:       []string{"grpc://" + addr.String()},
 				},
 			},
-			wantRes: `{
-  "test": 1
-}
+			wantRes: `{}
 
 `,
-		},
-		{
-			desc: "client streaming with invalid input",
-			opts: Options{
-				ROpts: RequestOptions{
-					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-					Procedure:         "Bar/ClientStream",
-					Timeout:           timeMillisFlag(time.Second),
-					RequestJSON:       `{`,
-				},
-				TOpts: TransportOptions{
-					ServiceName: "foo",
-					Peers:       []string{"grpc://" + addr.String()},
-				},
-			},
-			wantRes: ``,
-			wantErr: "Failed while reading stream request: unexpected EOF\n",
 		},
 		{
 			desc: "bidi streaming with immidiate error",
@@ -541,25 +522,7 @@ func TestGRPCStream(t *testing.T) {
 				},
 			},
 			wantRes:     ``,
-			wantErr:     "Failed while receiving stream response: EOF\n",
-			exitOnStart: true,
-		},
-		{
-			desc: "client streaming with EOF",
-			opts: Options{
-				ROpts: RequestOptions{
-					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-					Procedure:         "Bar/ClientStream",
-					Timeout:           timeMillisFlag(time.Second),
-					RequestJSON:       `{}`,
-				},
-				TOpts: TransportOptions{
-					ServiceName: "foo",
-					Peers:       []string{"grpc://" + addr.String()},
-				},
-			},
-			wantRes:     ``,
-			wantErr:     "Failed while receiving stream response: EOF\n",
+			wantErr:     "Received EOF while receiving bi-directional stream response: EOF\n",
 			exitOnStart: true,
 		},
 		{
@@ -626,6 +589,23 @@ func TestGRPCStream(t *testing.T) {
 }
 
 `,
+		},
+		{
+			desc: "client streaming with invalid input",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/ClientStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `{`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+					Peers:       []string{"grpc://" + addr.String()},
+				},
+			},
+			wantRes: ``,
+			wantErr: "Failed while reading stream input: unexpected EOF\n",
 		},
 	}
 	for _, tt := range tests {
