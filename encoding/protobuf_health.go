@@ -13,15 +13,14 @@ import (
 
 type protoHealthSerializer struct {
 	serviceName string
-	reqBody     []byte
 }
 
 func (p protoHealthSerializer) Encoding() Encoding {
 	return Protobuf
 }
 
-func (p protoHealthSerializer) Request() (*transport.Request, error) {
-	if len(p.reqBody) > 0 {
+func (p protoHealthSerializer) Request(body []byte) (*transport.Request, error) {
+	if len(body) > 0 {
 		return nil, errors.New("cannot specify --health and a request body")
 	}
 	bytes, err := proto.Marshal(&grpc_health_v1.HealthCheckRequest{Service: p.serviceName})
@@ -54,16 +53,4 @@ func (p protoHealthSerializer) Response(body *transport.Response) (interface{}, 
 func (p protoHealthSerializer) CheckSuccess(body *transport.Response) error {
 	_, err := p.Response(body)
 	return err
-}
-
-func (p protoHealthSerializer) IsClientStreaming() bool {
-	return false
-}
-
-func (p protoHealthSerializer) IsServerStreaming() bool {
-	return false
-}
-
-func (p protoHealthSerializer) StreamRequest() ([]byte, error) {
-	return nil, errors.New("protohealth serializer does not support streaming requests")
 }

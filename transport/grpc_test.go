@@ -29,6 +29,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
+	"strings"
 	"testing"
 	"time"
 
@@ -112,7 +113,7 @@ func TestGRPCSuccess(t *testing.T) {
 			testBarResponse := &testBarResponse{}
 			require.NoError(t, json.Unmarshal(response.Body, testBarResponse))
 			require.Equal(t, "hello", testBarResponse.One)
-		})
+		}, 0)
 }
 
 type simpleSvc struct {
@@ -186,12 +187,36 @@ func TestGRPCError(t *testing.T) {
 		require.NoError(t, err)
 		_, err = grpcTestEnv.Transport.Call(context.Background(), request)
 		require.Equal(t, yarpcerrors.UnknownErrorf("hello"), err)
+	}, 0)
+}
+
+func TestGRPCMaxResponseSize(t *testing.T) {
+	t.Run("With default max response size", func(t *testing.T) {
+		doWithGRPCTestEnv(t, "example-caller", 1, []transport.Procedure{
+			newTestJSONProcedure("example", "Foo::Bar", testLargeResponse),
+		}, "json", func(t *testing.T, grpcTestEnv *grpcTestEnv) {
+			request, err := newTestJSONRequest("example", "Foo::Bar", &testBarRequest{One: "hello", Size: 1024 * 1024 * 4})
+			require.NoError(t, err)
+			_, err = grpcTestEnv.Transport.Call(context.Background(), request)
+			require.EqualError(t, err, "code:resource-exhausted message:grpc: received message larger than max (4194315 vs. 4194304)")
+		}, 0)
+	})
+	t.Run("With custom max response size", func(t *testing.T) {
+		doWithGRPCTestEnv(t, "example-caller", 1, []transport.Procedure{
+			newTestJSONProcedure("example", "Foo::Bar", testLargeResponse),
+		}, "json", func(t *testing.T, grpcTestEnv *grpcTestEnv) {
+			request, err := newTestJSONRequest("example", "Foo::Bar", &testBarRequest{One: "hello", Size: 1024 * 1024 * 4})
+			require.NoError(t, err)
+			_, err = grpcTestEnv.Transport.Call(context.Background(), request)
+			require.NoError(t, err)
+		}, 1024*1025*4)
 	})
 }
 
 type testBarRequest struct {
 	One   string
 	Error string
+	Size  int
 }
 
 type testBarResponse struct {
@@ -207,6 +232,13 @@ func testBar(ctx context.Context, request *testBarRequest) (*testBarResponse, er
 	}
 	return &testBarResponse{
 		One: request.One,
+	}, nil
+}
+
+func testLargeResponse(ctx context.Context, request *testBarRequest) (*testBarResponse, error) {
+	return &testBarResponse{
+		// filling One with non-zero value to avoid html-escape in json encoder
+		One: strings.Repeat("a", request.Size),
 	}, nil
 }
 
@@ -235,8 +267,9 @@ func doWithGRPCTestEnv(
 	procedures []transport.Procedure,
 	encoding string,
 	f func(*testing.T, *grpcTestEnv),
+	maxResponseSize int,
 ) {
-	grpcTestEnv, err := newGRPCTestEnv(caller, numInbounds, procedures, encoding)
+	grpcTestEnv, err := newGRPCTestEnv(caller, numInbounds, procedures, encoding, maxResponseSize)
 	require.NoError(t, err)
 	defer func() {
 		assert.NoError(t, grpcTestEnv.Close())
@@ -256,8 +289,10 @@ func newGRPCTestEnv(
 	numInbounds int,
 	procedures []transport.Procedure,
 	encoding string,
+	maxResponseSize int,
 ) (_ *grpcTestEnv, err error) {
-	yarpcTransport := grpc.NewTransport()
+	options := []grpc.TransportOption{grpc.ServerMaxSendMsgSize(1024 * 1024 * 10)}
+	yarpcTransport := grpc.NewTransport(options...)
 	if err := yarpcTransport.Start(); err != nil {
 		return nil, err
 	}
@@ -289,10 +324,11 @@ func newGRPCTestEnv(
 	}
 
 	transport, err := NewGRPC(GRPCOptions{
-		Addresses: addresses,
-		Tracer:    opentracing.NoopTracer{},
-		Caller:    caller,
-		Encoding:  encoding,
+		Addresses:       addresses,
+		Tracer:          opentracing.NoopTracer{},
+		Caller:          caller,
+		Encoding:        "json",
+		MaxResponseSize: maxResponseSize,
 	})
 	if err != nil {
 		return nil, err

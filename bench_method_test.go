@@ -21,7 +21,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -49,10 +48,10 @@ func benchmarkMethodForROpts(t *testing.T, rOpts RequestOptions, p transport.Pro
 	serializer, err := NewSerializer(Options{ROpts: rOpts}, resolvedProtocolEncoding{
 		protocol: p,
 		enc:      encoding.Thrift,
-	}, bytes.NewReader(nil))
+	})
 	require.NoError(t, err, "Failed to create Thrift serializer")
 
-	req, err := serializer.Request()
+	req, err := serializer.Request(nil)
 	require.NoError(t, err, "Failed to serialize Thrift body")
 
 	req.Timeout = time.Second
