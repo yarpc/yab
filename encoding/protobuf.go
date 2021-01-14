@@ -115,7 +115,7 @@ func (p protoSerializer) IsServerStreaming() bool {
 }
 
 func (p protoSerializer) Request(body []byte) (*transport.Request, error) {
-	if p.IsClientStreaming() || p.IsServerStreaming() {
+	if p.MethodType() != Unary {
 		return nil, fmt.Errorf("request method must not be invoked for a streaming rpc method: %q", p.method.GetInputType().GetFullyQualifiedName())
 	}
 	jsonContent, err := yaml.YAMLToJSON(body)
@@ -154,7 +154,7 @@ func (p protoSerializer) Response(body *transport.Response) (interface{}, error)
 }
 
 func (p protoSerializer) StreamRequest(body io.Reader) (*transport.Request, StreamRequestReader, error) {
-	if !p.IsClientStreaming() && !p.IsServerStreaming() {
+	if p.MethodType() == Unary {
 		return nil, nil, fmt.Errorf("streamrequest method must not be called for unary rpc method: %q", p.method.GetInputType().GetFullyQualifiedName())
 	}
 	decoder, err := inputdecoder.New(body)
@@ -174,6 +174,17 @@ func (p protoSerializer) StreamRequest(body io.Reader) (*transport.Request, Stre
 func (p protoSerializer) CheckSuccess(body *transport.Response) error {
 	_, err := p.Response(body)
 	return err
+}
+
+func (p protoSerializer) MethodType() methodType {
+	if p.method.IsClientStreaming() && p.method.IsServerStreaming() {
+		return BidirectionalStream
+	} else if p.method.IsClientStreaming() {
+		return ClientStream
+	} else if p.method.IsServerStreaming() {
+		return ServerStream
+	}
+	return Unary
 }
 
 func (p protoSerializer) encode(jsonBytes []byte) ([]byte, error) {
