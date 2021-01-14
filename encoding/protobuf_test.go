@@ -370,6 +370,46 @@ func TestProtobufStreamReader(t *testing.T) {
 	})
 }
 
+func TestMethodType(t *testing.T) {
+	source, err := protobuf.NewDescriptorProviderFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name    string
+		method  string
+		rpcType methodType
+	}{
+		{
+			name:    "unary method",
+			method:  "Bar/Baz",
+			rpcType: Unary,
+		},
+		{
+			name:    "bidirectional stream method",
+			method:  "Bar/BidiStream",
+			rpcType: BidirectionalStream,
+		},
+		{
+			name:    "client stream method",
+			method:  "Bar/ClientStream",
+			rpcType: ClientStream,
+		},
+		{
+			name:    "server stream method",
+			method:  "Bar/ServerStream",
+			rpcType: ServerStream,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			proto, err := NewProtobuf(tt.method, source)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.rpcType, proto.(StreamSerializer).MethodType())
+		})
+	}
+}
+
 func getAnyType(t *testing.T, typeURL string, value proto.Message) []byte {
 	valueContent, err := proto.Marshal(value)
 	require.NoError(t, err)
