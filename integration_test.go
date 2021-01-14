@@ -372,6 +372,14 @@ func (s *simpleService) BidiStream(stream simple.Bar_BidiStreamServer) error {
 	return nil
 }
 
+func (s *simpleService) ClientStream(stream simple.Bar_ClientStreamServer) error {
+	return nil
+}
+
+func (s *simpleService) ServerStream(req *simple.Foo, stream simple.Bar_ServerStreamServer) error {
+	return nil
+}
+
 func setupGRPCServer(t *testing.T) (net.Addr, *grpc.Server) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
