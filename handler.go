@@ -73,11 +73,11 @@ func (r requestHandler) handleStreamRequest() {
 	if !ok {
 		r.out.Fatalf("Serializer does not support streaming: %v\n", r.serializer.Encoding())
 	}
-	req, streamMsgReader, err := streamSerializer.StreamRequest(r.body)
+	streamReq, streamMsgReader, err := streamSerializer.StreamRequest(r.body)
 	if err != nil {
 		r.out.Fatalf("Failed to create streaming request: %v\n", err)
 	}
-	req, err = prepareRequest(req, r.headers, r.opts)
+	streamReq.Request, err = prepareRequest(streamReq.Request, r.headers, r.opts)
 	if err != nil {
 		r.out.Fatalf("Failed while preparing the request: %v\n", err)
 	}
@@ -108,7 +108,7 @@ func (r requestHandler) handleStreamRequest() {
 	}
 
 	if r.shouldMakeInitialRequest() {
-		err = makeStreamRequest(r.transport, req, streamSerializer, requestSupplier, responseHandler)
+		err = makeStreamRequest(r.transport, streamReq, streamSerializer, requestSupplier, responseHandler)
 		if err != nil {
 			r.out.Fatalf("%v\n", err)
 		}
@@ -131,18 +131,18 @@ func isStreamingMethod(serializer encoding.Serializer) bool {
 
 // makeStreamRequest creates a stream from the given transport and handles
 // the stream request and response
-func makeStreamRequest(t transport.Transport, req *transport.Request, serializer encoding.StreamSerializer,
+func makeStreamRequest(t transport.Transport, streamReq *transport.StreamRequest, serializer encoding.StreamSerializer,
 	reqSupplier streamRequestSupplier, resHandler streamResponseHandler) error {
 	streamTransport, ok := t.(transport.StreamTransport)
 	if !ok {
 		return fmt.Errorf("Transport does not support stream calls: %q", t.Protocol())
 	}
 
-	ctx, cancel := tchannel.NewContext(req.Timeout)
+	ctx, cancel := tchannel.NewContext(streamReq.Request.Timeout)
 	defer cancel()
-	ctx = makeContextWithTrace(ctx, t, req, 0)
+	ctx = makeContextWithTrace(ctx, t, streamReq.Request, 0)
 
-	stream, err := streamTransport.CallStream(ctx, req)
+	stream, err := streamTransport.CallStream(ctx, streamReq)
 	if err != nil {
 		return fmt.Errorf("Failed while making stream call: %v", err)
 	}
