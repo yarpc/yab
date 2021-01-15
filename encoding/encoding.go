@@ -63,7 +63,7 @@ type StreamRequestReader interface {
 type StreamSerializer interface {
 	// StreamRequest creates a root stream request, a stream request reader using
 	// body reader provided
-	StreamRequest(body io.Reader) (*transport.Request, StreamRequestReader, error)
+	StreamRequest(body io.Reader) (*transport.StreamRequest, StreamRequestReader, error)
 }
 
 // The list of supported encodings.

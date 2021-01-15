@@ -307,7 +307,10 @@ func TestProtobufStreamReader(t *testing.T) {
 		assert.True(t, ok)
 		req, reader, err := streamSerializer.StreamRequest(bytes.NewReader([]byte(`{"test": 10}`)))
 		assert.NoError(t, err)
-		assert.Equal(t, &transport.Request{Method: "Bar::Baz"}, req)
+		expectedReq := &transport.StreamRequest{
+			Request: &transport.Request{Method: "Bar::Baz"},
+		}
+		assert.Equal(t, expectedReq, req)
 		body, err := reader.NextBody()
 		assert.NoError(t, err)
 		assert.Equal(t, []byte{0x8, 0xa}, body)
@@ -319,9 +322,8 @@ func TestProtobufStreamReader(t *testing.T) {
 		serializer, err := NewProtobuf("Bar/Baz", source)
 		assert.NoError(t, err)
 		streamSerializer := serializer.(StreamSerializer)
-		req, reader, err := streamSerializer.StreamRequest(bytes.NewReader([]byte(`{`)))
+		_, reader, err := streamSerializer.StreamRequest(bytes.NewReader([]byte(`{`)))
 		assert.NoError(t, err)
-		assert.Equal(t, &transport.Request{Method: "Bar::Baz"}, req)
 		body, err := reader.NextBody()
 		assert.EqualError(t, err, "unexpected EOF")
 		assert.Nil(t, body)

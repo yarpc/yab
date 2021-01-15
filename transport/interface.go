@@ -40,6 +40,11 @@ type Request struct {
 	Body             []byte
 }
 
+// StreamRequest is a wrapper of Request, to be used for streaming RPC
+type StreamRequest struct {
+	Request *Request
+}
+
 // Response represents the result of an RPC.
 type Response struct {
 	Headers map[string]string
