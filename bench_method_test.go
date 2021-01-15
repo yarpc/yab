@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/yarpc/yab/encoding"
+	"github.com/yarpc/yab/protobuf"
 	"github.com/yarpc/yab/transport"
 
 	"github.com/opentracing/opentracing-go"
@@ -55,7 +56,7 @@ func benchmarkMethodForROpts(t *testing.T, rOpts RequestOptions, p transport.Pro
 	require.NoError(t, err, "Failed to serialize Thrift body")
 
 	req.Timeout = time.Second
-	return benchmarkMethod{serializer, req, nil}
+	return benchmarkMethod{serializer, req, nil, nil}
 }
 
 func TestBenchmarkMethodWarmTransport(t *testing.T) {
@@ -298,6 +299,86 @@ func TestBenchmarkMethodWarmTransportsError(t *testing.T) {
 		} else {
 			assert.NoError(t, err, "%v: WarmTransports should succeed", msg)
 		}
+	}
+}
+
+func TestBenchmarkMethodWarmTransportGRPCStreams(t *testing.T) {
+	tests := []struct {
+		name      string
+		procedure string
+		method    string
+		num       int
+		requests  [][]byte
+
+		expectStreams        int32
+		expectSentMessage    int32
+		expectReceiveMessage int32
+	}{
+		{
+			name:      "client stream success",
+			procedure: "Bar::ClientStream",
+			method:    "Bar/ClientStream",
+			num:       10,
+			requests:  [][]byte{nil, nil},
+
+			expectStreams:        10,
+			expectSentMessage:    0,
+			expectReceiveMessage: 20,
+		},
+		{
+			name:      "bidirectional stream success",
+			procedure: "Bar::BidiStream",
+			method:    "Bar/BidiStream",
+			num:       10,
+			requests:  [][]byte{nil, nil},
+
+			expectStreams:        10,
+			expectSentMessage:    20,
+			expectReceiveMessage: 20,
+		},
+		{
+			name:      "bidirectional stream success",
+			procedure: "Bar::ServerStream",
+			method:    "Bar/ServerStream",
+			num:       10,
+			requests:  [][]byte{nil},
+
+			expectStreams:        10,
+			expectSentMessage:    10,
+			expectReceiveMessage: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lis, server, svc := setupGRPCServer(t)
+			defer server.Stop()
+			req := &transport.Request{
+				TargetService: "foo",
+				Method:        tt.procedure,
+				Timeout:       time.Second,
+			}
+			source, err := protobuf.NewDescriptorProviderFileDescriptorSetBins("./testdata/protobuf/simple/simple.proto.bin")
+			require.NoError(t, err)
+			serializer, err := encoding.NewProtobuf(tt.method, source)
+			require.NoError(t, err)
+			bench := benchmarkMethod{
+				serializer:            serializer,
+				req:                   req,
+				streamRequest:         &transport.StreamRequest{Request: req},
+				streamRequestMessages: tt.requests,
+			}
+
+			_, err = bench.WarmTransports(tt.num, TransportOptions{
+				ServiceName: "foo",
+				CallerName:  "test",
+				Peers:       []string{"grpc://" + lis.String()},
+			}, _resolvedGrpcProto, 1)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectStreams, svc.streamsOpened.Load())
+			assert.Equal(t, tt.expectSentMessage, svc.streamMessagesSent.Load())
+			assert.Equal(t, tt.expectReceiveMessage, svc.streamMessagesReceived.Load())
+		})
 	}
 }
 

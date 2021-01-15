@@ -21,6 +21,7 @@
 package main
 
 import (
+	"io"
 	"math/rand"
 	"sync"
 	"time"
@@ -37,9 +38,11 @@ type peerTransport struct {
 }
 
 type benchmarkMethod struct {
-	serializer     encoding.Serializer
-	req            *transport.Request
-	streamRequests [][]byte
+	serializer encoding.Serializer
+	req        *transport.Request
+
+	streamRequest         *transport.StreamRequest
+	streamRequestMessages [][]byte
 }
 
 // WarmTransport warms up a transport and returns it. The transport is warmed
@@ -79,13 +82,31 @@ func (m benchmarkMethod) callUnary(t transport.Transport) (time.Duration, error)
 }
 
 func (m benchmarkMethod) callStream(t transport.Transport) (time.Duration, error) {
+	var streamRequestIdx int
+	var streamResponses [][]byte
+
+	requestSupplier := func() ([]byte, error) {
+		if len(m.streamRequestMessages) == streamRequestIdx {
+			return nil, io.EOF
+		}
+
+		req := m.streamRequestMessages[streamRequestIdx]
+		streamRequestIdx++
+		return req, nil
+	}
+
+	captureResponseBody := func(resBody []byte) error {
+		streamResponses = append(streamResponses, resBody)
+		return nil
+	}
+
 	start := time.Now()
-	responses, err := makeStreamRequest(t, m.req, m.streamRequests)
+	err := makeStreamRequest(t, m.streamRequest, m.serializer, requestSupplier, captureResponseBody)
 	duration := time.Since(start)
 	if err != nil {
 		return duration, err
 	}
-	for _, res := range responses {
+	for _, res := range streamResponses {
 		if err = m.serializer.CheckSuccess(&transport.Response{Body: res}); err != nil {
 			return duration, err
 		}

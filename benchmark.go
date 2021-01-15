@@ -208,9 +208,9 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 			state := states[i*opts.Concurrency+j]
 
 			wg.Add(1)
-			go func(c transport.Transport) {
+			go func(c peerTransport) {
 				defer wg.Done()
-				runWorker(c, m, state, run, logger)
+				runWorker(c.Transport, m, state, run, logger)
 			}(c)
 		}
 	}

@@ -82,6 +82,9 @@ func (r requestHandler) handleStreamRequest() {
 		r.out.Fatalf("Failed while preparing the request: %v\n", err)
 	}
 
+	// records stream requests for benchmark
+	var streamRequestMessages [][]byte
+
 	requestSupplier := func() ([]byte, error) {
 		msg, err := streamMsgReader.NextBody()
 		if err == io.EOF {
@@ -90,6 +93,7 @@ func (r requestHandler) handleStreamRequest() {
 		if err != nil {
 			return nil, fmt.Errorf("Failed while reading stream input: %v", err)
 		}
+		streamRequestMessages = append(streamRequestMessages, msg)
 		return msg, nil
 	}
 
@@ -108,11 +112,29 @@ func (r requestHandler) handleStreamRequest() {
 	}
 
 	if r.shouldMakeInitialRequest() {
-		err = makeStreamRequest(r.transport, streamReq, streamSerializer, requestSupplier, responseHandler)
+		err = makeStreamRequest(r.transport, streamReq, r.serializer, requestSupplier, responseHandler)
 		if err != nil {
 			r.out.Fatalf("%v\n", err)
 		}
+	} else {
+		// read the request messages explicitly as there was no initial request
+		for {
+			_, err := requestSupplier()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				r.out.Fatalf("%v\n", err)
+			}
+		}
 	}
+
+	runBenchmark(r.out, r.logger, r.opts, r.resolved, benchmarkMethod{
+		serializer:            r.serializer,
+		req:                   streamReq.Request,
+		streamRequest:         streamReq,
+		streamRequestMessages: streamRequestMessages,
+	})
 }
 
 // shouldMakeInitialRequest returns true if initial request must be made
@@ -131,11 +153,16 @@ func isStreamingMethod(serializer encoding.Serializer) bool {
 
 // makeStreamRequest creates a stream from the given transport and handles
 // the stream request and response
-func makeStreamRequest(t transport.Transport, streamReq *transport.StreamRequest, serializer encoding.StreamSerializer,
+func makeStreamRequest(t transport.Transport, streamReq *transport.StreamRequest, serializer encoding.Serializer,
 	reqSupplier streamRequestSupplier, resHandler streamResponseHandler) error {
 	streamTransport, ok := t.(transport.StreamTransport)
 	if !ok {
 		return fmt.Errorf("Transport does not support stream calls: %q", t.Protocol())
+	}
+
+	streamSerializer, ok := serializer.(encoding.StreamSerializer)
+	if !ok {
+		return fmt.Errorf("Serializer does not support streaming: %v", serializer.Encoding())
 	}
 
 	ctx, cancel := tchannel.NewContext(streamReq.Request.Timeout)
@@ -147,7 +174,7 @@ func makeStreamRequest(t transport.Transport, streamReq *transport.StreamRequest
 		return fmt.Errorf("Failed while making stream call: %v", err)
 	}
 
-	rpcType := serializer.MethodType()
+	rpcType := streamSerializer.MethodType()
 	if rpcType == encoding.BidirectionalStream {
 		return makeBidiStream(ctx, stream, reqSupplier, resHandler)
 	} else if rpcType == encoding.ClientStream {
