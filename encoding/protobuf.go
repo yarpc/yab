@@ -154,7 +154,7 @@ func (p protoSerializer) Response(body *transport.Response) (interface{}, error)
 	return unmarshaledJSON, nil
 }
 
-func (p protoSerializer) StreamRequest(body io.Reader) (*transport.Request, StreamRequestReader, error) {
+func (p protoSerializer) StreamRequest(body io.Reader) (*transport.StreamRequest, StreamRequestReader, error) {
 	if p.MethodType() == Unary {
 		return nil, nil, fmt.Errorf("streamrequest method must not be called for unary rpc method: %q", p.method.GetInputType().GetFullyQualifiedName())
 	}
@@ -167,8 +167,10 @@ func (p protoSerializer) StreamRequest(body io.Reader) (*transport.Request, Stre
 		decoder: decoder,
 		proto:   p,
 	}
-	streamReq := &transport.Request{
-		Method: procedure.ToName(p.serviceName, p.methodName),
+	streamReq := &transport.StreamRequest{
+		Request: &transport.Request{
+			Method: procedure.ToName(p.serviceName, p.methodName),
+		},
 	}
 	return streamReq, reader, nil
 }
