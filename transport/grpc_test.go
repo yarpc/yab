@@ -147,14 +147,6 @@ func (s *simpleSvc) BidiStream(stream simple.Bar_BidiStreamServer) error {
 	return nil
 }
 
-func (s *simpleSvc) ClientStream(simple.Bar_ClientStreamServer) error {
-	return nil
-}
-
-func (s *simpleSvc) ServerStream(*simple.Foo, simple.Bar_ServerStreamServer) error {
-	return nil
-}
-
 func TestGRPCStream(t *testing.T) {
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	assert.NoError(t, err)

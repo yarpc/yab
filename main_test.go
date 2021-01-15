@@ -110,7 +110,7 @@ func TestRunWithOptions(t *testing.T) {
 					Peers:       []string{"1.1.1.1:1"},
 				},
 			},
-			errMsg: "Failed to create unary request: yaml: line 1: did not find expected ',' or '}'",
+			errMsg: "Failed while serializing the input: yaml: line 1: did not find expected ',' or '}'",
 		},
 		{
 			desc: "Invalid host:port, fail to make request",
