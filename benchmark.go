@@ -280,6 +280,7 @@ func outputPlaintext(out output, latencyValues map[float64]time.Duration, summar
 	out.Printf("Elapsed time (seconds):   %.2f\n", summary.ElapsedTimeSeconds)
 	out.Printf("Total requests:           %v\n", summary.TotalRequests)
 	out.Printf("RPS:                      %.2f\n", summary.RPS)
+	// TODO: add sent/received stream messages summary
 }
 
 func printParameters(out output, parameters Parameters) {

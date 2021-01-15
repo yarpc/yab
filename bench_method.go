@@ -85,6 +85,7 @@ func (m benchmarkMethod) callStream(t transport.Transport) (time.Duration, error
 	var streamRequestIdx int
 	var streamResponses [][]byte
 
+	// TODO: support `stream-interval` option which throttles the rate of input
 	requestSupplier := func() ([]byte, error) {
 		if len(m.streamRequestMessages) == streamRequestIdx {
 			return nil, io.EOF
