@@ -489,6 +489,23 @@ func TestGRPCStream(t *testing.T) {
 `,
 		},
 		{
+			desc: "sever streaming with multiple input",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/ServerStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `{}{}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+					Peers:       []string{"grpc://" + addr.String()},
+				},
+			},
+			wantErr: "Request data contains more than 1 message for server-streaming RPC\n",
+			wantRes: ``,
+		},
+		{
 			desc: "bidi streaming with immidiate error",
 			opts: Options{
 				ROpts: RequestOptions{
@@ -522,7 +539,7 @@ func TestGRPCStream(t *testing.T) {
 				},
 			},
 			wantRes:     ``,
-			wantErr:     "Received EOF while receiving bi-directional stream response: EOF\n",
+			wantErr:     "",
 			exitOnStart: true,
 		},
 		{

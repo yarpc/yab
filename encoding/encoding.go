@@ -32,6 +32,19 @@ import (
 	"github.com/yarpc/yab/unmarshal"
 )
 
+type methodType int
+
+const (
+	// Unary method type is a traditional RPC
+	Unary methodType = iota
+	// ClientStream method type RPC sends multiple messages
+	ClientStream
+	// ServerStream method type RPC receives multiple messages
+	ServerStream
+	// BidirectionalStream type RPC can send and receive multiple messages
+	BidirectionalStream
+)
+
 // Encoding is the representation of the data on the wire.
 type Encoding string
 
@@ -63,13 +76,10 @@ type StreamRequestReader interface {
 type StreamSerializer interface {
 	// StreamRequest creates a root stream request, a stream request reader using
 	// body reader provided
-	StreamRequest(body io.Reader) (*transport.Request, StreamRequestReader, error)
+	StreamRequest(body io.Reader) (*transport.StreamRequest, StreamRequestReader, error)
 
-	// IsClientStreaming returns true for client streaming methods
-	IsClientStreaming() bool
-
-	// IsServerStreaming returns true for server streaming methods
-	IsServerStreaming() bool
+	// MethodType returns the type of RPC method
+	MethodType() methodType
 }
 
 // The list of supported encodings.

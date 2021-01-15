@@ -44,6 +44,7 @@ func (r *jsonInputDecoder) Next() ([]byte, error) {
 	if !r.dec.More() {
 		return nil, io.EOF
 	}
+
 	var v json.RawMessage
 	err := r.dec.Decode(&v)
 	return []byte(v), err

@@ -135,7 +135,7 @@ func (t *grpcTransport) Call(ctx context.Context, request *Request) (*Response, 
 	return yarpcResponseToResponse(transportResponse)
 }
 
-func (t *grpcTransport) CallStream(ctx context.Context, request *Request) (*transport.ClientStream, error) {
+func (t *grpcTransport) CallStream(ctx context.Context, request *StreamRequest) (*transport.ClientStream, error) {
 	return t.StreamOutbound.CallStream(ctx, t.requestToYARPCStreamRequest(request))
 }
 
@@ -143,15 +143,15 @@ func (t *grpcTransport) Close() error {
 	return multierr.Combine(t.Transport.Stop(), t.Outbound.Stop())
 }
 
-func (t *grpcTransport) requestToYARPCStreamRequest(request *Request) *transport.StreamRequest {
+func (t *grpcTransport) requestToYARPCStreamRequest(streamRequest *StreamRequest) *transport.StreamRequest {
 	return &transport.StreamRequest{
 		Meta: &transport.RequestMeta{
 			Caller:          t.Caller,
-			Service:         request.TargetService,
+			Service:         streamRequest.Request.TargetService,
 			Encoding:        transport.Encoding(t.Encoding),
-			Procedure:       request.Method,
-			Headers:         transport.HeadersFromMap(request.Headers),
-			ShardKey:        request.ShardKey,
+			Procedure:       streamRequest.Request.Method,
+			Headers:         transport.HeadersFromMap(streamRequest.Request.Headers),
+			ShardKey:        streamRequest.Request.ShardKey,
 			RoutingKey:      t.RoutingKey,
 			RoutingDelegate: t.RoutingDelegate,
 		},

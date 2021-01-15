@@ -321,7 +321,10 @@ func TestProtobufStreamReader(t *testing.T) {
 		assert.True(t, ok)
 		req, reader, err := streamSerializer.StreamRequest(bytes.NewReader([]byte(`{"test": 10}`)))
 		assert.NoError(t, err)
-		assert.Equal(t, &transport.Request{Method: "Bar::BidiStream"}, req)
+		expectedReq := &transport.StreamRequest{
+			Request: &transport.Request{Method: "Bar::BidiStream"},
+		}
+		assert.Equal(t, expectedReq, req)
 		body, err := reader.NextBody()
 		assert.NoError(t, err)
 		assert.Equal(t, []byte{0x8, 0xa}, body)
@@ -368,6 +371,46 @@ func TestProtobufStreamReader(t *testing.T) {
 		_, _, err = streamSerializer.StreamRequest(nil)
 		assert.EqualError(t, err, `streamrequest method must not be called for unary rpc method: "Foo"`)
 	})
+}
+
+func TestMethodType(t *testing.T) {
+	source, err := protobuf.NewDescriptorProviderFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name    string
+		method  string
+		rpcType methodType
+	}{
+		{
+			name:    "unary method",
+			method:  "Bar/Baz",
+			rpcType: Unary,
+		},
+		{
+			name:    "bidirectional stream method",
+			method:  "Bar/BidiStream",
+			rpcType: BidirectionalStream,
+		},
+		{
+			name:    "client stream method",
+			method:  "Bar/ClientStream",
+			rpcType: ClientStream,
+		},
+		{
+			name:    "server stream method",
+			method:  "Bar/ServerStream",
+			rpcType: ServerStream,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			proto, err := NewProtobuf(tt.method, source)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.rpcType, proto.(StreamSerializer).MethodType())
+		})
+	}
 }
 
 func getAnyType(t *testing.T, typeURL string, value proto.Message) []byte {
