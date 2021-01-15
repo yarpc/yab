@@ -172,9 +172,11 @@ func TestGRPCStream(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	stream, err := streamClient.CallStream(ctx, &Request{
-		TargetService: "Bar",
-		Method:        "Bar::BidiStream",
+	stream, err := streamClient.CallStream(ctx, &StreamRequest{
+		Request: &Request{
+			TargetService: "Bar",
+			Method:        "Bar::BidiStream",
+		},
 	})
 	assert.NoError(t, err)
 	req, err := proto.Marshal(&simple.Foo{})

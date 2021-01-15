@@ -41,6 +41,11 @@ type Request struct {
 	Body             []byte
 }
 
+// StreamRequest is a wrapper of Request, to be used for streaming RPC
+type StreamRequest struct {
+	Request *Request
+}
+
 // Response represents the result of an RPC.
 type Response struct {
 	Headers map[string]string
@@ -72,7 +77,7 @@ type Transport interface {
 // StreamTransport defines the interface for the underlying transport which
 // supports streaming
 type StreamTransport interface {
-	CallStream(ctx context.Context, request *Request) (*transport.ClientStream, error)
+	CallStream(ctx context.Context, request *StreamRequest) (*transport.ClientStream, error)
 }
 
 // TransportCloser is a Transport that can be closed.
