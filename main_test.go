@@ -467,7 +467,7 @@ func TestBenchmarkLowRPSDuration(t *testing.T) {
 	start := time.Now()
 	main()
 	duration := time.Since(start)
-	assert.True(t, duration < 200*time.Millisecond, "Expected 100ms benchmark to complete within 200ms, took %v", duration)
+	assert.True(t, duration < 400*time.Millisecond, "Expected 100ms benchmark to complete within 400ms, took %v", duration)
 }
 
 func TestHelpOutput(t *testing.T) {
