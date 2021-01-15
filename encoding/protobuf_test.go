@@ -134,7 +134,7 @@ func TestProtobufRequest(t *testing.T) {
 		{
 			method: "Bar/BidiStream",
 			desc:   "empty body for streaming method",
-			errMsg: `request method must not be invoked for a streaming rpc method: "Foo"`,
+			errMsg: `request method must be invoked only with unary rpc method: "Foo"`,
 		},
 	}
 
@@ -369,7 +369,7 @@ func TestProtobufStreamReader(t *testing.T) {
 		assert.NoError(t, err)
 		streamSerializer := serializer.(StreamSerializer)
 		_, _, err = streamSerializer.StreamRequest(nil)
-		assert.EqualError(t, err, `streamrequest method must not be called for unary rpc method: "Foo"`)
+		assert.EqualError(t, err, `streamrequest method must be called only with streaming rpc method: "Foo"`)
 	})
 }
 
@@ -380,7 +380,7 @@ func TestMethodType(t *testing.T) {
 	tests := []struct {
 		name    string
 		method  string
-		rpcType methodType
+		rpcType MethodType
 	}{
 		{
 			name:    "unary method",

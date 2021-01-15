@@ -32,11 +32,12 @@ import (
 	"github.com/yarpc/yab/unmarshal"
 )
 
-type methodType int
+// MethodType is type of the RPC method
+type MethodType int
 
 const (
 	// Unary method type is a traditional RPC
-	Unary methodType = iota
+	Unary MethodType = iota
 	// ClientStream method type RPC sends multiple messages
 	ClientStream
 	// ServerStream method type RPC receives multiple messages
@@ -79,7 +80,7 @@ type StreamSerializer interface {
 	StreamRequest(body io.Reader) (*transport.StreamRequest, StreamRequestReader, error)
 
 	// MethodType returns the type of RPC method
-	MethodType() methodType
+	MethodType() MethodType
 }
 
 // The list of supported encodings.
