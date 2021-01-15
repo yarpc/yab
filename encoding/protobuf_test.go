@@ -380,7 +380,7 @@ func TestMethodType(t *testing.T) {
 	tests := []struct {
 		name    string
 		method  string
-		rpcType methodType
+		rpcType MethodType
 	}{
 		{
 			name:    "unary method",

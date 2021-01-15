@@ -172,7 +172,7 @@ func (p protoSerializer) CheckSuccess(body *transport.Response) error {
 	return err
 }
 
-func (p protoSerializer) MethodType() methodType {
+func (p protoSerializer) MethodType() MethodType {
 	if p.method.IsClientStreaming() && p.method.IsServerStreaming() {
 		return BidirectionalStream
 	}
