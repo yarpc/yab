@@ -77,7 +77,7 @@ type Transport interface {
 // StreamTransport defines the interface for the underlying transport which
 // supports streaming
 type StreamTransport interface {
-	CallStream(ctx context.Context, request *Request) (*transport.ClientStream, error)
+	CallStream(ctx context.Context, request *StreamRequest) (*transport.ClientStream, error)
 }
 
 // TransportCloser is a Transport that can be closed.
