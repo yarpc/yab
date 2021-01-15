@@ -321,7 +321,10 @@ func TestProtobufStreamReader(t *testing.T) {
 		assert.True(t, ok)
 		req, reader, err := streamSerializer.StreamRequest(bytes.NewReader([]byte(`{"test": 10}`)))
 		assert.NoError(t, err)
-		assert.Equal(t, &transport.Request{Method: "Bar::BidiStream"}, req)
+		expectedReq := &transport.StreamRequest{
+			Request: &transport.Request{Method: "Bar::BidiStream"},
+		}
+		assert.Equal(t, expectedReq, req)
 		body, err := reader.NextBody()
 		assert.NoError(t, err)
 		assert.Equal(t, []byte{0x8, 0xa}, body)
