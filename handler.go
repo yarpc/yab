@@ -16,12 +16,12 @@ import (
 	"go.uber.org/zap"
 )
 
-// streamRequestSupplier is a function that returns the stream message body
+// streamRequestSupplierFn is a function that returns the stream message body
 // if supplier has no more messages it must return io.EOF
-type streamRequestSupplier func() (requestBody []byte, err error)
+type streamRequestSupplierFn func() (requestBody []byte, err error)
 
-// streamResponseHandler is a function that receives the stream response body
-type streamResponseHandler func(resBody []byte) error
+// streamResponseHandlerFn is a function that receives the stream response body
+type streamResponseHandlerFn func(responseBody []byte) error
 
 type requestHandler struct {
 	out        output
@@ -39,6 +39,7 @@ func (r requestHandler) handle() {
 		r.handleStreamRequest()
 		return
 	}
+
 	r.handleUnaryRequest()
 }
 
@@ -48,10 +49,12 @@ func (r requestHandler) handleUnaryRequest() {
 	if err != nil {
 		r.out.Fatalf("Failed while reading the input: %v\n", err)
 	}
+
 	req, err := r.serializer.Request(reqInput)
 	if err != nil {
 		r.out.Fatalf("Failed while serializing the input: %v\n", err)
 	}
+
 	req, err = prepareRequest(req, r.headers, r.opts)
 	if err != nil {
 		r.out.Fatalf("Failed while preparing the request: %v\n", err)
@@ -73,16 +76,18 @@ func (r requestHandler) handleStreamRequest() {
 	if !ok {
 		r.out.Fatalf("Serializer does not support streaming: %v\n", r.serializer.Encoding())
 	}
+
 	streamReq, streamMsgReader, err := streamSerializer.StreamRequest(r.body)
 	if err != nil {
 		r.out.Fatalf("Failed to create streaming request: %v\n", err)
 	}
+
 	streamReq.Request, err = prepareRequest(streamReq.Request, r.headers, r.opts)
 	if err != nil {
 		r.out.Fatalf("Failed while preparing the request: %v\n", err)
 	}
 
-	requestSupplier := func() ([]byte, error) {
+	nextBodyFn := func() ([]byte, error) {
 		msg, err := streamMsgReader.NextBody()
 		if err == io.EOF {
 			return nil, err
@@ -90,10 +95,11 @@ func (r requestHandler) handleStreamRequest() {
 		if err != nil {
 			return nil, fmt.Errorf("Failed while reading stream input: %v", err)
 		}
+
 		return msg, nil
 	}
 
-	responseHandler := func(body []byte) error {
+	responseHandlerFn := func(body []byte) error {
 		res, err := r.serializer.Response(&transport.Response{Body: body})
 		if err != nil {
 			return fmt.Errorf("Failed while serializing stream response: %v", err)
@@ -103,16 +109,18 @@ func (r requestHandler) handleStreamRequest() {
 		if err != nil {
 			return fmt.Errorf("Failed to convert map to JSON: %v\nMap: %+v", err, res)
 		}
+
 		r.out.Printf("%s\n\n", bs)
 		return nil
 	}
 
 	if r.shouldMakeInitialRequest() {
-		err = makeStreamRequest(r.transport, streamReq, streamSerializer, requestSupplier, responseHandler)
-		if err != nil {
+		if err = makeStreamRequest(r.transport, streamReq, streamSerializer, nextBodyFn, responseHandlerFn); err != nil {
 			r.out.Fatalf("%v\n", err)
 		}
 	}
+
+	// TODO: handle streaming benchmark
 }
 
 // shouldMakeInitialRequest returns true if initial request must be made
@@ -126,18 +134,24 @@ func isStreamingMethod(serializer encoding.Serializer) bool {
 	if !ok {
 		return false
 	}
+
 	return streamSerializer.MethodType() != encoding.Unary
 }
 
-// makeStreamRequest creates a stream from the given transport and handles
-// the stream request and response
+// makeStreamRequest opens a stream rpc from the given transport and stream request
+// it then delegates to handler based on rpc type to handle request and response of the stream
+// nextBodyFn is called to get the next stream message body
+// responseHandlerFn is called with the response of the stream
 func makeStreamRequest(t transport.Transport, streamReq *transport.StreamRequest, serializer encoding.StreamSerializer,
-	reqSupplier streamRequestSupplier, resHandler streamResponseHandler) error {
+	nextBodyFn streamRequestSupplierFn, responseHandlerFn streamResponseHandlerFn) error {
+
 	streamTransport, ok := t.(transport.StreamTransport)
 	if !ok {
 		return fmt.Errorf("Transport does not support stream calls: %q", t.Protocol())
 	}
 
+	// uses tchannel context to remain compatible with tchannel transport
+	// although it does not support streaming, this needs to be removed later
 	ctx, cancel := tchannel.NewContext(streamReq.Request.Timeout)
 	defer cancel()
 	ctx = makeContextWithTrace(ctx, t, streamReq.Request, 0)
@@ -147,45 +161,46 @@ func makeStreamRequest(t transport.Transport, streamReq *transport.StreamRequest
 		return fmt.Errorf("Failed while making stream call: %v", err)
 	}
 
-	rpcType := serializer.MethodType()
-	if rpcType == encoding.BidirectionalStream {
-		return makeBidiStream(ctx, stream, reqSupplier, resHandler)
-	} else if rpcType == encoding.ClientStream {
-		return makeClientStream(ctx, stream, reqSupplier, resHandler)
+	switch serializer.MethodType() {
+	case encoding.BidirectionalStream:
+		return makeBidiStream(ctx, stream, nextBodyFn, responseHandlerFn)
+	case encoding.ClientStream:
+		return makeClientStream(ctx, stream, nextBodyFn, responseHandlerFn)
+	default:
+		return makeServerStream(ctx, stream, nextBodyFn, responseHandlerFn)
 	}
-	return makeServerStream(ctx, stream, reqSupplier, resHandler)
 }
 
 // makeServerStream starts server-side streaming rpc
 func makeServerStream(ctx context.Context, stream *yarpctransport.ClientStream,
-	reqSupplier streamRequestSupplier, resHandler streamResponseHandler) error {
+	nextBodyFn streamRequestSupplierFn, responseHandlerFn streamResponseHandlerFn) error {
 
-	req, err := reqSupplier()
+	req, err := nextBodyFn()
+	// use nil body if no initial request input is empty, since request
+	// is mandatory in server streaming rpc
 	if err != nil && err != io.EOF {
 		return err
 	}
 	if err == nil {
 		// verify there is no second request
-		_, err = reqSupplier()
-		if err == nil {
+		if _, err = nextBodyFn(); err == nil {
 			return fmt.Errorf("Request data contains more than 1 message for server-streaming RPC")
 		} else if err != io.EOF {
 			return err
 		}
 	}
 
-	err = sendStreamMessage(ctx, stream, req)
-	if err != nil {
+	if err = sendStreamMessage(ctx, stream, req); err != nil {
 		return err
 	}
 
 	for err == nil {
 		var resBody []byte
-		resBody, err = receiveStreamMessage(ctx, stream)
-		if err != nil {
+		if resBody, err = receiveStreamMessage(ctx, stream); err != nil {
 			break
 		}
-		err = resHandler(resBody)
+
+		err = responseHandlerFn(resBody)
 	}
 
 	if err == io.EOF {
@@ -196,12 +211,12 @@ func makeServerStream(ctx context.Context, stream *yarpctransport.ClientStream,
 
 // makeClientStream starts client-side streaming rpc
 func makeClientStream(ctx context.Context, stream *yarpctransport.ClientStream,
-	reqSupplier streamRequestSupplier, resHandler streamResponseHandler) error {
+	nextBodyFn streamRequestSupplierFn, responseHandlerFn streamResponseHandlerFn) error {
 
 	var err error
 	for err == nil {
 		var reqBody []byte
-		reqBody, err = reqSupplier()
+		reqBody, err = nextBodyFn()
 		if err != nil {
 			break
 		}
@@ -219,12 +234,12 @@ func makeClientStream(ctx context.Context, stream *yarpctransport.ClientStream,
 	if err != nil {
 		return err
 	}
-	return resHandler(res)
+	return responseHandlerFn(res)
 }
 
 // makeBidiStream starts bi-directional streaming rpc
 func makeBidiStream(ctx context.Context, stream *yarpctransport.ClientStream,
-	reqSupplier streamRequestSupplier, resHandler streamResponseHandler) error {
+	nextBodyFn streamRequestSupplierFn, responseHandlerFn streamResponseHandlerFn) error {
 
 	var wg sync.WaitGroup
 	var sendErr error
@@ -240,12 +255,14 @@ func makeBidiStream(ctx context.Context, stream *yarpctransport.ClientStream,
 		var err error
 		for err == nil {
 			var reqBody []byte
-			reqBody, err = reqSupplier()
+			reqBody, err = nextBodyFn()
 			if err == io.EOF {
 				err = closeSendStream(ctx, stream)
 				break
 			}
 			if err != nil {
+				// cancel the context to unblock the routine waiting on receiving
+				// the stream message
 				cancel()
 				break
 			}
@@ -258,31 +275,35 @@ func makeBidiStream(ctx context.Context, stream *yarpctransport.ClientStream,
 		}
 	}()
 
-	var err error
-	for err == nil {
+	var receiveErr error
+	for receiveErr == nil {
 		var resBody []byte
-		resBody, err = receiveStreamMessage(ctx, stream)
-		if err != nil {
+		resBody, receiveErr = receiveStreamMessage(ctx, stream)
+		if receiveErr != nil {
 			break
 		}
-		err = resHandler(resBody)
+
+		receiveErr = responseHandlerFn(resBody)
 	}
 
 	cancel()
 	wg.Wait()
 
-	if sendErr != nil && sendErr != io.EOF {
-		err = sendErr
+	if receiveErr != nil && receiveErr != io.EOF {
+		return receiveErr
 	}
 
-	if err == io.EOF {
-		return nil
+	if sendErr != nil && sendErr != io.EOF {
+		return sendErr
 	}
-	return err
+
+	return nil
 }
 
 // sendStreamMessage sends the stream message using message body provided
 func sendStreamMessage(ctx context.Context, stream *yarpctransport.ClientStream, msgBody []byte) error {
+	// TODO: print the stream message being sent on STDOUT to inform user about
+	// request message dispatch
 	req := &yarpctransport.StreamMessage{Body: ioutil.NopCloser(bytes.NewReader(msgBody))}
 	if err := stream.SendMessage(ctx, req); err != nil {
 		return fmt.Errorf("Failed while sending stream request: %v", err)
