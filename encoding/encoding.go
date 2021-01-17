@@ -37,7 +37,7 @@ type MethodType int
 
 const (
 	// Unary method type is a traditional RPC
-	Unary MethodType = iota
+	Unary MethodType = iota + 1
 	// ClientStream method type RPC sends multiple messages
 	ClientStream
 	// ServerStream method type RPC receives multiple messages

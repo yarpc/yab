@@ -155,15 +155,18 @@ func (p protoSerializer) StreamRequest(body io.Reader) (*transport.StreamRequest
 	if err != nil {
 		return nil, nil, err
 	}
-	reader := protoStreamRequestReader{
-		decoder: decoder,
-		proto:   p,
-	}
+
 	streamReq := &transport.StreamRequest{
 		Request: &transport.Request{
 			Method: procedure.ToName(p.serviceName, p.methodName),
 		},
 	}
+
+	reader := protoStreamRequestReader{
+		decoder: decoder,
+		proto:   p,
+	}
+
 	return streamReq, reader, nil
 }
 
@@ -192,10 +195,12 @@ func (p protoSerializer) encode(jsonBytes []byte) ([]byte, error) {
 	if err := req.UnmarshalJSON(jsonBytes); err != nil {
 		return nil, fmt.Errorf("could not parse given request body as message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
 	}
+
 	bytes, err := proto.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("could marshal message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
 	}
+
 	return bytes, nil
 }
 
@@ -205,10 +210,11 @@ type protoStreamRequestReader struct {
 }
 
 func (p protoStreamRequestReader) NextBody() ([]byte, error) {
-	body, err := p.decoder.Next()
+	body, err := p.decoder.NextJSONBytes()
 	if err != nil {
 		return nil, err
 	}
+
 	return p.proto.encode(body)
 }
 
