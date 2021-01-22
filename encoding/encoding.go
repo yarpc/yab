@@ -55,11 +55,11 @@ type Serializer interface {
 // StreamRequestReader interface exposes method to read multiple request body
 type StreamRequestReader interface {
 	// NextBody returns the encoded request body if available, and if not, returns an
-	// io.EOF error
+	// io.EOF to indicate end of requests and caller must not call it again
 	NextBody() ([]byte, error)
 }
 
-// StreamSerializer interface exposes additional methods to handle stream requests
+// StreamSerializer serializes and deserializes data for a stream requests
 type StreamSerializer interface {
 	// StreamRequest creates a root stream request, a stream request reader using
 	// body reader provided
