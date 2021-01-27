@@ -64,23 +64,23 @@ type Serializer interface {
 	// CheckSuccess checks whether the response body is a success, and if not, returns an
 	// error with the failure reason.
 	CheckSuccess(body *transport.Response) error
+
+	// MethodType returns the type of RPC method
+	MethodType() MethodType
 }
 
 // StreamRequestReader interface exposes method to read multiple request body
 type StreamRequestReader interface {
 	// NextBody returns the encoded request body if available, and if not, returns an
-	// io.EOF error
+	// io.EOF to indicate end of requests and caller must not call it again
 	NextBody() ([]byte, error)
 }
 
-// StreamSerializer interface exposes additional methods to handle stream requests
+// StreamSerializer serializes and deserializes data for a stream requests
 type StreamSerializer interface {
 	// StreamRequest creates a root stream request, a stream request reader using
 	// body reader provided
 	StreamRequest(body io.Reader) (*transport.StreamRequest, StreamRequestReader, error)
-
-	// MethodType returns the type of RPC method
-	MethodType() MethodType
 }
 
 // The list of supported encodings.
@@ -145,6 +145,10 @@ func (e jsonSerializer) Encoding() Encoding {
 	return JSON
 }
 
+func (e jsonSerializer) MethodType() MethodType {
+	return Unary
+}
+
 // Request unmarshals the input to make sure it's valid JSON, and then
 // Marshals the map to produce consistent output with whitespace removed
 // and sorted field order.
@@ -185,6 +189,10 @@ func NewRaw(methodName string) Serializer {
 
 func (e rawSerializer) Encoding() Encoding {
 	return Raw
+}
+
+func (e rawSerializer) MethodType() MethodType {
+	return Unary
 }
 
 func (e rawSerializer) Request(input []byte) (*transport.Request, error) {

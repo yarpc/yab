@@ -40,7 +40,7 @@ func TestIsJSONInput(t *testing.T) {
 		buf := bufio.NewReader(bytes.NewReader([]byte(`test: json`)))
 		isJSON, err := isJSONInput(buf)
 		assert.False(t, isJSON, "expected false")
-		assert.NoError(t, err, "exepected error")
+		assert.NoError(t, err, "unexpected error")
 	})
 }
 
