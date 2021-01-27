@@ -106,6 +106,21 @@ func (p protoSerializer) Encoding() Encoding {
 	return Protobuf
 }
 
+func (p protoSerializer) MethodType() MethodType {
+	if p.method.IsClientStreaming() && p.method.IsServerStreaming() {
+		return BidirectionalStream
+	}
+
+	if p.method.IsClientStreaming() {
+		return ClientStream
+	}
+
+	if p.method.IsServerStreaming() {
+		return ServerStream
+	}
+	return Unary
+}
+
 func (p protoSerializer) Request(body []byte) (*transport.Request, error) {
 	if p.MethodType() != Unary {
 		return nil, fmt.Errorf("request method must be invoked only with unary rpc method: %q", p.method.GetInputType().GetFullyQualifiedName())
@@ -173,21 +188,6 @@ func (p protoSerializer) StreamRequest(body io.Reader) (*transport.StreamRequest
 func (p protoSerializer) CheckSuccess(body *transport.Response) error {
 	_, err := p.Response(body)
 	return err
-}
-
-func (p protoSerializer) MethodType() MethodType {
-	if p.method.IsClientStreaming() && p.method.IsServerStreaming() {
-		return BidirectionalStream
-	}
-
-	if p.method.IsClientStreaming() {
-		return ClientStream
-	}
-
-	if p.method.IsServerStreaming() {
-		return ServerStream
-	}
-	return Unary
 }
 
 func (p protoSerializer) encode(jsonBytes []byte) ([]byte, error) {
