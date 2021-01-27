@@ -60,6 +60,7 @@ func (r requestHandler) handleUnaryRequest() {
 		r.out.Fatalf("Failed while preparing the request: %v\n", err)
 	}
 
+	// decides if warm requests must be dispatched before benchmark
 	if r.shouldMakeInitialRequest() {
 		makeInitialRequest(r.out, r.transport, r.serializer, req)
 	}
@@ -115,7 +116,7 @@ func (r requestHandler) handleStreamRequest() {
 	}
 
 	if r.shouldMakeInitialRequest() {
-		if err = makeStreamRequest(r.transport, streamReq, streamSerializer, nextBodyFn, responseHandlerFn); err != nil {
+		if err = makeStreamRequest(r.transport, streamReq, r.serializer, nextBodyFn, responseHandlerFn); err != nil {
 			r.out.Fatalf("%v\n", err)
 		}
 	}
@@ -130,19 +131,14 @@ func (r requestHandler) shouldMakeInitialRequest() bool {
 
 // isStreamingMethod returns true if RPC is streaming type
 func isStreamingMethod(serializer encoding.Serializer) bool {
-	streamSerializer, ok := serializer.(encoding.StreamSerializer)
-	if !ok {
-		return false
-	}
-
-	return streamSerializer.MethodType() != encoding.Unary
+	return serializer.MethodType() != encoding.Unary
 }
 
 // makeStreamRequest opens a stream rpc from the given transport and stream request
 // it then delegates to handler based on rpc type to handle request and response of the stream
 // nextBodyFn is called to get the next stream message body
 // responseHandlerFn is called with the response of the stream
-func makeStreamRequest(t transport.Transport, streamReq *transport.StreamRequest, serializer encoding.StreamSerializer,
+func makeStreamRequest(t transport.Transport, streamReq *transport.StreamRequest, serializer encoding.Serializer,
 	nextBodyFn streamRequestSupplierFn, responseHandlerFn streamResponseHandlerFn) error {
 
 	streamTransport, ok := t.(transport.StreamTransport)
@@ -289,12 +285,12 @@ func makeBidiStream(ctx context.Context, stream *yarpctransport.ClientStream,
 	cancel()
 	wg.Wait()
 
-	if receiveErr != nil && receiveErr != io.EOF {
-		return receiveErr
-	}
-
 	if sendErr != nil && sendErr != io.EOF {
 		return sendErr
+	}
+
+	if receiveErr != nil && receiveErr != io.EOF {
+		return receiveErr
 	}
 
 	return nil
