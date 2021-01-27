@@ -115,6 +115,10 @@ func (e thriftSerializer) Request(input []byte) (*transport.Request, error) {
 	}, nil
 }
 
+func (e thriftSerializer) MethodType() MethodType {
+	return Unary
+}
+
 func (e thriftSerializer) Response(res *transport.Response) (interface{}, error) {
 	return thrift.ResponseBytesToMap(e.spec, res.Body, e.opts)
 }

@@ -19,6 +19,10 @@ func (p protoHealthSerializer) Encoding() Encoding {
 	return Protobuf
 }
 
+func (p protoHealthSerializer) MethodType() MethodType {
+	return Unary
+}
+
 func (p protoHealthSerializer) Request(body []byte) (*transport.Request, error) {
 	if len(body) > 0 {
 		return nil, errors.New("cannot specify --health and a request body")
