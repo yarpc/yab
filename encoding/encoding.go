@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/yarpc/yab/thrift"
@@ -49,6 +50,20 @@ type Serializer interface {
 	// CheckSuccess checks whether the response body is a success, and if not, returns an
 	// error with the failure reason.
 	CheckSuccess(body *transport.Response) error
+}
+
+// StreamRequestReader interface exposes method to read multiple request body
+type StreamRequestReader interface {
+	// NextBody returns the encoded request body if available, and if not, returns an
+	// io.EOF to indicate end of requests and caller must not call it again
+	NextBody() ([]byte, error)
+}
+
+// StreamSerializer serializes and deserializes data for a stream requests
+type StreamSerializer interface {
+	// StreamRequest creates a root stream request, a stream request reader using
+	// body reader provided
+	StreamRequest(body io.Reader) (*transport.StreamRequest, StreamRequestReader, error)
 }
 
 // The list of supported encodings.

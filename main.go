@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"regexp"
@@ -287,10 +288,11 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 		return
 	}
 
-	reqInput, err := getRequestInput(opts.ROpts.RequestJSON, opts.ROpts.RequestFile)
+	reqReader, err := getRequestInput(opts.ROpts.RequestJSON, opts.ROpts.RequestFile)
 	if err != nil {
-		out.Fatalf("Failed while loading body input: %v\n", err)
+		out.Fatalf("Failed while creating request reader: %v\n", err)
 	}
+	defer reqReader.Close()
 
 	headers, err := getHeaders(opts.ROpts.HeadersJSON, opts.ROpts.HeadersFile, opts.ROpts.Headers)
 	if err != nil {
@@ -336,6 +338,11 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 	transport, err := getTransport(opts.TOpts, resolved, tracer)
 	if err != nil {
 		out.Fatalf("Failed while parsing options: %v\n", err)
+	}
+
+	reqInput, err := ioutil.ReadAll(reqReader)
+	if err != nil {
+		out.Fatalf("Failed while reading body input: %v\n", err)
 	}
 
 	// req is the transport.Request that will be used to make a call.

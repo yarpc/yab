@@ -1,9 +1,11 @@
 package encoding
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"testing"
 
 	"github.com/yarpc/yab/protobuf"
@@ -284,6 +286,69 @@ func Test_anyResolver_Resolve(t *testing.T) {
 			assert.IsType(t, tt.resolveType, got)
 		})
 	}
+}
+
+type errorReader struct {
+	err error
+}
+
+func (e errorReader) Read(b []byte) (int, error) {
+	return 0, e.err
+}
+
+func TestProtobufStreamReader(t *testing.T) {
+	source, err := protobuf.NewDescriptorProviderFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
+	assert.NoError(t, err)
+
+	t.Run("pass", func(t *testing.T) {
+		serializer, err := NewProtobuf("Bar/Baz", source)
+		assert.NoError(t, err)
+		streamSerializer, ok := serializer.(StreamSerializer)
+		assert.True(t, ok)
+		req, reader, err := streamSerializer.StreamRequest(bytes.NewReader([]byte(`{"test": 10}`)))
+		assert.NoError(t, err)
+		expectedReq := &transport.StreamRequest{
+			Request: &transport.Request{Method: "Bar::Baz"},
+		}
+		assert.Equal(t, expectedReq, req)
+		body, err := reader.NextBody()
+		assert.NoError(t, err)
+		assert.Equal(t, []byte{0x8, 0xa}, body)
+		_, err = reader.NextBody()
+		assert.EqualError(t, err, io.EOF.Error())
+	})
+
+	t.Run("invalid input", func(t *testing.T) {
+		serializer, err := NewProtobuf("Bar/Baz", source)
+		assert.NoError(t, err)
+		streamSerializer := serializer.(StreamSerializer)
+		_, reader, err := streamSerializer.StreamRequest(bytes.NewReader([]byte(`{`)))
+		assert.NoError(t, err)
+		body, err := reader.NextBody()
+		assert.EqualError(t, err, "unexpected EOF")
+		assert.Nil(t, body)
+	})
+
+	t.Run("reader error", func(t *testing.T) {
+		serializer, err := NewProtobuf("Bar/Baz", source)
+		assert.NoError(t, err)
+		streamSerializer := serializer.(StreamSerializer)
+		reader := errorReader{err: errors.New("test error")}
+		_, _, err = streamSerializer.StreamRequest(reader)
+		assert.EqualError(t, err, "test error")
+	})
+
+	t.Run("reader error", func(t *testing.T) {
+		serializer, err := NewProtobuf("Bar/Baz", source)
+		assert.NoError(t, err)
+		streamSerializer := serializer.(StreamSerializer)
+		reader := &errorReader{err: io.EOF}
+		_, streamReqReader, err := streamSerializer.StreamRequest(reader)
+		assert.NoError(t, err)
+		reader.err = errors.New("test error")
+		_, err = streamReqReader.NextBody()
+		assert.EqualError(t, err, "yaml: input error: test error")
+	})
 }
 
 func getAnyType(t *testing.T, typeURL string, value proto.Message) []byte {

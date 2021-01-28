@@ -3,9 +3,11 @@ package encoding
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/yarpc/yab/encoding/encodingerror"
+	"github.com/yarpc/yab/encoding/inputdecoder"
 	"github.com/yarpc/yab/protobuf"
 	"github.com/yarpc/yab/transport"
 
@@ -109,14 +111,9 @@ func (p protoSerializer) Request(body []byte) (*transport.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	req := dynamic.NewMessage(p.method.GetInputType())
-	if err := req.UnmarshalJSON(jsonContent); err != nil {
-		return nil, fmt.Errorf("could not parse given request body as message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
-	}
-	bytes, err := proto.Marshal(req)
+	bytes, err := p.encode(jsonContent)
 	if err != nil {
-		return nil, fmt.Errorf("could marshal message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
+		return nil, err
 	}
 	return &transport.Request{
 		Method: procedure.ToName(p.serviceName, p.methodName),
@@ -144,9 +141,57 @@ func (p protoSerializer) Response(body *transport.Response) (interface{}, error)
 	return unmarshaledJSON, nil
 }
 
+func (p protoSerializer) StreamRequest(body io.Reader) (*transport.StreamRequest, StreamRequestReader, error) {
+	decoder, err := inputdecoder.New(body)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	streamReq := &transport.StreamRequest{
+		Request: &transport.Request{
+			Method: procedure.ToName(p.serviceName, p.methodName),
+		},
+	}
+
+	reader := protoStreamRequestReader{
+		decoder: decoder,
+		proto:   p,
+	}
+
+	return streamReq, reader, nil
+}
+
 func (p protoSerializer) CheckSuccess(body *transport.Response) error {
 	_, err := p.Response(body)
 	return err
+}
+
+func (p protoSerializer) encode(jsonBytes []byte) ([]byte, error) {
+	req := dynamic.NewMessage(p.method.GetInputType())
+	if err := req.UnmarshalJSON(jsonBytes); err != nil {
+		return nil, fmt.Errorf("could not parse given request body as message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
+	}
+
+	bytes, err := proto.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("could marshal message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
+	}
+
+	return bytes, nil
+}
+
+type protoStreamRequestReader struct {
+	decoder inputdecoder.Decoder
+	proto   protoSerializer
+}
+
+func (p protoStreamRequestReader) NextBody() ([]byte, error) {
+	body, err := p.decoder.NextJSONBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	return p.proto.encode(body)
 }
 
 func splitMethod(fullMethod string) (svc, method string, err error) {
