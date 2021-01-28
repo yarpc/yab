@@ -368,15 +368,15 @@ func (s *simpleService) Baz(c context.Context, in *simple.Foo) (*simple.Foo, err
 	return nil, fmt.Errorf("negative input")
 }
 
-func (s *simpleService) BidiStream(stream simple.Bar_BidiStreamServer) error {
+func (*simpleService) BidiStream(simple.Bar_BidiStreamServer) error {
 	return nil
 }
 
-func (s *simpleService) ClientStream(stream simple.Bar_ClientStreamServer) error {
+func (*simpleService) ClientStream(simple.Bar_ClientStreamServer) error {
 	return nil
 }
 
-func (s *simpleService) ServerStream(req *simple.Foo, stream simple.Bar_ServerStreamServer) error {
+func (*simpleService) ServerStream(*simple.Foo, simple.Bar_ServerStreamServer) error {
 	return nil
 }
 
