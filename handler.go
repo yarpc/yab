@@ -60,7 +60,7 @@ func (r requestHandler) handleUnaryRequest() {
 		r.out.Fatalf("Failed while preparing the request: %v\n", err)
 	}
 
-	// decides if warm requests must be dispatched before benchmark
+	// Decides if warm requests must be dispatched before benchmark.
 	if r.shouldMakeInitialRequest() {
 		makeInitialRequest(r.out, r.transport, r.serializer, req)
 	}
@@ -121,7 +121,7 @@ func (r requestHandler) handleStreamRequest() {
 		}
 	}
 
-	// TODO: handle streaming benchmark
+	// TODO: handle streaming benchmark.
 }
 
 // shouldMakeInitialRequest returns true if initial request must be made
@@ -146,8 +146,8 @@ func makeStreamRequest(t transport.Transport, streamReq *transport.StreamRequest
 		return fmt.Errorf("Transport does not support stream calls: %q", t.Protocol())
 	}
 
-	// uses tchannel context to remain compatible with tchannel transport
-	// although it does not support streaming, this needs to be removed later
+	// Uses tchannel context to remain compatible with tchannel transport
+	// although it does not support streaming, this needs to be removed later.
 	ctx, cancel := tchannel.NewContext(streamReq.Request.Timeout)
 	defer cancel()
 	ctx = makeContextWithTrace(ctx, t, streamReq.Request, 0)
@@ -172,13 +172,13 @@ func makeServerStream(ctx context.Context, stream *yarpctransport.ClientStream,
 	nextBodyFn streamRequestSupplierFn, responseHandlerFn streamResponseHandlerFn) error {
 
 	req, err := nextBodyFn()
-	// use nil body if no initial request input is empty, since request
-	// is mandatory in server streaming rpc
+	// Use nil body if no initial request input is empty, since request
+	// is mandatory in server streaming rpc.
 	if err != nil && err != io.EOF {
 		return err
 	}
 	if err == nil {
-		// verify there is no second request
+		// Verify there is no second request.
 		if _, err = nextBodyFn(); err == nil {
 			return fmt.Errorf("Request data contains more than 1 message for server-streaming RPC")
 		} else if err != io.EOF {
@@ -244,7 +244,7 @@ func makeBidiStream(ctx context.Context, stream *yarpctransport.ClientStream,
 	defer cancel()
 
 	wg.Add(1)
-	// start go routine to concurrently send stream messages
+	// Start go routine to concurrently send stream messages.
 	go func() {
 		defer wg.Done()
 
@@ -257,8 +257,8 @@ func makeBidiStream(ctx context.Context, stream *yarpctransport.ClientStream,
 				break
 			}
 			if err != nil {
-				// cancel the context to unblock the routine waiting on receiving
-				// the stream message
+				// Cancel the context to unblock the routine waiting on receiving
+				// stream messages.
 				cancel()
 				break
 			}
@@ -299,7 +299,7 @@ func makeBidiStream(ctx context.Context, stream *yarpctransport.ClientStream,
 // sendStreamMessage sends the stream message using message body provided
 func sendStreamMessage(ctx context.Context, stream *yarpctransport.ClientStream, msgBody []byte) error {
 	// TODO: print the stream message being sent on STDOUT to inform user about
-	// request message dispatch
+	// request message dispatch.
 	req := &yarpctransport.StreamMessage{Body: ioutil.NopCloser(bytes.NewReader(msgBody))}
 	if err := stream.SendMessage(ctx, req); err != nil {
 		return fmt.Errorf("Failed while sending stream request: %v", err)
@@ -327,7 +327,7 @@ func receiveStreamMessage(ctx context.Context, stream *yarpctransport.ClientStre
 // closeSendStream closes the stream from the client side while
 // stream can continue to receive messages from server
 func closeSendStream(ctx context.Context, stream *yarpctransport.ClientStream) error {
-	// YARPC stream.Close method internally invokes closeSend on gRPC clientStream
+	// YARPC stream.Close method internally invokes closeSend on gRPC clientStream.
 	if err := stream.Close(ctx); err != nil {
 		return fmt.Errorf("Failed to close send stream: %v", err)
 	}
