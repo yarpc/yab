@@ -19,7 +19,7 @@ func (p protoHealthSerializer) Encoding() Encoding {
 	return Protobuf
 }
 
-func (p protoHealthSerializer) MethodType() MethodType {
+func (protoHealthSerializer) MethodType() MethodType {
 	return Unary
 }
 

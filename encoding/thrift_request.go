@@ -115,7 +115,7 @@ func (e thriftSerializer) Request(input []byte) (*transport.Request, error) {
 	}, nil
 }
 
-func (e thriftSerializer) MethodType() MethodType {
+func (thriftSerializer) MethodType() MethodType {
 	return Unary
 }
 

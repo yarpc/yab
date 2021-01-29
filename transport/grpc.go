@@ -144,6 +144,10 @@ func (t *grpcTransport) Close() error {
 }
 
 func (t *grpcTransport) requestToYARPCStreamRequest(streamRequest *StreamRequest) *transport.StreamRequest {
+	if t == nil || streamRequest == nil || streamRequest.Request == nil {
+		return nil
+	}
+
 	return &transport.StreamRequest{
 		Meta: &transport.RequestMeta{
 			Caller:          t.Caller,

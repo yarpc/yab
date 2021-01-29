@@ -145,7 +145,7 @@ func (e jsonSerializer) Encoding() Encoding {
 	return JSON
 }
 
-func (e jsonSerializer) MethodType() MethodType {
+func (jsonSerializer) MethodType() MethodType {
 	return Unary
 }
 
@@ -191,7 +191,7 @@ func (e rawSerializer) Encoding() Encoding {
 	return Raw
 }
 
-func (e rawSerializer) MethodType() MethodType {
+func (rawSerializer) MethodType() MethodType {
 	return Unary
 }
 
