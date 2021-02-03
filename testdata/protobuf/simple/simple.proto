@@ -11,4 +11,7 @@ message Foo {
 
 service Bar{
     rpc Baz(Foo) returns (Foo);
+    rpc BidiStream(stream Foo) returns (stream Foo);
+    rpc ClientStream(stream Foo) returns (Foo);
+    rpc ServerStream(Foo) returns (stream Foo);
 }

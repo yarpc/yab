@@ -34,12 +34,12 @@ func TestNewProtobuf(t *testing.T) {
 		{
 			desc:   "no method",
 			method: "Bar",
-			errMsg: "no gRPC method specified, specify --method package.Service/Method. Available gRPC method in service \"Bar\":\n\tBar/Baz",
+			errMsg: "no gRPC method specified, specify --method package.Service/Method. Available gRPC methods in service \"Bar\":\n\tBar/Baz\n\tBar/BidiStream\n\tBar/ClientStream\n\tBar/ServerStream",
 		},
 		{
 			desc:   "missing method for service",
 			method: "Bar/baq",
-			errMsg: fmt.Sprintf("gRPC service %q does not contain method %q. Available gRPC method in service %q:\n\tBar/Baz", "Bar", "baq", "Bar"),
+			errMsg: fmt.Sprintf("gRPC service %q does not contain method %q. Available gRPC methods in service %q:\n\tBar/Baz\n\tBar/BidiStream\n\tBar/ClientStream\n\tBar/ServerStream", "Bar", "baq", "Bar"),
 		},
 		{
 			desc:   "invalid method format",
@@ -77,50 +77,64 @@ func TestNewProtobuf(t *testing.T) {
 
 func TestProtobufRequest(t *testing.T) {
 	tests := []struct {
+		method string
 		desc   string
 		bsIn   []byte
 		bsOut  []byte
 		errMsg string
 	}{
 		{
+			method: "Bar/Baz",
 			desc:   "invalid json",
 			bsIn:   []byte("{"),
 			errMsg: `did not find expected node content`,
 		},
 		{
+			method: "Bar/Baz",
 			desc:   "invalid field in request input",
 			bsIn:   []byte(`{"foo": "1"}`),
 			errMsg: "Message type Foo has no known field named foo",
 		},
 		{
+			method: "Bar/Baz",
 			desc:   "fail correct json incorrect proto",
 			bsIn:   []byte(`{"test": 8589934592}`), // 2^33
 			errMsg: "numeric value is out of range",
 		},
 		{
-			desc:  "pass",
-			bsIn:  []byte(`{}`),
-			bsOut: nil,
+			method: "Bar/Baz",
+			desc:   "pass",
+			bsIn:   []byte(`{}`),
+			bsOut:  nil,
 		},
 		{
-			desc:  "pass with field",
-			bsIn:  []byte(`{"test":10}`),
-			bsOut: []byte{0x8, 0xA},
+			method: "Bar/Baz",
+			desc:   "pass with field",
+			bsIn:   []byte(`{"test":10}`),
+			bsOut:  []byte{0x8, 0xA},
 		},
 		{
-			desc:  "pass with yaml",
-			bsIn:  []byte(`test: 10`),
-			bsOut: []byte{0x8, 0xA},
+			method: "Bar/Baz",
+			desc:   "pass with yaml",
+			bsIn:   []byte(`test: 10`),
+			bsOut:  []byte{0x8, 0xA},
 		},
 		{
-			desc:  "nested yaml",
-			bsIn:  []byte(`{test: 1, nested: {value: 1}}`),
-			bsOut: []byte{0x8, 0x1, 0x12, 0x2, 0x8, 0x1},
+			method: "Bar/Baz",
+			desc:   "nested yaml",
+			bsIn:   []byte(`{test: 1, nested: {value: 1}}`),
+			bsOut:  []byte{0x8, 0x1, 0x12, 0x2, 0x8, 0x1},
 		},
 		{
-			desc:  "nested json",
-			bsIn:  []byte(`{"test": 1, "nested": {"value": 1}}`),
-			bsOut: []byte{0x8, 0x1, 0x12, 0x2, 0x8, 0x1},
+			method: "Bar/Baz",
+			desc:   "nested json",
+			bsIn:   []byte(`{"test": 1, "nested": {"value": 1}}`),
+			bsOut:  []byte{0x8, 0x1, 0x12, 0x2, 0x8, 0x1},
+		},
+		{
+			method: "Bar/BidiStream",
+			desc:   "empty body for streaming method",
+			errMsg: `request method must be invoked only with unary rpc method: "Foo"`,
 		},
 	}
 
@@ -128,7 +142,7 @@ func TestProtobufRequest(t *testing.T) {
 	require.NoError(t, err)
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			serializer, err := NewProtobuf("Bar/Baz", source)
+			serializer, err := NewProtobuf(tt.method, source)
 			require.NoError(t, err, "Failed to create serializer")
 
 			got, err := serializer.Request(tt.bsIn)
@@ -301,14 +315,14 @@ func TestProtobufStreamReader(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("pass", func(t *testing.T) {
-		serializer, err := NewProtobuf("Bar/Baz", source)
+		serializer, err := NewProtobuf("Bar/BidiStream", source)
 		assert.NoError(t, err)
 		streamSerializer, ok := serializer.(StreamSerializer)
 		assert.True(t, ok)
 		req, reader, err := streamSerializer.StreamRequest(bytes.NewReader([]byte(`{"test": 10}`)))
 		assert.NoError(t, err)
 		expectedReq := &transport.StreamRequest{
-			Request: &transport.Request{Method: "Bar::Baz"},
+			Request: &transport.Request{Method: "Bar::BidiStream"},
 		}
 		assert.Equal(t, expectedReq, req)
 		body, err := reader.NextBody()
@@ -319,7 +333,7 @@ func TestProtobufStreamReader(t *testing.T) {
 	})
 
 	t.Run("invalid input", func(t *testing.T) {
-		serializer, err := NewProtobuf("Bar/Baz", source)
+		serializer, err := NewProtobuf("Bar/BidiStream", source)
 		assert.NoError(t, err)
 		streamSerializer := serializer.(StreamSerializer)
 		_, reader, err := streamSerializer.StreamRequest(bytes.NewReader([]byte(`{`)))
@@ -330,7 +344,7 @@ func TestProtobufStreamReader(t *testing.T) {
 	})
 
 	t.Run("reader error", func(t *testing.T) {
-		serializer, err := NewProtobuf("Bar/Baz", source)
+		serializer, err := NewProtobuf("Bar/BidiStream", source)
 		assert.NoError(t, err)
 		streamSerializer := serializer.(StreamSerializer)
 		reader := errorReader{err: errors.New("test error")}
@@ -339,7 +353,7 @@ func TestProtobufStreamReader(t *testing.T) {
 	})
 
 	t.Run("reader error", func(t *testing.T) {
-		serializer, err := NewProtobuf("Bar/Baz", source)
+		serializer, err := NewProtobuf("Bar/BidiStream", source)
 		assert.NoError(t, err)
 		streamSerializer := serializer.(StreamSerializer)
 		reader := &errorReader{err: io.EOF}
@@ -349,6 +363,54 @@ func TestProtobufStreamReader(t *testing.T) {
 		_, err = streamReqReader.NextBody()
 		assert.EqualError(t, err, "yaml: input error: test error")
 	})
+
+	t.Run("fail on unary method", func(t *testing.T) {
+		serializer, err := NewProtobuf("Bar/Baz", source)
+		assert.NoError(t, err)
+		streamSerializer := serializer.(StreamSerializer)
+		_, _, err = streamSerializer.StreamRequest(nil)
+		assert.EqualError(t, err, `streamrequest method must be called only with streaming rpc method: "Foo"`)
+	})
+}
+
+func TestMethodType(t *testing.T) {
+	source, err := protobuf.NewDescriptorProviderFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name    string
+		method  string
+		rpcType MethodType
+	}{
+		{
+			name:    "unary method",
+			method:  "Bar/Baz",
+			rpcType: Unary,
+		},
+		{
+			name:    "bidirectional stream method",
+			method:  "Bar/BidiStream",
+			rpcType: BidirectionalStream,
+		},
+		{
+			name:    "client stream method",
+			method:  "Bar/ClientStream",
+			rpcType: ClientStream,
+		},
+		{
+			name:    "server stream method",
+			method:  "Bar/ServerStream",
+			rpcType: ServerStream,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			proto, err := NewProtobuf(tt.method, source)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.rpcType, proto.MethodType())
+		})
+	}
 }
 
 func getAnyType(t *testing.T, typeURL string, value proto.Message) []byte {

@@ -32,6 +32,20 @@ import (
 	"github.com/yarpc/yab/unmarshal"
 )
 
+// MethodType is type of the RPC method
+type MethodType int
+
+const (
+	// Unary method type is a traditional RPC
+	Unary MethodType = iota + 1
+	// ClientStream method type RPC sends multiple messages
+	ClientStream
+	// ServerStream method type RPC receives multiple messages
+	ServerStream
+	// BidirectionalStream type RPC can send and receive multiple messages
+	BidirectionalStream
+)
+
 // Encoding is the representation of the data on the wire.
 type Encoding string
 
@@ -50,6 +64,9 @@ type Serializer interface {
 	// CheckSuccess checks whether the response body is a success, and if not, returns an
 	// error with the failure reason.
 	CheckSuccess(body *transport.Response) error
+
+	// MethodType returns the type of RPC method
+	MethodType() MethodType
 }
 
 // StreamRequestReader interface exposes method to read multiple request body
@@ -128,6 +145,10 @@ func (e jsonSerializer) Encoding() Encoding {
 	return JSON
 }
 
+func (jsonSerializer) MethodType() MethodType {
+	return Unary
+}
+
 // Request unmarshals the input to make sure it's valid JSON, and then
 // Marshals the map to produce consistent output with whitespace removed
 // and sorted field order.
@@ -168,6 +189,10 @@ func NewRaw(methodName string) Serializer {
 
 func (e rawSerializer) Encoding() Encoding {
 	return Raw
+}
+
+func (rawSerializer) MethodType() MethodType {
+	return Unary
 }
 
 func (e rawSerializer) Request(input []byte) (*transport.Request, error) {

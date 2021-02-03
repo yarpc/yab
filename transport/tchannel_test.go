@@ -80,7 +80,7 @@ func setupServerAndTransport(t *testing.T, changeOpts ...func(*TChannelOptions))
 	opts := TChannelOptions{
 		SourceService: "yab",
 		TargetService: svr.ServiceName(),
-		Peers:     []string{svr.PeerInfo().HostPort},
+		Peers:         []string{svr.PeerInfo().HostPort},
 		Encoding:      "raw",
 	}
 

@@ -106,7 +106,26 @@ func (p protoSerializer) Encoding() Encoding {
 	return Protobuf
 }
 
+func (p protoSerializer) MethodType() MethodType {
+	if p.method.IsClientStreaming() && p.method.IsServerStreaming() {
+		return BidirectionalStream
+	}
+
+	if p.method.IsClientStreaming() {
+		return ClientStream
+	}
+
+	if p.method.IsServerStreaming() {
+		return ServerStream
+	}
+	return Unary
+}
+
 func (p protoSerializer) Request(body []byte) (*transport.Request, error) {
+	if p.MethodType() != Unary {
+		return nil, fmt.Errorf("request method must be invoked only with unary rpc method: %q", p.method.GetInputType().GetFullyQualifiedName())
+	}
+
 	jsonContent, err := yaml.YAMLToJSON(body)
 	if err != nil {
 		return nil, err
@@ -115,6 +134,7 @@ func (p protoSerializer) Request(body []byte) (*transport.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &transport.Request{
 		Method: procedure.ToName(p.serviceName, p.methodName),
 		Body:   bytes,
@@ -142,6 +162,10 @@ func (p protoSerializer) Response(body *transport.Response) (interface{}, error)
 }
 
 func (p protoSerializer) StreamRequest(body io.Reader) (*transport.StreamRequest, StreamRequestReader, error) {
+	if p.MethodType() == Unary {
+		return nil, nil, fmt.Errorf("streamrequest method must be called only with streaming rpc method: %q", p.method.GetInputType().GetFullyQualifiedName())
+	}
+
 	decoder, err := inputdecoder.New(body)
 	if err != nil {
 		return nil, nil, err
