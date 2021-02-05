@@ -26,51 +26,29 @@ import (
 	"sync"
 	"time"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
-
-	"github.com/opentracing/opentracing-go"
 )
+
+type benchmarker interface {
+	WarmTransports(int, TransportOptions, resolvedProtocolEncoding, int) ([]peerTransport, error)
+	Call(transport.Transport) (time.Duration, error)
+	Method() string
+}
 
 type peerTransport struct {
 	transport.Transport
 	peerID int
 }
 
+// benchmarkMethod benchmarks unary requests
 type benchmarkMethod struct {
 	serializer encoding.Serializer
 	req        *transport.Request
-
-	streamRequest         *transport.StreamRequest
-	streamRequestMessages [][]byte
 }
 
-// WarmTransport warms up a transport and returns it. The transport is warmed
-// up by making some number of requests through it.
-func (m benchmarkMethod) WarmTransport(opts TransportOptions, resolved resolvedProtocolEncoding, warmupRequests int) (transport.Transport, error) {
-	transport, err := getTransport(opts, resolved, opentracing.NoopTracer{})
-	if err != nil {
-		return nil, err
-	}
-
-	for i := 0; i < warmupRequests; i++ {
-		_, err := m.call(transport)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return transport, nil
-}
-
-func (m benchmarkMethod) call(t transport.Transport) (time.Duration, error) {
-	if isStreamingMethod(m.serializer) {
-		return m.callStream(t)
-	}
-	return m.callUnary(t)
-}
-
-func (m benchmarkMethod) callUnary(t transport.Transport) (time.Duration, error) {
+func (m benchmarkMethod) Call(t transport.Transport) (time.Duration, error) {
 	start := time.Now()
 	res, err := makeRequest(t, m.req)
 	duration := time.Since(start)
@@ -81,11 +59,28 @@ func (m benchmarkMethod) callUnary(t transport.Transport) (time.Duration, error)
 	return duration, err
 }
 
-func (m benchmarkMethod) callStream(t transport.Transport) (time.Duration, error) {
+func (m benchmarkMethod) WarmTransports(n int, tOpts TransportOptions, resolved resolvedProtocolEncoding, warmupRequests int) ([]peerTransport, error) {
+	return warmTransports(m, n, tOpts, resolved, warmupRequests)
+}
+
+func (m benchmarkMethod) Method() string {
+	return m.req.Method
+}
+
+// benchmarkStreamMethod benchmarks stream requests
+type benchmarkStreamMethod struct {
+	serializer encoding.Serializer
+	req        *transport.Request
+
+	streamRequest         *transport.StreamRequest
+	streamRequestMessages [][]byte
+}
+
+func (m benchmarkStreamMethod) Call(t transport.Transport) (time.Duration, error) {
 	var streamRequestIdx int
 	var streamResponses [][]byte
 
-	// TODO: support `stream-interval` option which throttles the rate of input
+	// TODO: support `stream-interval` option which throttles the rate of input.
 	requestSupplier := func() ([]byte, error) {
 		if len(m.streamRequestMessages) == streamRequestIdx {
 			return nil, io.EOF
@@ -93,6 +88,7 @@ func (m benchmarkMethod) callStream(t transport.Transport) (time.Duration, error
 
 		req := m.streamRequestMessages[streamRequestIdx]
 		streamRequestIdx++
+
 		return req, nil
 	}
 
@@ -104,18 +100,25 @@ func (m benchmarkMethod) callStream(t transport.Transport) (time.Duration, error
 	start := time.Now()
 	err := makeStreamRequest(t, m.streamRequest, m.serializer, requestSupplier, captureResponseBody)
 	duration := time.Since(start)
+
 	if err != nil {
 		return duration, err
 	}
+
 	for _, res := range streamResponses {
 		if err = m.serializer.CheckSuccess(&transport.Response{Body: res}); err != nil {
 			return duration, err
 		}
 	}
+
 	return duration, err
 }
 
-func (m benchmarkMethod) Method() string {
+func (m benchmarkStreamMethod) WarmTransports(n int, tOpts TransportOptions, resolved resolvedProtocolEncoding, warmupRequests int) ([]peerTransport, error) {
+	return warmTransports(m, n, tOpts, resolved, warmupRequests)
+}
+
+func (m benchmarkStreamMethod) Method() string {
 	return m.req.Method
 }
 
@@ -128,9 +131,27 @@ func peerBalancer(peers []string) func(i int) (string, int) {
 	}
 }
 
-// WarmTransports returns n transports that have been warmed up.
+// warmTransport warms up a transport and returns it. The transport is warmed
+// up by making some number of requests through it.
+func warmTransport(m benchmarker, opts TransportOptions, resolved resolvedProtocolEncoding, warmupRequests int) (transport.Transport, error) {
+	transport, err := getTransport(opts, resolved, opentracing.NoopTracer{})
+	if err != nil {
+		return nil, err
+	}
+
+	for i := 0; i < warmupRequests; i++ {
+		_, err := m.Call(transport)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return transport, nil
+}
+
+// warmTransports returns n transports that have been warmed up.
 // No requests may fail during the warmup period.
-func (m benchmarkMethod) WarmTransports(n int, tOpts TransportOptions, resolved resolvedProtocolEncoding, warmupRequests int) ([]peerTransport, error) {
+func warmTransports(m benchmarker, n int, tOpts TransportOptions, resolved resolvedProtocolEncoding, warmupRequests int) ([]peerTransport, error) {
 	peerFor := peerBalancer(tOpts.Peers)
 	transports := make([]peerTransport, n)
 	errs := make([]error, n)
@@ -144,7 +165,7 @@ func (m benchmarkMethod) WarmTransports(n int, tOpts TransportOptions, resolved 
 			peerHostPort, peerIndex := peerFor(i)
 			tOpts.Peers = []string{peerHostPort}
 
-			tp, err := m.WarmTransport(tOpts, resolved, warmupRequests)
+			tp, err := warmTransport(m, tOpts, resolved, warmupRequests)
 			transports[i] = peerTransport{tp, peerIndex}
 			errs[i] = err
 		}(i, tOpts)

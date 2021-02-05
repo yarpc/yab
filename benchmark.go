@@ -109,9 +109,9 @@ func (o BenchmarkOptions) enabled() bool {
 	return o.MaxDuration != 0 || o.MaxRequests != 0
 }
 
-func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run *limiter.Run, logger *zap.Logger) {
+func runWorker(t transport.Transport, m benchmarker, s *benchmarkState, run *limiter.Run, logger *zap.Logger) {
 	for cur := run; cur.More(); {
-		latency, err := m.call(t)
+		latency, err := m.Call(t)
 		if err != nil {
 			s.recordError(err)
 			// TODO: Add information about which peer specifically failed.
@@ -123,7 +123,7 @@ func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run 
 	}
 }
 
-func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved resolvedProtocolEncoding, m benchmarkMethod) {
+func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved resolvedProtocolEncoding, m benchmarker) {
 	opts := allOpts.BOpts
 
 	if err := opts.validate(); err != nil {
