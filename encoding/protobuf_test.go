@@ -408,7 +408,7 @@ func TestMethodType(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			proto, err := NewProtobuf(tt.method, source)
 			assert.NoError(t, err)
-			assert.Equal(t, tt.rpcType, proto.(StreamSerializer).MethodType())
+			assert.Equal(t, tt.rpcType, proto.MethodType())
 		})
 	}
 }

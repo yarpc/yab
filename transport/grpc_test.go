@@ -38,7 +38,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/yarpc/yab/testdata/protobuf/simple"
-	googleGrpc "google.golang.org/grpc"
+	googlegrpc "google.golang.org/grpc"
 
 	"go.uber.org/multierr"
 	"go.uber.org/yarpc/api/transport"
@@ -103,7 +103,7 @@ func TestGRPCConstructor(t *testing.T) {
 
 func TestGRPCSuccess(t *testing.T) {
 	doWithGRPCTestEnv(t, "example-caller", 5, []transport.Procedure{
-		newTestJSONProcedure("example", "Foo::Bar", testBar)}, "json",
+		newTestJSONProcedure("example", "Foo::Bar", testBar)},
 		func(t *testing.T, grpcTestEnv *grpcTestEnv) {
 			request, err := newTestJSONRequest("example", "Foo::Bar", &testBarRequest{One: "hello"})
 			require.NoError(t, err)
@@ -124,14 +124,6 @@ func (s *simpleSvc) Baz(c context.Context, in *simple.Foo) (*simple.Foo, error) 
 	return in, nil
 }
 
-func (s *simpleSvc) ClientStream(stream simple.Bar_ClientStreamServer) error {
-	return nil
-}
-
-func (s *simpleSvc) ServerStream(req *simple.Foo, stream simple.Bar_ServerStreamServer) error {
-	return nil
-}
-
 func (s *simpleSvc) BidiStream(stream simple.Bar_BidiStreamServer) error {
 	s.streamsOpened++
 	for {
@@ -147,15 +139,23 @@ func (s *simpleSvc) BidiStream(stream simple.Bar_BidiStreamServer) error {
 	return nil
 }
 
+func (*simpleSvc) ClientStream(simple.Bar_ClientStreamServer) error {
+	return nil
+}
+
+func (*simpleSvc) ServerStream(*simple.Foo, simple.Bar_ServerStreamServer) error {
+	return nil
+}
+
 func TestGRPCStream(t *testing.T) {
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	server := googleGrpc.NewServer()
+	server := googlegrpc.NewServer()
 	svc := &simpleSvc{}
 	simple.RegisterBarServer(server, svc)
 	go func() {
-		assert.NoError(t, server.Serve(lis))
+		require.NoError(t, server.Serve(lis))
 	}()
 	defer server.Stop()
 
@@ -165,12 +165,12 @@ func TestGRPCStream(t *testing.T) {
 		Caller:    "test",
 		Encoding:  "proto",
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	streamClient, ok := client.(StreamTransport)
-	assert.True(t, ok)
+	require.True(t, ok)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	stream, err := streamClient.CallStream(ctx, &StreamRequest{
 		Request: &Request{
@@ -178,24 +178,24 @@ func TestGRPCStream(t *testing.T) {
 			Method:        "Bar::BidiStream",
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	req, err := proto.Marshal(&simple.Foo{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = stream.SendMessage(ctx, &transport.StreamMessage{
 		Body: ioutil.NopCloser(bytes.NewReader(req)),
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	msg, err := stream.ReceiveMessage(ctx)
-	assert.NoError(t, err)
-	assert.NotNil(t, msg)
-	assert.NoError(t, stream.Close(ctx))
+	require.NoError(t, err)
+	require.NotNil(t, msg)
+	require.NoError(t, stream.Close(ctx))
 	assert.Equal(t, 1, svc.streamsOpened)
 }
 
 func TestGRPCError(t *testing.T) {
 	doWithGRPCTestEnv(t, "example-caller", 5, []transport.Procedure{
 		newTestJSONProcedure("example", "Foo::Bar", testBar),
-	}, "json", func(t *testing.T, grpcTestEnv *grpcTestEnv) {
+	}, func(t *testing.T, grpcTestEnv *grpcTestEnv) {
 		request, err := newTestJSONRequest("example", "Foo::Bar", &testBarRequest{Error: "hello"})
 		require.NoError(t, err)
 		_, err = grpcTestEnv.Transport.Call(context.Background(), request)
@@ -207,7 +207,7 @@ func TestGRPCMaxResponseSize(t *testing.T) {
 	t.Run("With default max response size", func(t *testing.T) {
 		doWithGRPCTestEnv(t, "example-caller", 1, []transport.Procedure{
 			newTestJSONProcedure("example", "Foo::Bar", testLargeResponse),
-		}, "json", func(t *testing.T, grpcTestEnv *grpcTestEnv) {
+		}, func(t *testing.T, grpcTestEnv *grpcTestEnv) {
 			request, err := newTestJSONRequest("example", "Foo::Bar", &testBarRequest{One: "hello", Size: 1024 * 1024 * 4})
 			require.NoError(t, err)
 			_, err = grpcTestEnv.Transport.Call(context.Background(), request)
@@ -217,7 +217,7 @@ func TestGRPCMaxResponseSize(t *testing.T) {
 	t.Run("With custom max response size", func(t *testing.T) {
 		doWithGRPCTestEnv(t, "example-caller", 1, []transport.Procedure{
 			newTestJSONProcedure("example", "Foo::Bar", testLargeResponse),
-		}, "json", func(t *testing.T, grpcTestEnv *grpcTestEnv) {
+		}, func(t *testing.T, grpcTestEnv *grpcTestEnv) {
 			request, err := newTestJSONRequest("example", "Foo::Bar", &testBarRequest{One: "hello", Size: 1024 * 1024 * 4})
 			require.NoError(t, err)
 			_, err = grpcTestEnv.Transport.Call(context.Background(), request)
@@ -278,11 +278,10 @@ func doWithGRPCTestEnv(
 	caller string,
 	numInbounds int,
 	procedures []transport.Procedure,
-	encoding string,
 	f func(*testing.T, *grpcTestEnv),
 	maxResponseSize int,
 ) {
-	grpcTestEnv, err := newGRPCTestEnv(caller, numInbounds, procedures, encoding, maxResponseSize)
+	grpcTestEnv, err := newGRPCTestEnv(caller, numInbounds, procedures, maxResponseSize)
 	require.NoError(t, err)
 	defer func() {
 		assert.NoError(t, grpcTestEnv.Close())
@@ -301,7 +300,6 @@ func newGRPCTestEnv(
 	caller string,
 	numInbounds int,
 	procedures []transport.Procedure,
-	encoding string,
 	maxResponseSize int,
 ) (_ *grpcTestEnv, err error) {
 	options := []grpc.TransportOption{grpc.ServerMaxSendMsgSize(1024 * 1024 * 10)}

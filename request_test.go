@@ -115,7 +115,7 @@ func TestGetRequestInput(t *testing.T) {
 
 		if assert.NoError(t, err, "getRequestInput(%v, %v) should not fail", tt.inline, tt.file) {
 			contents, err := ioutil.ReadAll(got)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.want, contents, "getRequestInput(%v, %v) mismatch", tt.inline, tt.file)
 		}
 	}

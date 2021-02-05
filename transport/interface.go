@@ -67,7 +67,7 @@ const (
 )
 
 // Transport defines the interface for the underlying transport over which
-// calls are made.
+// unary calls are made.
 type Transport interface {
 	Call(ctx context.Context, request *Request) (*Response, error)
 	Protocol() Protocol

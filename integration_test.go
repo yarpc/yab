@@ -29,6 +29,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 	"time"
 
@@ -362,64 +363,29 @@ func setupYARPCServer(t *testing.T, inbound ytransport.Inbound, opts ...ythrift.
 }
 
 type simpleService struct {
-	errOnStart  error
-	exitOnStart bool
-
 	streamsOpened          atomic.Int32
 	streamMessagesReceived atomic.Int32
 	streamMessagesSent     atomic.Int32
+
+	expectedInput []simple.Foo // messages expected from the client
+
+	returnOutput []simple.Foo // messages to be streamed back to client
+	returnError  error
 }
 
 func (s *simpleService) Baz(c context.Context, in *simple.Foo) (*simple.Foo, error) {
 	if in.Test > 0 {
 		return in, nil
 	}
+
 	return nil, fmt.Errorf("negative input")
 }
 
 func (s *simpleService) ClientStream(stream simple.Bar_ClientStreamServer) error {
 	s.streamsOpened.Inc()
-	if s.exitOnStart {
-		return nil
-	}
-	if s.errOnStart != nil {
-		return s.errOnStart
-	}
-	counter := 0
-	for {
-		_, err := stream.Recv()
-		if err == io.EOF {
-			break
-		}
-		s.streamMessagesReceived.Inc()
-		counter++
-	}
-	return stream.SendAndClose(&simple.Foo{Test: int32(counter)})
-}
 
-func (s *simpleService) ServerStream(req *simple.Foo, stream simple.Bar_ServerStreamServer) error {
-	if s.errOnStart != nil {
-		return s.errOnStart
-	}
-	s.streamsOpened.Inc()
-	for i := 0; i < int(req.Test+1); i++ {
-		if err := stream.Send(&simple.Foo{Test: int32(i + 1)}); err != nil {
-			return err
-		}
-		s.streamMessagesSent.Inc()
-	}
-	return nil
-}
-
-func (s *simpleService) BidiStream(stream simple.Bar_BidiStreamServer) error {
-	s.streamsOpened.Inc()
-	if s.exitOnStart {
-		return nil
-	}
-	if s.errOnStart != nil {
-		return s.errOnStart
-	}
-	for {
+	idx := 0
+	for idx < len(s.expectedInput) {
 		msg, err := stream.Recv()
 		if err == io.EOF {
 			break
@@ -427,14 +393,72 @@ func (s *simpleService) BidiStream(stream simple.Bar_BidiStreamServer) error {
 		if err != nil {
 			return err
 		}
+
+		if !reflect.DeepEqual(*msg, s.expectedInput[idx]) {
+			return fmt.Errorf("unexpected input found at index: %d", idx)
+		}
+
 		s.streamMessagesReceived.Inc()
-		msg.Test += 100
-		if err = stream.Send(msg); err != nil {
+
+		idx++
+	}
+
+	if len(s.returnOutput) > 0 {
+		return stream.SendAndClose(&s.returnOutput[0])
+	}
+
+	return s.returnError
+}
+
+func (s *simpleService) ServerStream(req *simple.Foo, stream simple.Bar_ServerStreamServer) error {
+	s.streamsOpened.Inc()
+
+	if len(s.expectedInput) > 0 && !reflect.DeepEqual(*req, s.expectedInput[0]) {
+		return fmt.Errorf("unexpected input found")
+	}
+
+	for _, req := range s.returnOutput {
+		if err := stream.Send(&req); err != nil {
 			return err
 		}
+
 		s.streamMessagesSent.Inc()
 	}
-	return nil
+
+	return s.returnError
+}
+
+func (s *simpleService) BidiStream(stream simple.Bar_BidiStreamServer) error {
+	s.streamsOpened.Inc()
+
+	idx := 0
+	for idx < len(s.expectedInput) {
+		msg, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		if !reflect.DeepEqual(*msg, s.expectedInput[idx]) {
+			return fmt.Errorf("unexpected input found at index: %d", idx)
+		}
+
+		s.streamMessagesReceived.Inc()
+
+		idx++
+	}
+
+	for _, req := range s.returnOutput {
+		if err := stream.Send(&req); err != nil {
+			return err
+		}
+
+		s.streamMessagesSent.Inc()
+	}
+
+	return s.returnError
 }
 
 func setupGRPCServer(t *testing.T) (net.Addr, *grpc.Server, *simpleService) {
@@ -450,17 +474,15 @@ func setupGRPCServer(t *testing.T) (net.Addr, *grpc.Server, *simpleService) {
 }
 
 func TestGRPCStream(t *testing.T) {
-	addr, server, simpleSvc := setupGRPCServer(t)
-	defer server.Stop()
-
 	tests := []struct {
 		desc    string
 		opts    Options
 		wantRes string
 		wantErr string
 
-		errOnStart  error
-		exitOnStart bool
+		returnError   error
+		returnOutput  []simple.Foo
+		expectedInput []simple.Foo
 	}{
 		{
 			desc: "client streaming",
@@ -473,14 +495,39 @@ func TestGRPCStream(t *testing.T) {
 				},
 				TOpts: TransportOptions{
 					ServiceName: "foo",
-					Peers:       []string{"grpc://" + addr.String()},
 				},
 			},
 			wantRes: `{
   "test": 4
-}
-
-`,
+}`,
+			expectedInput: []simple.Foo{{Test: 1}, {Test: 2}, {Test: -1}, {Test: 10}},
+			returnOutput:  []simple.Foo{{Test: 4}},
+		},
+		{
+			desc: "client streaming with YAML input",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/ClientStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON: `test: 1
+---
+test: 2
+---
+test: -1
+---
+test: 10
+---`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+				},
+			},
+			wantRes: `{
+  "test": 4
+}`,
+			expectedInput: []simple.Foo{{Test: 1}, {Test: 2}, {Test: -1}, {Test: 10}},
+			returnOutput:  []simple.Foo{{Test: 4}},
 		},
 		{
 			desc: "client streaming with empty input",
@@ -493,12 +540,10 @@ func TestGRPCStream(t *testing.T) {
 				},
 				TOpts: TransportOptions{
 					ServiceName: "foo",
-					Peers:       []string{"grpc://" + addr.String()},
 				},
 			},
-			wantRes: `{}
-
-`,
+			wantRes:      `{}`,
+			returnOutput: []simple.Foo{{}},
 		},
 		{
 			desc: "sever streaming with multiple input",
@@ -511,7 +556,6 @@ func TestGRPCStream(t *testing.T) {
 				},
 				TOpts: TransportOptions{
 					ServiceName: "foo",
-					Peers:       []string{"grpc://" + addr.String()},
 				},
 			},
 			wantErr: "Request data contains more than 1 message for server-streaming RPC\n",
@@ -528,13 +572,12 @@ func TestGRPCStream(t *testing.T) {
 				},
 				TOpts: TransportOptions{
 					ServiceName: "foo",
-					Peers:       []string{"grpc://" + addr.String()},
 				},
 			},
 			wantRes: ``,
 			wantErr: "Failed while receiving stream response: code:unknown message:test error\n",
 
-			errOnStart: errors.New("test error"),
+			returnError: errors.New("test error"),
 		},
 		{
 			desc: "bidi streaming with EOF",
@@ -547,12 +590,10 @@ func TestGRPCStream(t *testing.T) {
 				},
 				TOpts: TransportOptions{
 					ServiceName: "foo",
-					Peers:       []string{"grpc://" + addr.String()},
 				},
 			},
-			wantRes:     ``,
-			wantErr:     "",
-			exitOnStart: true,
+			wantRes: ``,
+			wantErr: "",
 		},
 		{
 			desc: "error on stream call due to timeout",
@@ -565,7 +606,6 @@ func TestGRPCStream(t *testing.T) {
 				},
 				TOpts: TransportOptions{
 					ServiceName: "foo",
-					Peers:       []string{"grpc://" + addr.String()},
 				},
 			},
 			wantRes: ``,
@@ -582,7 +622,6 @@ func TestGRPCStream(t *testing.T) {
 				},
 				TOpts: TransportOptions{
 					ServiceName: "foo",
-					Peers:       []string{"grpc://" + addr.String()},
 				},
 			},
 			wantRes: `{
@@ -591,13 +630,32 @@ func TestGRPCStream(t *testing.T) {
 
 {
   "test": 2
+}`,
+			expectedInput: []simple.Foo{{Test: 2}},
+			returnOutput:  []simple.Foo{{Test: 1}, {Test: 2}},
+		},
+		{
+			desc: "server streaming with YAML input",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/ServerStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `test: 2`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+				},
+			},
+			wantRes: `{
+  "test": 1
 }
 
 {
-  "test": 3
-}
-
-`,
+  "test": 2
+}`,
+			expectedInput: []simple.Foo{{Test: 2}},
+			returnOutput:  []simple.Foo{{Test: 1}, {Test: 2}},
 		},
 		{
 			desc: "bidirectional streaming",
@@ -610,7 +668,6 @@ func TestGRPCStream(t *testing.T) {
 				},
 				TOpts: TransportOptions{
 					ServiceName: "foo",
-					Peers:       []string{"grpc://" + addr.String()},
 				},
 			},
 			wantRes: `{
@@ -619,9 +676,35 @@ func TestGRPCStream(t *testing.T) {
 
 {
   "test": 101
+}`,
+			expectedInput: []simple.Foo{{Test: 250}, {Test: 1}},
+			returnOutput:  []simple.Foo{{Test: 350}, {Test: 101}},
+		},
+		{
+			desc: "bidirectional streaming with YAML input",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/BidiStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON: `test: 250
+---
+test: 1
+---`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+				},
+			},
+			wantRes: `{
+  "test": 350
 }
 
-`,
+{
+  "test": 101
+}`,
+			expectedInput: []simple.Foo{{Test: 250}, {Test: 1}},
+			returnOutput:  []simple.Foo{{Test: 350}, {Test: 101}},
 		},
 		{
 			desc: "client streaming with invalid input",
@@ -634,17 +717,39 @@ func TestGRPCStream(t *testing.T) {
 				},
 				TOpts: TransportOptions{
 					ServiceName: "foo",
-					Peers:       []string{"grpc://" + addr.String()},
 				},
 			},
 			wantRes: ``,
 			wantErr: "Failed while reading stream input: unexpected EOF\n",
 		},
+		{
+			desc: "bidirectional streaming with invalid second input",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/BidiStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `{"test":250}{"test_err": 1}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+				},
+			},
+			wantErr:       `could not parse given request body as message of type "Foo"`,
+			expectedInput: []simple.Foo{{Test: 250}, {Test: 1}},
+			returnOutput:  []simple.Foo{{Test: 350}, {Test: 101}},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			simpleSvc.errOnStart = tt.errOnStart
-			simpleSvc.exitOnStart = tt.exitOnStart
+			addr, server, simpleSvc := setupGRPCServer(t)
+			defer server.Stop()
+
+			simpleSvc.returnError = tt.returnError
+			simpleSvc.returnOutput = tt.returnOutput
+			simpleSvc.expectedInput = tt.expectedInput
+
+			tt.opts.TOpts.Peers = []string{"grpc://" + addr.String()}
 
 			gotOut, gotErr := runTestWithOpts(tt.opts)
 			assert.Contains(t, gotErr, tt.wantErr)
@@ -661,8 +766,9 @@ func TestGRPCStreamBenchmark(t *testing.T) {
 		wantRes string
 		wantErr string
 
-		errOnStart  error
-		exitOnStart bool
+		returnError   error
+		returnOutput  []simple.Foo
+		expectedInput []simple.Foo
 
 		expectStreams        int32
 		expectSentMessage    int32
@@ -675,7 +781,7 @@ func TestGRPCStreamBenchmark(t *testing.T) {
 					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
 					Procedure:         "Bar/ClientStream",
 					Timeout:           timeMillisFlag(time.Second),
-					RequestJSON:       `{"test":1}{"test":2}{"test":-1} {"test":10}`,
+					RequestJSON:       `{"test":1}{"test":2} {"test":4}`,
 				},
 				TOpts: TransportOptions{
 					ServiceName: "foo",
@@ -687,10 +793,11 @@ func TestGRPCStreamBenchmark(t *testing.T) {
 					Concurrency:    2,
 				},
 			},
-			wantRes: `Total requests:           100`,
-
+			wantRes:              `Total requests:           100`,
+			returnOutput:         []simple.Foo{{Test: 1}},
+			expectedInput:        []simple.Foo{{Test: 1}, {Test: 2}, {Test: 4}},
 			expectStreams:        100,
-			expectReceiveMessage: 400,
+			expectReceiveMessage: 300,
 		},
 		{
 			desc: "client streaming - with warmup",
@@ -711,8 +818,9 @@ func TestGRPCStreamBenchmark(t *testing.T) {
 					Concurrency:    2,
 				},
 			},
-			wantRes: `Total requests:           100`,
-
+			wantRes:              `Total requests:           100`,
+			returnOutput:         []simple.Foo{{Test: 1}},
+			expectedInput:        []simple.Foo{{Test: 1}, {Test: 2}, {Test: -1}, {Test: 10}},
 			expectStreams:        103,
 			expectReceiveMessage: 412,
 		},
@@ -735,10 +843,11 @@ func TestGRPCStreamBenchmark(t *testing.T) {
 					Concurrency:    2,
 				},
 			},
-			wantRes: `Total requests:           100`,
-
+			wantRes:           `Total requests:           100`,
+			returnOutput:      []simple.Foo{{Test: 1}, {Test: 2}},
+			expectedInput:     []simple.Foo{{Test: 2}},
 			expectStreams:     100,
-			expectSentMessage: 300,
+			expectSentMessage: 200,
 		},
 		{
 			desc: "server streaming - with warmup",
@@ -759,8 +868,9 @@ func TestGRPCStreamBenchmark(t *testing.T) {
 					Concurrency:    2,
 				},
 			},
-			wantRes: `Total requests:           100`,
-
+			wantRes:           `Total requests:           100`,
+			returnOutput:      []simple.Foo{{Test: 1}, {Test: 2}},
+			expectedInput:     []simple.Foo{{Test: 1}},
 			expectStreams:     103,
 			expectSentMessage: 206,
 		},
@@ -784,6 +894,8 @@ func TestGRPCStreamBenchmark(t *testing.T) {
 				},
 			},
 			wantRes:              `Total requests:           100`,
+			returnOutput:         []simple.Foo{{Test: 1}, {Test: 2}},
+			expectedInput:        []simple.Foo{{Test: 1}, {Test: 2}},
 			expectStreams:        103,
 			expectSentMessage:    206,
 			expectReceiveMessage: 206,
@@ -808,6 +920,8 @@ func TestGRPCStreamBenchmark(t *testing.T) {
 				},
 			},
 			wantRes:              `Total requests:           100`,
+			returnOutput:         []simple.Foo{{Test: 1}, {Test: 2}},
+			expectedInput:        []simple.Foo{{Test: 1}, {Test: 2}},
 			expectStreams:        100,
 			expectSentMessage:    200,
 			expectReceiveMessage: 200,
@@ -817,8 +931,9 @@ func TestGRPCStreamBenchmark(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			addr, server, svc := setupGRPCServer(t)
 			defer server.Stop()
-			svc.errOnStart = tt.errOnStart
-			svc.exitOnStart = tt.exitOnStart
+			svc.returnError = tt.returnError
+			svc.expectedInput = tt.expectedInput
+			svc.returnOutput = tt.returnOutput
 
 			tt.opts.TOpts.Peers = []string{"grpc://" + addr.String()}
 
@@ -853,7 +968,7 @@ func TestGRPCReflectionSource(t *testing.T) {
 				},
 				TOpts: TransportOptions{
 					ServiceName: "foo",
-					Peers:       []string{"grpc://" + addr.String()},
+					Peers:       []string{addr.String()},
 				},
 			},
 			wantRes: `"test": 1`,

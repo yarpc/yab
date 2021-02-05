@@ -31,16 +31,16 @@ import (
 
 // Decoder interface exposes method for reading multiple input requests
 type Decoder interface {
-	// Next returns JSON marshaled bytes of the next request body
+	// NextJSONBytes returns JSON marshaled bytes of the next request body
 	// It returns io.EOF when there are no more requests
-	Next() ([]byte, error)
+	NextJSONBytes() ([]byte, error)
 }
 
 // jsonInputDecoder parses multiple JSON objects from given reader
 // JSON objects can be delimited by space or newline
 type jsonInputDecoder struct{ dec *json.Decoder }
 
-func (r *jsonInputDecoder) Next() ([]byte, error) {
+func (r *jsonInputDecoder) NextJSONBytes() ([]byte, error) {
 	if !r.dec.More() {
 		return nil, io.EOF
 	}
@@ -54,16 +54,17 @@ func (r *jsonInputDecoder) Next() ([]byte, error) {
 // consecutive YAML objects must be delimited by `---`
 type yamlInputDecoder struct{ dec *yaml.Decoder }
 
-func (r *yamlInputDecoder) Next() ([]byte, error) {
+func (r *yamlInputDecoder) NextJSONBytes() ([]byte, error) {
 	var v interface{}
-	err := r.dec.Decode(&v)
-	if err != nil {
+	if err := r.dec.Decode(&v); err != nil {
 		return nil, err
 	}
+
 	bytes, err := yaml.Marshal(v)
 	if err != nil {
 		return nil, err
 	}
+
 	return gyaml.YAMLToJSON(bytes)
 }
 
@@ -74,6 +75,7 @@ func isJSONInput(r *bufio.Reader) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
 	return b == '{', r.UnreadByte()
 }
 
@@ -85,8 +87,10 @@ func New(reader io.Reader) (Decoder, error) {
 	if err != nil && err != io.EOF {
 		return nil, err
 	}
+
 	if isJSON {
 		return &jsonInputDecoder{json.NewDecoder(bufReader)}, nil
 	}
+
 	return &yamlInputDecoder{yaml.NewDecoder(bufReader)}, nil
 }
