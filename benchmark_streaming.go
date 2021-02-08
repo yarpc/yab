@@ -42,7 +42,7 @@ func (m benchmarkStreamMethod) Call(t transport.Transport) (time.Duration, error
 	var streamResponses [][]byte
 
 	// TODO: support `stream-interval` option which throttles the rate of input.
-	requestSupplier := func() ([]byte, error) {
+	nextBodyFn := func() ([]byte, error) {
 		if len(m.streamRequestMessages) == streamRequestIdx {
 			return nil, io.EOF
 		}
@@ -53,13 +53,13 @@ func (m benchmarkStreamMethod) Call(t transport.Transport) (time.Duration, error
 		return req, nil
 	}
 
-	captureResponseBody := func(resBody []byte) error {
+	responseHandlerFn := func(resBody []byte) error {
 		streamResponses = append(streamResponses, resBody)
 		return nil
 	}
 
 	start := time.Now()
-	err := makeStreamRequest(t, m.streamRequest, m.serializer, requestSupplier, captureResponseBody)
+	err := makeStreamRequest(t, m.streamRequest, m.serializer, nextBodyFn, responseHandlerFn)
 	duration := time.Since(start)
 
 	if err != nil {
