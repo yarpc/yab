@@ -759,6 +759,7 @@ func TestGRPCReflectionSource(t *testing.T) {
 				},
 				TOpts: TransportOptions{
 					ServiceName: "foo",
+					Peers:       []string{addr.String()},
 				},
 			},
 			wantRes: `"test": 1`,
