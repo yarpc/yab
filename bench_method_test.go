@@ -376,7 +376,6 @@ func TestBenchmarkMethodWarmTransportGRPCStreams(t *testing.T) {
 
 			bench := benchmarkStreamMethod{
 				serializer:            serializer,
-				req:                   req,
 				streamRequest:         &transport.StreamRequest{Request: req},
 				streamRequestMessages: tt.requests,
 			}
@@ -392,12 +391,4 @@ func TestBenchmarkMethodWarmTransportGRPCStreams(t *testing.T) {
 			assert.Equal(t, tt.expectReceiveMessage, svc.streamMessagesReceived.Load())
 		})
 	}
-}
-
-func TestBenchmarkMethodHealth(t *testing.T) {
-	m := benchmarkMethodForROpts(t, RequestOptions{
-		Encoding: encoding.Thrift,
-		Health:   true,
-	}, transport.TChannel)
-	assert.Equal(t, "Meta::health", m.Method())
 }

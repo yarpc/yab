@@ -23,6 +23,10 @@ type streamRequestSupplierFn func() (requestBody []byte, err error)
 // streamResponseHandlerFn is a function that receives the stream response body
 type streamResponseHandlerFn func(responseBody []byte) error
 
+// streamAllRequestSupplierFn is a function that returns all the stream request
+// message bodies
+type streamAllRequestSupplierFn func() (requestBodies [][]byte, err error)
+
 type requestHandler struct {
 	out        output
 	logger     *zap.Logger
@@ -65,7 +69,7 @@ func (r requestHandler) handleUnaryRequest() {
 		makeInitialRequest(r.out, r.transport, r.serializer, req)
 	}
 
-	runBenchmark(r.out, r.logger, r.opts, r.resolved, benchmarkMethod{
+	runBenchmark(r.out, r.logger, r.opts, r.resolved, req.Method, benchmarkMethod{
 		serializer: r.serializer,
 		req:        req,
 	})
@@ -88,28 +92,21 @@ func (r requestHandler) handleStreamRequest() {
 		r.out.Fatalf("Failed while preparing the request: %v\n", err)
 	}
 
-	nextBodyFn := streamRequestSupplier(streamMsgReader)
+	nextBodyFn, allRequestsFn := streamRequestSupplier(streamMsgReader)
 
 	if r.shouldMakeInitialRequest() {
 		if err = makeStreamRequest(r.transport, streamReq, r.serializer, nextBodyFn, r.responseHandler); err != nil {
 			r.out.Fatalf("%v\n", err)
 		}
-	} else {
-		// Read all the request messages explicitly as there was no initial request.
-		for {
-			_, err := nextBodyFn()
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				r.out.Fatalf("%v\n", err)
-			}
-		}
 	}
 
-	runBenchmark(r.out, r.logger, r.opts, r.resolved, benchmarkStreamMethod{
+	streamRequestMessages, err := allRequestsFn()
+	if err != nil {
+		r.out.Fatalf("%v\n", err)
+	}
+
+	runBenchmark(r.out, r.logger, r.opts, r.resolved, streamReq.Request.Method, benchmarkStreamMethod{
 		serializer:            r.serializer,
-		req:                   streamReq.Request,
 		streamRequest:         streamReq,
 		streamRequestMessages: streamRequestMessages,
 	})
@@ -136,21 +133,40 @@ func (r requestHandler) responseHandler(body []byte) error {
 	return nil
 }
 
-// streamRequestSupplier returns a stream request supplier function which uses
-// provided stream request reader
-func streamRequestSupplier(streamMsgReader encoding.StreamRequestReader) streamRequestSupplierFn {
+// streamRequestSupplier uses provided stream message reader to return
+// stream request supplier function which is used to read requests one by one
+// all stream request supplier function which is used to read all the requests
+// together for benchmarks.
+func streamRequestSupplier(streamMsgReader encoding.StreamRequestReader) (streamRequestSupplierFn, streamAllRequestSupplierFn) {
+	var streamRequestMessages [][]byte
+	var eofReached bool
+
 	nextBodyFn := func() ([]byte, error) {
 		msg, err := streamMsgReader.NextBody()
 		if err == io.EOF {
+			eofReached = true
 			return nil, err
 		}
 		if err != nil {
 			return nil, fmt.Errorf("Failed while reading stream input: %v", err)
 		}
 
+		streamRequestMessages = append(streamRequestMessages, msg)
+
 		return msg, nil
 	}
-	return nextBodyFn
+
+	allRequestsFn := func() ([][]byte, error) {
+		for !eofReached {
+			if _, err := nextBodyFn(); err != nil && err != io.EOF {
+				return nil, err
+			}
+		}
+
+		return streamRequestMessages, nil
+	}
+
+	return nextBodyFn, allRequestsFn
 }
 
 // isStreamingMethod returns true if RPC is streaming type

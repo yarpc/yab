@@ -55,10 +55,14 @@ type peerTransport struct {
 	peerID int
 }
 
+// benchmarker creates transports and dispatches requests for benchmark.
 type benchmarker interface {
-	WarmTransports(int, TransportOptions, resolvedProtocolEncoding, int) ([]peerTransport, error)
+	// WarmTransports creates n transports and warms it up by dispatching specified
+	// number of warm-up requests.
+	WarmTransports(n int, tOpts TransportOptions, resolved resolvedProtocolEncoding, warmupRequests int) ([]peerTransport, error)
+
+	// Call dispatches a request on the provided transport.
 	Call(transport.Transport) (time.Duration, error)
-	Method() string
 }
 
 // Parameters holds values of all benchmark parameters
@@ -136,7 +140,7 @@ func runWorker(t transport.Transport, m benchmarker, s *benchmarkState, run *lim
 	}
 }
 
-func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved resolvedProtocolEncoding, m benchmarker) {
+func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved resolvedProtocolEncoding, methodName string, m benchmarker) {
 	opts := allOpts.BOpts
 
 	if err := opts.validate(); err != nil {
@@ -185,7 +189,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 		out.Fatalf("Failed to warmup connections for benchmark: %v", err)
 	}
 
-	globalStatter, err := statsd.NewClient(logger, opts.StatsdHostPort, allOpts.TOpts.ServiceName, m.Method())
+	globalStatter, err := statsd.NewClient(logger, opts.StatsdHostPort, allOpts.TOpts.ServiceName, methodName)
 	if err != nil {
 		out.Fatalf("Failed to create statsd client for benchmark: %v", err)
 	}
@@ -344,8 +348,7 @@ func warmTransport(m benchmarker, opts TransportOptions, resolved resolvedProtoc
 	}
 
 	for i := 0; i < warmupRequests; i++ {
-		_, err := m.Call(transport)
-		if err != nil {
+		if _, err := m.Call(transport); err != nil {
 			return nil, err
 		}
 	}

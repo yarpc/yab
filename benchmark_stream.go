@@ -30,42 +30,30 @@ import (
 
 // benchmarkStreamMethod benchmarks stream requests
 type benchmarkStreamMethod struct {
-	serializer encoding.Serializer
-	req        *transport.Request
-
+	serializer            encoding.Serializer
 	streamRequest         *transport.StreamRequest
 	streamRequestMessages [][]byte
 }
 
 func (m benchmarkStreamMethod) Call(t transport.Transport) (time.Duration, error) {
-	var streamRequestIdx int
 	var streamResponses [][]byte
-
-	// TODO: support `stream-interval` option which throttles the rate of input.
-	nextBodyFn := func() ([]byte, error) {
-		if len(m.streamRequestMessages) == streamRequestIdx {
-			return nil, io.EOF
-		}
-
-		req := m.streamRequestMessages[streamRequestIdx]
-		streamRequestIdx++
-
-		return req, nil
-	}
 
 	responseHandlerFn := func(resBody []byte) error {
 		streamResponses = append(streamResponses, resBody)
+
 		return nil
 	}
 
 	start := time.Now()
-	err := makeStreamRequest(t, m.streamRequest, m.serializer, nextBodyFn, responseHandlerFn)
+	err := makeStreamRequest(t, m.streamRequest, m.serializer, m.streamRequestSupplier(), responseHandlerFn)
 	duration := time.Since(start)
 
 	if err != nil {
 		return duration, err
 	}
 
+	// response validation is delayed to avoid consuming benchmark time for
+	// deserialising the responses.
 	for _, res := range streamResponses {
 		if err = m.serializer.CheckSuccess(&transport.Response{Body: res}); err != nil {
 			return duration, err
@@ -79,6 +67,23 @@ func (m benchmarkStreamMethod) WarmTransports(n int, tOpts TransportOptions, res
 	return warmTransports(m, n, tOpts, resolved, warmupRequests)
 }
 
-func (m benchmarkStreamMethod) Method() string {
-	return m.req.Method
+// streamRequestSupplier returns stream request supplier function which
+// iterates over the requests provided in benchmark
+func (m benchmarkStreamMethod) streamRequestSupplier() streamRequestSupplierFn {
+	var streamRequestIdx int
+
+	nextBodyFn := func() ([]byte, error) {
+		if len(m.streamRequestMessages) == streamRequestIdx {
+			return nil, io.EOF
+		}
+
+		req := m.streamRequestMessages[streamRequestIdx]
+		streamRequestIdx++
+
+		// TODO: support `stream-interval` option which throttles the rate of input.
+
+		return req, nil
+	}
+
+	return nextBodyFn
 }

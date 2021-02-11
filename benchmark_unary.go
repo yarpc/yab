@@ -47,7 +47,3 @@ func (m benchmarkMethod) Call(t transport.Transport) (time.Duration, error) {
 func (m benchmarkMethod) WarmTransports(n int, tOpts TransportOptions, resolved resolvedProtocolEncoding, warmupRequests int) ([]peerTransport, error) {
 	return warmTransports(m, n, tOpts, resolved, warmupRequests)
 }
-
-func (m benchmarkMethod) Method() string {
-	return m.req.Method
-}
