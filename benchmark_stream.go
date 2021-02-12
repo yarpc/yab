@@ -36,7 +36,7 @@ type benchmarkStreamMethod struct {
 }
 
 func (m benchmarkStreamMethod) Call(t transport.Transport) (time.Duration, error) {
-	responseHandlerFn, allResponsesFn := streamResponseRecorder()
+	responseHandlerFn, allResponsesFn := m.streamResponseRecorder()
 
 	start := time.Now()
 	err := makeStreamRequest(t, m.streamRequest, m.serializer, m.streamRequestSupplier(), responseHandlerFn)
@@ -47,7 +47,7 @@ func (m benchmarkStreamMethod) Call(t transport.Transport) (time.Duration, error
 	}
 
 	// response validation is delayed to avoid consuming benchmark time for
-	// deserialising the responses.
+	// deserializing the responses.
 	for _, res := range allResponsesFn() {
 		if err = m.serializer.CheckSuccess(&transport.Response{Body: res}); err != nil {
 			return duration, err
@@ -84,7 +84,7 @@ func (m benchmarkStreamMethod) streamRequestSupplier() streamRequestSupplierFn {
 
 // streamResponseRecorder returns a stream response handler which records
 // all the responses. Recorded responses is returned by all responses function.
-func streamResponseRecorder() (streamResponseHandlerFn, func() [][]byte) {
+func (benchmarkStreamMethod) streamResponseRecorder() (streamResponseHandlerFn, func() [][]byte) {
 	var streamResponses [][]byte
 
 	responseHandlerFn := func(resBody []byte) error {
