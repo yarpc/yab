@@ -35,7 +35,7 @@ type requestHandler struct {
 }
 
 func (r requestHandler) handle() {
-	if isStreamingMethod(r.serializer) {
+	if r.isStreamingMethod() {
 		r.handleStreamRequest()
 		return
 	}
@@ -88,10 +88,8 @@ func (r requestHandler) handleStreamRequest() {
 		r.out.Fatalf("Failed while preparing the request: %v\n", err)
 	}
 
-	nextBodyFn := streamRequestSupplier(streamMsgReader)
-
 	if r.shouldMakeInitialRequest() {
-		if err = makeStreamRequest(r.transport, streamReq, r.serializer, nextBodyFn, r.responseHandler); err != nil {
+		if err = makeStreamRequest(r.transport, streamReq, r.serializer, streamRequestSupplier(streamMsgReader), r.responseHandler); err != nil {
 			r.out.Fatalf("%v\n", err)
 		}
 	}
@@ -120,6 +118,11 @@ func (r requestHandler) responseHandler(body []byte) error {
 	return nil
 }
 
+// isStreamingMethod returns true if RPC is streaming type
+func (r requestHandler) isStreamingMethod() bool {
+	return r.serializer.MethodType() != encoding.Unary
+}
+
 // streamRequestSupplier returns a stream request supplier function which uses
 // provided stream request reader
 func streamRequestSupplier(streamMsgReader encoding.StreamRequestReader) streamRequestSupplierFn {
@@ -135,11 +138,6 @@ func streamRequestSupplier(streamMsgReader encoding.StreamRequestReader) streamR
 		return msg, nil
 	}
 	return nextBodyFn
-}
-
-// isStreamingMethod returns true if RPC is streaming type
-func isStreamingMethod(serializer encoding.Serializer) bool {
-	return serializer.MethodType() != encoding.Unary
 }
 
 // makeStreamRequest opens a stream rpc from the given transport and stream request
