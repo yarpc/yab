@@ -39,7 +39,7 @@ type requestHandler struct {
 }
 
 func (r requestHandler) handle() {
-	if isStreamingMethod(r.serializer) {
+	if r.isStreamingMethod() {
 		r.handleStreamRequest()
 		return
 	}
@@ -133,6 +133,11 @@ func (r requestHandler) responseHandler(body []byte) error {
 	return nil
 }
 
+// isStreamingMethod returns true if RPC is streaming type
+func (r requestHandler) isStreamingMethod() bool {
+	return r.serializer.MethodType() != encoding.Unary
+}
+
 // streamRequestSupplier uses provided stream message reader to return
 // stream request supplier function which is used to read requests one by one
 // all stream request supplier function which is used to read all the requests
@@ -167,11 +172,6 @@ func streamRequestSupplier(streamMsgReader encoding.StreamRequestReader) (stream
 	}
 
 	return nextBodyFn, allRequestsFn
-}
-
-// isStreamingMethod returns true if RPC is streaming type
-func isStreamingMethod(serializer encoding.Serializer) bool {
-	return serializer.MethodType() != encoding.Unary
 }
 
 // makeStreamRequest opens a stream rpc from the given transport and stream request
