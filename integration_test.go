@@ -442,16 +442,15 @@ func (s *simpleService) BidiStream(stream simple.Bar_BidiStreamServer) error {
 	return s.returnError
 }
 
-func setupGRPCServer(t *testing.T) (net.Addr, *grpc.Server, *simpleService) {
+func setupGRPCServer(t *testing.T, svc *simpleService) (net.Addr, *grpc.Server) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 
-	simpleSvc := &simpleService{}
 	s := grpc.NewServer()
-	simple.RegisterBarServer(s, simpleSvc)
+	simple.RegisterBarServer(s, svc)
 	reflection.Register(s)
 	go s.Serve(ln)
-	return ln.Addr(), s, simpleSvc
+	return ln.Addr(), s
 }
 
 func TestGRPCStream(t *testing.T) {
@@ -517,7 +516,6 @@ test: 10
 					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
 					Procedure:         "Bar/ClientStream",
 					Timeout:           timeMillisFlag(time.Second),
-					RequestJSON:       ``,
 				},
 				TOpts: TransportOptions{
 					ServiceName: "foo",
@@ -540,7 +538,6 @@ test: 10
 				},
 			},
 			wantErr: "Request data contains more than 1 message for server-streaming RPC\n",
-			wantRes: ``,
 		},
 		{
 			desc: "bidi streaming with immidiate error",
@@ -555,10 +552,9 @@ test: 10
 					ServiceName: "foo",
 				},
 			},
-			wantRes: ``,
-			wantErr: "Failed while receiving stream response: code:unknown message:test error\n",
-
-			returnError: errors.New("test error"),
+			wantErr:       "Failed while receiving stream response: code:unknown message:test error\n",
+			expectedInput: []simple.Foo{{}},
+			returnError:   errors.New("test error"),
 		},
 		{
 			desc: "bidi streaming with EOF",
@@ -573,8 +569,6 @@ test: 10
 					ServiceName: "foo",
 				},
 			},
-			wantRes: ``,
-			wantErr: "",
 		},
 		{
 			desc: "error on stream call due to timeout",
@@ -589,8 +583,7 @@ test: 10
 					ServiceName: "foo",
 				},
 			},
-			wantRes: ``,
-			wantErr: "Failed while making stream call",
+			wantErr: "Failed while making stream call: code:unavailable message:roundrobin peer list timed out waiting for peer: context deadline exceeded\n",
 		},
 		{
 			desc: "server streaming",
@@ -700,7 +693,6 @@ test: 1
 					ServiceName: "foo",
 				},
 			},
-			wantRes: ``,
 			wantErr: "Failed while reading stream input: unexpected EOF\n",
 		},
 		{
@@ -716,31 +708,29 @@ test: 1
 					ServiceName: "foo",
 				},
 			},
-			wantErr:       `could not parse given request body as message of type "Foo"`,
-			expectedInput: []simple.Foo{{Test: 250}, {Test: 1}},
-			returnOutput:  []simple.Foo{{Test: 350}, {Test: 101}},
+			wantErr: "Failed while reading stream input: could not parse given request body as message of type \"Foo\": Message type Foo has no known field named test_err\n",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			addr, server, simpleSvc := setupGRPCServer(t)
+			addr, server := setupGRPCServer(t, &simpleService{
+				returnOutput:  tt.returnOutput,
+				expectedInput: tt.expectedInput,
+				returnError:   tt.returnError,
+			})
 			defer server.Stop()
-
-			simpleSvc.returnError = tt.returnError
-			simpleSvc.returnOutput = tt.returnOutput
-			simpleSvc.expectedInput = tt.expectedInput
 
 			tt.opts.TOpts.Peers = []string{"grpc://" + addr.String()}
 
 			gotOut, gotErr := runTestWithOpts(tt.opts)
-			assert.Contains(t, gotErr, tt.wantErr)
+			assert.Equal(t, tt.wantErr, gotErr)
 			assert.Contains(t, gotOut, tt.wantRes)
 		})
 	}
 }
 
 func TestGRPCReflectionSource(t *testing.T) {
-	addr, server, _ := setupGRPCServer(t)
+	addr, server := setupGRPCServer(t, &simpleService{})
 	defer server.GracefulStop()
 
 	tests := []struct {
