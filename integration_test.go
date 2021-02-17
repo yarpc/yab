@@ -461,301 +461,15 @@ func (s *simpleService) BidiStream(stream simple.Bar_BidiStreamServer) error {
 	return s.returnError
 }
 
-func setupGRPCServer(t *testing.T) (net.Addr, *grpc.Server, *simpleService) {
+func setupGRPCServer(t *testing.T, svc *simpleService) (net.Addr, *grpc.Server) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 
-	simpleSvc := &simpleService{}
 	s := grpc.NewServer()
-	simple.RegisterBarServer(s, simpleSvc)
+	simple.RegisterBarServer(s, svc)
 	reflection.Register(s)
 	go s.Serve(ln)
-	return ln.Addr(), s, simpleSvc
-}
-
-func TestGRPCStream(t *testing.T) {
-	tests := []struct {
-		desc    string
-		opts    Options
-		wantRes string
-		wantErr string
-
-		returnError   error
-		returnOutput  []simple.Foo
-		expectedInput []simple.Foo
-	}{
-		{
-			desc: "client streaming",
-			opts: Options{
-				ROpts: RequestOptions{
-					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-					Procedure:         "Bar/ClientStream",
-					Timeout:           timeMillisFlag(time.Second),
-					RequestJSON:       `{"test":1}{"test":2}{"test":-1} {"test":10}`,
-				},
-				TOpts: TransportOptions{
-					ServiceName: "foo",
-				},
-			},
-			wantRes: `{
-  "test": 4
-}`,
-			expectedInput: []simple.Foo{{Test: 1}, {Test: 2}, {Test: -1}, {Test: 10}},
-			returnOutput:  []simple.Foo{{Test: 4}},
-		},
-		{
-			desc: "client streaming with YAML input",
-			opts: Options{
-				ROpts: RequestOptions{
-					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-					Procedure:         "Bar/ClientStream",
-					Timeout:           timeMillisFlag(time.Second),
-					RequestJSON: `test: 1
----
-test: 2
----
-test: -1
----
-test: 10
----`,
-				},
-				TOpts: TransportOptions{
-					ServiceName: "foo",
-				},
-			},
-			wantRes: `{
-  "test": 4
-}`,
-			expectedInput: []simple.Foo{{Test: 1}, {Test: 2}, {Test: -1}, {Test: 10}},
-			returnOutput:  []simple.Foo{{Test: 4}},
-		},
-		{
-			desc: "client streaming with empty input",
-			opts: Options{
-				ROpts: RequestOptions{
-					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-					Procedure:         "Bar/ClientStream",
-					Timeout:           timeMillisFlag(time.Second),
-					RequestJSON:       ``,
-				},
-				TOpts: TransportOptions{
-					ServiceName: "foo",
-				},
-			},
-			wantRes:      `{}`,
-			returnOutput: []simple.Foo{{}},
-		},
-		{
-			desc: "sever streaming with multiple input",
-			opts: Options{
-				ROpts: RequestOptions{
-					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-					Procedure:         "Bar/ServerStream",
-					Timeout:           timeMillisFlag(time.Second),
-					RequestJSON:       `{}{}`,
-				},
-				TOpts: TransportOptions{
-					ServiceName: "foo",
-				},
-			},
-			wantErr: "Request data contains more than 1 message for server-streaming RPC\n",
-			wantRes: ``,
-		},
-		{
-			desc: "bidi streaming with immidiate error",
-			opts: Options{
-				ROpts: RequestOptions{
-					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-					Procedure:         "Bar/BidiStream",
-					Timeout:           timeMillisFlag(time.Second),
-					RequestJSON:       `{}`,
-				},
-				TOpts: TransportOptions{
-					ServiceName: "foo",
-				},
-			},
-			wantRes: ``,
-			wantErr: "Failed while receiving stream response: code:unknown message:test error\n",
-
-			returnError: errors.New("test error"),
-		},
-		{
-			desc: "bidi streaming with EOF",
-			opts: Options{
-				ROpts: RequestOptions{
-					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-					Procedure:         "Bar/BidiStream",
-					Timeout:           timeMillisFlag(time.Second),
-					RequestJSON:       `{}`,
-				},
-				TOpts: TransportOptions{
-					ServiceName: "foo",
-				},
-			},
-			wantRes: ``,
-			wantErr: "",
-		},
-		{
-			desc: "error on stream call due to timeout",
-			opts: Options{
-				ROpts: RequestOptions{
-					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-					Procedure:         "Bar/BidiStream",
-					Timeout:           timeMillisFlag(time.Nanosecond),
-					RequestJSON:       `{}`,
-				},
-				TOpts: TransportOptions{
-					ServiceName: "foo",
-				},
-			},
-			wantRes: ``,
-			wantErr: "Failed while making stream call",
-		},
-		{
-			desc: "server streaming",
-			opts: Options{
-				ROpts: RequestOptions{
-					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-					Procedure:         "Bar/ServerStream",
-					Timeout:           timeMillisFlag(time.Second),
-					RequestJSON:       `{"test":2}`,
-				},
-				TOpts: TransportOptions{
-					ServiceName: "foo",
-				},
-			},
-			wantRes: `{
-  "test": 1
-}
-
-{
-  "test": 2
-}`,
-			expectedInput: []simple.Foo{{Test: 2}},
-			returnOutput:  []simple.Foo{{Test: 1}, {Test: 2}},
-		},
-		{
-			desc: "server streaming with YAML input",
-			opts: Options{
-				ROpts: RequestOptions{
-					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-					Procedure:         "Bar/ServerStream",
-					Timeout:           timeMillisFlag(time.Second),
-					RequestJSON:       `test: 2`,
-				},
-				TOpts: TransportOptions{
-					ServiceName: "foo",
-				},
-			},
-			wantRes: `{
-  "test": 1
-}
-
-{
-  "test": 2
-}`,
-			expectedInput: []simple.Foo{{Test: 2}},
-			returnOutput:  []simple.Foo{{Test: 1}, {Test: 2}},
-		},
-		{
-			desc: "bidirectional streaming",
-			opts: Options{
-				ROpts: RequestOptions{
-					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-					Procedure:         "Bar/BidiStream",
-					Timeout:           timeMillisFlag(time.Second),
-					RequestJSON:       `{"test":250}{"test":1}`,
-				},
-				TOpts: TransportOptions{
-					ServiceName: "foo",
-				},
-			},
-			wantRes: `{
-  "test": 350
-}
-
-{
-  "test": 101
-}`,
-			expectedInput: []simple.Foo{{Test: 250}, {Test: 1}},
-			returnOutput:  []simple.Foo{{Test: 350}, {Test: 101}},
-		},
-		{
-			desc: "bidirectional streaming with YAML input",
-			opts: Options{
-				ROpts: RequestOptions{
-					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-					Procedure:         "Bar/BidiStream",
-					Timeout:           timeMillisFlag(time.Second),
-					RequestJSON: `test: 250
----
-test: 1
----`,
-				},
-				TOpts: TransportOptions{
-					ServiceName: "foo",
-				},
-			},
-			wantRes: `{
-  "test": 350
-}
-
-{
-  "test": 101
-}`,
-			expectedInput: []simple.Foo{{Test: 250}, {Test: 1}},
-			returnOutput:  []simple.Foo{{Test: 350}, {Test: 101}},
-		},
-		{
-			desc: "client streaming with invalid input",
-			opts: Options{
-				ROpts: RequestOptions{
-					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-					Procedure:         "Bar/ClientStream",
-					Timeout:           timeMillisFlag(time.Second),
-					RequestJSON:       `{`,
-				},
-				TOpts: TransportOptions{
-					ServiceName: "foo",
-				},
-			},
-			wantRes: ``,
-			wantErr: "Failed while reading stream input: unexpected EOF\n",
-		},
-		{
-			desc: "bidirectional streaming with invalid second input",
-			opts: Options{
-				ROpts: RequestOptions{
-					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-					Procedure:         "Bar/BidiStream",
-					Timeout:           timeMillisFlag(time.Second),
-					RequestJSON:       `{"test":250}{"test_err": 1}`,
-				},
-				TOpts: TransportOptions{
-					ServiceName: "foo",
-				},
-			},
-			wantErr:       `could not parse given request body as message of type "Foo"`,
-			expectedInput: []simple.Foo{{Test: 250}, {Test: 1}},
-			returnOutput:  []simple.Foo{{Test: 350}, {Test: 101}},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.desc, func(t *testing.T) {
-			addr, server, simpleSvc := setupGRPCServer(t)
-			defer server.Stop()
-
-			simpleSvc.returnError = tt.returnError
-			simpleSvc.returnOutput = tt.returnOutput
-			simpleSvc.expectedInput = tt.expectedInput
-
-			tt.opts.TOpts.Peers = []string{"grpc://" + addr.String()}
-
-			gotOut, gotErr := runTestWithOpts(tt.opts)
-			assert.Contains(t, gotErr, tt.wantErr)
-			assert.Contains(t, gotOut, tt.wantRes)
-		})
-	}
+	return ln.Addr(), s
 }
 
 func TestGRPCStreamBenchmark(t *testing.T) {
@@ -929,11 +643,13 @@ func TestGRPCStreamBenchmark(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			addr, server, svc := setupGRPCServer(t)
+			svc := &simpleService{
+				expectedInput: tt.expectedInput,
+				returnOutput:  tt.returnOutput,
+				returnError:   tt.returnError,
+			}
+			addr, server := setupGRPCServer(t, svc)
 			defer server.Stop()
-			svc.returnError = tt.returnError
-			svc.expectedInput = tt.expectedInput
-			svc.returnOutput = tt.returnOutput
 
 			tt.opts.TOpts.Peers = []string{"grpc://" + addr.String()}
 
@@ -948,8 +664,284 @@ func TestGRPCStreamBenchmark(t *testing.T) {
 	}
 }
 
+func TestGRPCStream(t *testing.T) {
+	tests := []struct {
+		desc    string
+		opts    Options
+		wantRes string
+		wantErr string
+
+		returnError   error
+		returnOutput  []simple.Foo
+		expectedInput []simple.Foo
+	}{
+		{
+			desc: "client streaming",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/ClientStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `{"test":1}{"test":2}{"test":-1} {"test":10}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+				},
+			},
+			wantRes: `{
+  "test": 4
+}`,
+			expectedInput: []simple.Foo{{Test: 1}, {Test: 2}, {Test: -1}, {Test: 10}},
+			returnOutput:  []simple.Foo{{Test: 4}},
+		},
+		{
+			desc: "client streaming with YAML input",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/ClientStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON: `test: 1
+---
+test: 2
+---
+test: -1
+---
+test: 10
+---`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+				},
+			},
+			wantRes: `{
+  "test": 4
+}`,
+			expectedInput: []simple.Foo{{Test: 1}, {Test: 2}, {Test: -1}, {Test: 10}},
+			returnOutput:  []simple.Foo{{Test: 4}},
+		},
+		{
+			desc: "client streaming with empty input",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/ClientStream",
+					Timeout:           timeMillisFlag(time.Second),
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+				},
+			},
+			wantRes:      `{}`,
+			returnOutput: []simple.Foo{{}},
+		},
+		{
+			desc: "sever streaming with multiple input",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/ServerStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `{}{}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+				},
+			},
+			wantErr: "Request data contains more than 1 message for server-streaming RPC\n",
+		},
+		{
+			desc: "bidi streaming with immidiate error",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/BidiStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `{}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+				},
+			},
+			wantErr:       "Failed while receiving stream response: code:unknown message:test error\n",
+			expectedInput: []simple.Foo{{}},
+			returnError:   errors.New("test error"),
+		},
+		{
+			desc: "bidi streaming with EOF",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/BidiStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `{}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+				},
+			},
+		},
+		{
+			desc: "error on stream call due to timeout",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/BidiStream",
+					Timeout:           timeMillisFlag(time.Nanosecond),
+					RequestJSON:       `{}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+				},
+			},
+			wantErr: "Failed while making stream call: code:unavailable message:roundrobin peer list timed out waiting for peer: context deadline exceeded\n",
+		},
+		{
+			desc: "server streaming",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/ServerStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `{"test":2}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+				},
+			},
+			wantRes: `{
+  "test": 1
+}
+
+{
+  "test": 2
+}`,
+			expectedInput: []simple.Foo{{Test: 2}},
+			returnOutput:  []simple.Foo{{Test: 1}, {Test: 2}},
+		},
+		{
+			desc: "server streaming with YAML input",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/ServerStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `test: 2`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+				},
+			},
+			wantRes: `{
+  "test": 1
+}
+
+{
+  "test": 2
+}`,
+			expectedInput: []simple.Foo{{Test: 2}},
+			returnOutput:  []simple.Foo{{Test: 1}, {Test: 2}},
+		},
+		{
+			desc: "bidirectional streaming",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/BidiStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `{"test":250}{"test":1}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+				},
+			},
+			wantRes: `{
+  "test": 350
+}
+
+{
+  "test": 101
+}`,
+			expectedInput: []simple.Foo{{Test: 250}, {Test: 1}},
+			returnOutput:  []simple.Foo{{Test: 350}, {Test: 101}},
+		},
+		{
+			desc: "bidirectional streaming with YAML input",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/BidiStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON: `test: 250
+---
+test: 1
+---`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+				},
+			},
+			wantRes: `{
+  "test": 350
+}
+
+{
+  "test": 101
+}`,
+			expectedInput: []simple.Foo{{Test: 250}, {Test: 1}},
+			returnOutput:  []simple.Foo{{Test: 350}, {Test: 101}},
+		},
+		{
+			desc: "client streaming with invalid input",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/ClientStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `{`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+				},
+			},
+			wantErr: "Failed while reading stream input: unexpected EOF\n",
+		},
+		{
+			desc: "bidirectional streaming with invalid second input",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/BidiStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `{"test":250}{"test_err": 1}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+				},
+			},
+			wantErr: "Failed while reading stream input: could not parse given request body as message of type \"Foo\": Message type Foo has no known field named test_err\n",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			addr, server := setupGRPCServer(t, &simpleService{
+				returnOutput:  tt.returnOutput,
+				expectedInput: tt.expectedInput,
+				returnError:   tt.returnError,
+			})
+			defer server.Stop()
+
+			tt.opts.TOpts.Peers = []string{"grpc://" + addr.String()}
+
+			gotOut, gotErr := runTestWithOpts(tt.opts)
+			assert.Equal(t, tt.wantErr, gotErr)
+			assert.Contains(t, gotOut, tt.wantRes)
+		})
+	}
+}
+
 func TestGRPCReflectionSource(t *testing.T) {
-	addr, server, _ := setupGRPCServer(t)
+	addr, server := setupGRPCServer(t, &simpleService{})
 	defer server.GracefulStop()
 
 	tests := []struct {

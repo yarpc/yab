@@ -356,11 +356,12 @@ func TestBenchmarkMethodWarmTransportGRPCStreams(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			lis, server, svc := setupGRPCServer(t)
+			svc := &simpleService{
+				expectedInput: tt.expectedInput,
+				returnOutput:  tt.returnOutput,
+			}
+			lis, server := setupGRPCServer(t, svc)
 			defer server.Stop()
-
-			svc.expectedInput = tt.expectedInput
-			svc.returnOutput = tt.returnOutput
 
 			req := &transport.Request{
 				TargetService: "foo",
