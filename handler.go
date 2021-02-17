@@ -308,6 +308,9 @@ func sendStreamMessage(ctx context.Context, stream *yarpctransport.ClientStream,
 	// request message dispatch.
 	req := &yarpctransport.StreamMessage{Body: ioutil.NopCloser(bytes.NewReader(msgBody))}
 	if err := stream.SendMessage(ctx, req); err != nil {
+		if err == io.EOF {
+			return err
+		}
 		return fmt.Errorf("Failed while sending stream request: %v", err)
 	}
 	return nil
