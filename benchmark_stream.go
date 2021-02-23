@@ -36,10 +36,10 @@ type benchmarkStreamMethod struct {
 }
 
 func (m benchmarkStreamMethod) Call(t transport.Transport) (time.Duration, error) {
-	responseHandlerFn, allResponsesFn := m.streamResponseRecorder()
+	streamIO := &benchmarkStreamIO{streamRequests: m.streamRequestMessages}
 
 	start := time.Now()
-	err := makeStreamRequest(t, m.streamRequest, m.serializer, m.streamRequestSupplier(), responseHandlerFn)
+	err := makeStreamRequest(t, m.streamRequest, m.serializer, streamIO)
 	duration := time.Since(start)
 
 	if err != nil {
@@ -48,7 +48,7 @@ func (m benchmarkStreamMethod) Call(t transport.Transport) (time.Duration, error
 
 	// response validation is delayed to avoid consuming benchmark time for
 	// deserializing the responses.
-	for _, res := range allResponsesFn() {
+	for _, res := range streamIO.streamResponses {
 		if err = m.serializer.CheckSuccess(&transport.Response{Body: res}); err != nil {
 			return duration, err
 		}
@@ -57,39 +57,32 @@ func (m benchmarkStreamMethod) Call(t transport.Transport) (time.Duration, error
 	return duration, err
 }
 
-// streamRequestSupplier returns stream request supplier function which
-// iterates over the requests provided in benchmark
-func (m benchmarkStreamMethod) streamRequestSupplier() streamRequestSupplierFn {
-	var streamRequestIdx int
+// benchmarkStreamIO provides stream IO methods using the provided stream requests
+// and records the stream responses
+type benchmarkStreamIO struct {
+	streamRequestsIdx int      // current stream request iterator index
+	streamRequests    [][]byte // provided stream requests
 
-	nextBodyFn := func() ([]byte, error) {
-		if len(m.streamRequestMessages) == streamRequestIdx {
-			return nil, io.EOF
-		}
-
-		req := m.streamRequestMessages[streamRequestIdx]
-		streamRequestIdx++
-
-		// TODO: support `stream-interval` option which throttles the rate of input.
-
-		return req, nil
-	}
-
-	return nextBodyFn
+	streamResponses [][]byte // recorded stream responses
 }
 
-// streamResponseRecorder returns a stream response handler which records
-// all the responses. Recorded responses is returned by all responses function.
-func (benchmarkStreamMethod) streamResponseRecorder() (streamResponseHandlerFn, func() [][]byte) {
-	var streamResponses [][]byte
-
-	responseHandlerFn := func(resBody []byte) error {
-		streamResponses = append(streamResponses, resBody)
-
-		return nil
+// nextRequestBody returns next stream request from provided requests
+// returns EOF if last index has been reached
+func (b *benchmarkStreamIO) nextRequestBody() ([]byte, error) {
+	if len(b.streamRequests) == b.streamRequestsIdx {
+		return nil, io.EOF
 	}
 
-	allResponsesFn := func() [][]byte { return streamResponses }
+	req := b.streamRequests[b.streamRequestsIdx]
+	b.streamRequestsIdx++
 
-	return responseHandlerFn, allResponsesFn
+	// TODO: support `stream-interval` option which throttles the rate of input.
+
+	return req, nil
+}
+
+// handleResponseBody records stream responses
+func (b *benchmarkStreamIO) handleResponseBody(res []byte) error {
+	b.streamResponses = append(b.streamResponses, res)
+	return nil
 }

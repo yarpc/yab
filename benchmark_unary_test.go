@@ -1,4 +1,4 @@
-// Copyright (c) 2016 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,8 +27,6 @@ import (
 	"time"
 
 	"github.com/yarpc/yab/encoding"
-	"github.com/yarpc/yab/protobuf"
-	"github.com/yarpc/yab/testdata/protobuf/simple"
 	"github.com/yarpc/yab/transport"
 
 	"github.com/opentracing/opentracing-go"
@@ -300,96 +298,5 @@ func TestBenchmarkMethodWarmTransportsError(t *testing.T) {
 		} else {
 			assert.NoError(t, err, "%v: WarmTransports should succeed", msg)
 		}
-	}
-}
-
-func TestBenchmarkMethodWarmTransportGRPCStreams(t *testing.T) {
-	tests := []struct {
-		name                 string
-		procedure            string
-		method               string
-		num                  int
-		requests             [][]byte
-		returnOutput         []simple.Foo
-		expectedInput        []simple.Foo
-		expectStreams        int32
-		expectSentMessage    int32
-		expectReceiveMessage int32
-	}{
-		{
-			name:                 "client stream success",
-			procedure:            "Bar::ClientStream",
-			method:               "Bar/ClientStream",
-			num:                  10,
-			requests:             [][]byte{nil, nil},
-			returnOutput:         []simple.Foo{{}},
-			expectedInput:        []simple.Foo{{}, {}},
-			expectStreams:        10,
-			expectSentMessage:    0,
-			expectReceiveMessage: 20,
-		},
-		{
-			name:                 "bidirectional stream success",
-			procedure:            "Bar::BidiStream",
-			method:               "Bar/BidiStream",
-			num:                  10,
-			requests:             [][]byte{nil, nil},
-			returnOutput:         []simple.Foo{{}, {}},
-			expectedInput:        []simple.Foo{{}, {}},
-			expectStreams:        10,
-			expectSentMessage:    20,
-			expectReceiveMessage: 20,
-		},
-		{
-			name:                 "bidirectional stream success",
-			procedure:            "Bar::ServerStream",
-			method:               "Bar/ServerStream",
-			num:                  10,
-			requests:             [][]byte{nil},
-			returnOutput:         []simple.Foo{{}},
-			expectedInput:        []simple.Foo{{}},
-			expectStreams:        10,
-			expectSentMessage:    10,
-			expectReceiveMessage: 0,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			svc := &simpleService{
-				expectedInput: tt.expectedInput,
-				returnOutput:  tt.returnOutput,
-			}
-			lis, server := setupGRPCServer(t, svc)
-			defer server.Stop()
-
-			req := &transport.Request{
-				TargetService: "foo",
-				Method:        tt.procedure,
-				Timeout:       time.Second,
-			}
-
-			source, err := protobuf.NewDescriptorProviderFileDescriptorSetBins("./testdata/protobuf/simple/simple.proto.bin")
-			require.NoError(t, err)
-
-			serializer, err := encoding.NewProtobuf(tt.method, source)
-			require.NoError(t, err)
-
-			bench := benchmarkStreamMethod{
-				serializer:            serializer,
-				streamRequest:         &transport.StreamRequest{Request: req},
-				streamRequestMessages: tt.requests,
-			}
-			_, err = warmTransports(bench, tt.num, TransportOptions{
-				ServiceName: "foo",
-				CallerName:  "test",
-				Peers:       []string{"grpc://" + lis.String()},
-			}, _resolvedGrpcProto, 1)
-			require.NoError(t, err)
-
-			assert.Equal(t, tt.expectStreams, svc.streamsOpened.Load())
-			assert.Equal(t, tt.expectSentMessage, svc.streamMessagesSent.Load())
-			assert.Equal(t, tt.expectReceiveMessage, svc.streamMessagesReceived.Load())
-		})
 	}
 }
