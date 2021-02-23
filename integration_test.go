@@ -794,7 +794,7 @@ test: 10
 					ServiceName: "foo",
 				},
 			},
-			wantErr: "Failed while making stream call: code:unavailable message:roundrobin peer list timed out waiting for peer: context deadline exceeded\n",
+			wantErr: "Failed while making stream call",
 		},
 		{
 			desc: "server streaming",
@@ -934,7 +934,7 @@ test: 1
 			tt.opts.TOpts.Peers = []string{"grpc://" + addr.String()}
 
 			gotOut, gotErr := runTestWithOpts(tt.opts)
-			assert.Equal(t, tt.wantErr, gotErr)
+			assert.Contains(t, gotErr, tt.wantErr)
 			assert.Contains(t, gotOut, tt.wantRes)
 		})
 	}
