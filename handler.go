@@ -229,14 +229,17 @@ func makeBidiStream(ctx context.Context, stream *yarpctransport.ClientStream, st
 		for err == nil {
 			var reqBody []byte
 			reqBody, err = streamIO.nextRequestBody()
-			if err == io.EOF {
-				err = closeSendStream(ctx, stream)
-				break
-			}
 			if err != nil {
-				// Cancel the context to unblock the routine waiting on receiving
-				// stream messages.
-				cancel()
+				if err != io.EOF {
+					// Cancel the context to unblock the routine waiting on receiving
+					// stream messages.
+					cancel()
+				}
+
+				if closeErr := closeSendStream(ctx, stream); closeErr != nil {
+					err = closeErr
+				}
+
 				break
 			}
 
