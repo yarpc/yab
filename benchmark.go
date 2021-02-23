@@ -57,10 +57,6 @@ type peerTransport struct {
 
 // benchmarker creates transports and dispatches requests for benchmark.
 type benchmarker interface {
-	// WarmTransports creates n transports and warms it up by dispatching specified
-	// number of warm-up requests.
-	WarmTransports(n int, tOpts TransportOptions, resolved resolvedProtocolEncoding, warmupRequests int) ([]peerTransport, error)
-
 	// Call dispatches a request on the provided transport.
 	Call(transport.Transport) (time.Duration, error)
 }
@@ -184,7 +180,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 
 	// Warm up number of connections.
 	logger.Debug("Warming up connections.", zap.Int("numConns", numConns))
-	connections, err := m.WarmTransports(numConns, allOpts.TOpts, resolved, opts.WarmupRequests)
+	connections, err := warmTransports(m, numConns, allOpts.TOpts, resolved, opts.WarmupRequests)
 	if err != nil {
 		out.Fatalf("Failed to warmup connections for benchmark: %v", err)
 	}

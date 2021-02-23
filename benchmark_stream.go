@@ -57,10 +57,6 @@ func (m benchmarkStreamMethod) Call(t transport.Transport) (time.Duration, error
 	return duration, err
 }
 
-func (m benchmarkStreamMethod) WarmTransports(n int, tOpts TransportOptions, resolved resolvedProtocolEncoding, warmupRequests int) ([]peerTransport, error) {
-	return warmTransports(m, n, tOpts, resolved, warmupRequests)
-}
-
 // streamRequestSupplier returns stream request supplier function which
 // iterates over the requests provided in benchmark
 func (m benchmarkStreamMethod) streamRequestSupplier() streamRequestSupplierFn {

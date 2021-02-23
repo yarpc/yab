@@ -235,7 +235,7 @@ func TestBenchmarkMethodWarmTransportsSuccess(t *testing.T) {
 		ServiceName: "foo",
 		Peers:       serverHPs,
 	}
-	transports, err := m.WarmTransports(numServers, tOpts, _resolvedTChannelThrift, 1 /* warmupRequests */)
+	transports, err := warmTransports(m, numServers, tOpts, _resolvedTChannelThrift, 1 /* warmupRequests */)
 	assert.NoError(t, err, "WarmTransports should not fail")
 	assert.Equal(t, numServers, len(transports), "Got unexpected number of transports")
 	for i, transport := range transports {
@@ -294,7 +294,7 @@ func TestBenchmarkMethodWarmTransportsError(t *testing.T) {
 			ServiceName: "foo",
 			Peers:       []string{s.hostPort()},
 		}
-		_, err := m.WarmTransports(10, tOpts, _resolvedTChannelThrift, tt.warmup)
+		_, err := warmTransports(m, 10, tOpts, _resolvedTChannelThrift, tt.warmup)
 		if tt.wantErr {
 			assert.Error(t, err, "%v: WarmTransports should fail", msg)
 		} else {
@@ -380,7 +380,7 @@ func TestBenchmarkMethodWarmTransportGRPCStreams(t *testing.T) {
 				streamRequest:         &transport.StreamRequest{Request: req},
 				streamRequestMessages: tt.requests,
 			}
-			_, err = bench.WarmTransports(tt.num, TransportOptions{
+			_, err = warmTransports(bench, tt.num, TransportOptions{
 				ServiceName: "foo",
 				CallerName:  "test",
 				Peers:       []string{"grpc://" + lis.String()},
