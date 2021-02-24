@@ -16,14 +16,15 @@ import (
 	"go.uber.org/zap"
 )
 
-// streamRequestIO exposes methods to manage stream request lifecycle
-type streamRequestIO interface {
-	// nextRequestBody returns the next stream message body
-	// if it has no more messages it will return EOF
-	nextRequestBody() (requestBody []byte, err error)
+// StreamIO defines the interface for fetching stream requests and handling
+// stream responses.
+type StreamIO interface {
+	// NextRequest returns the next stream message body
+	// If there are no more messages it will return EOF.
+	NextRequest() (request []byte, err error)
 
-	// handleResponseBody handles the received stream response message body
-	handleResponseBody(responseBody []byte) error
+	// HandleResponse handles the received stream response message.
+	HandleResponse(responseBody []byte) error
 }
 
 type requestHandler struct {
@@ -91,7 +92,7 @@ func (r requestHandler) handleStreamRequest() {
 		r.out.Fatalf("Failed while preparing the request: %v\n", err)
 	}
 
-	streamIO := newStreamRequestRecorder(r.out, r.serializer, streamMsgReader)
+	streamIO := newStreamIOProvider(r.out, r.serializer, streamMsgReader)
 
 	if r.shouldMakeInitialRequest() {
 		if err = makeStreamRequest(r.transport, streamReq, r.serializer, streamIO); err != nil {
@@ -120,7 +121,7 @@ func (r requestHandler) isStreamingMethod() bool {
 // it then delegates to handler based on rpc type to handle request and response of the stream
 // nextBodyFn is called to get the next stream message body
 // responseHandlerFn is called with the response of the stream
-func makeStreamRequest(t transport.Transport, streamReq *transport.StreamRequest, serializer encoding.Serializer, streamIO streamRequestIO) error {
+func makeStreamRequest(t transport.Transport, streamReq *transport.StreamRequest, serializer encoding.Serializer, streamIO StreamIO) error {
 	streamTransport, ok := t.(transport.StreamTransport)
 	if !ok {
 		return fmt.Errorf("Transport does not support stream calls: %q", t.Protocol())
@@ -148,9 +149,9 @@ func makeStreamRequest(t transport.Transport, streamReq *transport.StreamRequest
 }
 
 // makeServerStream starts server-side streaming rpc
-func makeServerStream(ctx context.Context, stream *yarpctransport.ClientStream, streamIO streamRequestIO) error {
+func makeServerStream(ctx context.Context, stream *yarpctransport.ClientStream, streamIO StreamIO) error {
 
-	req, err := streamIO.nextRequestBody()
+	req, err := streamIO.NextRequest()
 	// Use nil body if no initial request input is empty, since request
 	// is mandatory in server streaming rpc.
 	if err != nil && err != io.EOF {
@@ -158,7 +159,7 @@ func makeServerStream(ctx context.Context, stream *yarpctransport.ClientStream, 
 	}
 	if err == nil {
 		// Verify there is no second request.
-		if _, err = streamIO.nextRequestBody(); err == nil {
+		if _, err = streamIO.NextRequest(); err == nil {
 			return fmt.Errorf("Request data contains more than 1 message for server-streaming RPC")
 		} else if err != io.EOF {
 			return err
@@ -175,7 +176,7 @@ func makeServerStream(ctx context.Context, stream *yarpctransport.ClientStream, 
 			break
 		}
 
-		err = streamIO.handleResponseBody(resBody)
+		err = streamIO.HandleResponse(resBody)
 	}
 
 	if err == io.EOF {
@@ -185,12 +186,12 @@ func makeServerStream(ctx context.Context, stream *yarpctransport.ClientStream, 
 }
 
 // makeClientStream starts client-side streaming rpc
-func makeClientStream(ctx context.Context, stream *yarpctransport.ClientStream, streamIO streamRequestIO) error {
+func makeClientStream(ctx context.Context, stream *yarpctransport.ClientStream, streamIO StreamIO) error {
 
 	var err error
 	for err == nil {
 		var reqBody []byte
-		reqBody, err = streamIO.nextRequestBody()
+		reqBody, err = streamIO.NextRequest()
 		if err != nil {
 			break
 		}
@@ -208,11 +209,11 @@ func makeClientStream(ctx context.Context, stream *yarpctransport.ClientStream, 
 	if err != nil {
 		return err
 	}
-	return streamIO.handleResponseBody(res)
+	return streamIO.HandleResponse(res)
 }
 
 // makeBidiStream starts bi-directional streaming rpc
-func makeBidiStream(ctx context.Context, stream *yarpctransport.ClientStream, streamIO streamRequestIO) error {
+func makeBidiStream(ctx context.Context, stream *yarpctransport.ClientStream, streamIO StreamIO) error {
 
 	var wg sync.WaitGroup
 	var sendErr error
@@ -228,17 +229,15 @@ func makeBidiStream(ctx context.Context, stream *yarpctransport.ClientStream, st
 		var err error
 		for err == nil {
 			var reqBody []byte
-			reqBody, err = streamIO.nextRequestBody()
+			reqBody, err = streamIO.NextRequest()
+			if err == io.EOF {
+				err = closeSendStream(ctx, stream)
+				break
+			}
 			if err != nil {
-				if err != io.EOF {
-					// Cancel the context to unblock the routine waiting on receiving
-					// stream messages.
-					cancel()
-				}
-
-				if closeErr := closeSendStream(ctx, stream); closeErr != nil {
-					err = closeErr
-				}
+				// Cancel the context to unblock the routine waiting on receiving
+				// stream messages.
+				cancel()
 
 				break
 			}
@@ -259,7 +258,7 @@ func makeBidiStream(ctx context.Context, stream *yarpctransport.ClientStream, st
 			break
 		}
 
-		receiveErr = streamIO.handleResponseBody(resBody)
+		receiveErr = streamIO.HandleResponse(resBody)
 	}
 
 	cancel()
@@ -317,25 +316,26 @@ func closeSendStream(ctx context.Context, stream *yarpctransport.ClientStream) e
 	return nil
 }
 
-// streamRequestRecorder uses provided stream message reader to provide stream
-// IO methods to read requests one by one and handle responses. It also records all the
-// requests which is needed for benchmarks.
-type streamRequestRecorder struct {
+// streamIOHandler uses provided stream message reader to provide stream
+// IO methods to read requests one by one and handle responses.
+//
+// It also records all the requests which are needed for benchmark, this is
+// useful when there are warmup requests and benchmark requests together.
+type streamIOHandler struct {
 	eofReached     bool     // true if stream message reader has reached EOF
 	streamRequests [][]byte // recorded stream requests
 
-	streamMsgReader encoding.StreamRequestReader
 	out             output
 	serializer      encoding.Serializer
+	streamMsgReader encoding.StreamRequestReader
 }
 
-// nextRequestBody returns the next stream request body from the given stream
-// message reader and also records the request.
-// Note: this method must not be called once EOF has been returned
-func (s *streamRequestRecorder) nextRequestBody() ([]byte, error) {
+// NextRequest returns the next stream request body from the given stream
+// message reader.
+// Note: this method must not be called once EOF has been returned.
+func (s *streamIOHandler) NextRequest() ([]byte, error) {
 	msg, err := s.streamMsgReader.NextBody()
 	if err == io.EOF {
-		s.eofReached = true
 		return nil, err
 	}
 	if err != nil {
@@ -347,19 +347,8 @@ func (s *streamRequestRecorder) nextRequestBody() ([]byte, error) {
 	return msg, nil
 }
 
-// allRequests returns all the stream requests
-func (s *streamRequestRecorder) allRequests() [][]byte {
-	for !s.eofReached {
-		if _, err := s.nextRequestBody(); err != nil && err != io.EOF {
-			s.out.Fatalf("%v\n", err)
-		}
-	}
-
-	return s.streamRequests
-}
-
-// handleResponseBody validates the response bytes and prints indented JSON body
-func (s *streamRequestRecorder) handleResponseBody(body []byte) error {
+// HandleResponse validates the response bytes and prints indented JSON body.
+func (s *streamIOHandler) HandleResponse(body []byte) error {
 	res, err := s.serializer.Response(&transport.Response{Body: body})
 	if err != nil {
 		return fmt.Errorf("Failed while serializing stream response: %v", err)
@@ -374,9 +363,20 @@ func (s *streamRequestRecorder) handleResponseBody(body []byte) error {
 	return nil
 }
 
-// newStreamRequestRecorder returns streamIO which also records requests
-func newStreamRequestRecorder(out output, serializer encoding.Serializer, streamMsgReader encoding.StreamRequestReader) *streamRequestRecorder {
-	return &streamRequestRecorder{
+// allRequests returns all the requests from the stream reader.
+func (s *streamIOHandler) allRequests() [][]byte {
+	for !s.eofReached {
+		if _, err := s.NextRequest(); err != nil && err != io.EOF {
+			s.out.Fatalf("%v\n", err)
+		}
+	}
+
+	return s.streamRequests
+}
+
+// newStreamIOProvider returns streamIO which also records requests.
+func newStreamIOProvider(out output, serializer encoding.Serializer, streamMsgReader encoding.StreamRequestReader) *streamIOHandler {
+	return &streamIOHandler{
 		out:             out,
 		serializer:      serializer,
 		streamMsgReader: streamMsgReader,
