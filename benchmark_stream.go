@@ -66,9 +66,9 @@ type benchmarkStreamIO struct {
 	streamResponses [][]byte // recorded stream responses
 }
 
-// nextRequestBody returns next stream request from provided requests
+// NextRequest returns next stream request from provided requests
 // returns EOF if last index has been reached
-func (b *benchmarkStreamIO) nextRequestBody() ([]byte, error) {
+func (b *benchmarkStreamIO) NextRequest() ([]byte, error) {
 	if len(b.streamRequests) == b.streamRequestsIdx {
 		return nil, io.EOF
 	}
@@ -81,8 +81,8 @@ func (b *benchmarkStreamIO) nextRequestBody() ([]byte, error) {
 	return req, nil
 }
 
-// handleResponseBody records stream responses
-func (b *benchmarkStreamIO) handleResponseBody(res []byte) error {
+// HandleResponse records stream response
+func (b *benchmarkStreamIO) HandleResponse(res []byte) error {
 	b.streamResponses = append(b.streamResponses, res)
 	return nil
 }

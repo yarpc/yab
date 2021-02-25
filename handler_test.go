@@ -22,6 +22,8 @@ package main
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"io"
 	"testing"
 
@@ -58,13 +60,25 @@ func TestStreamRequestRecorder(t *testing.T) {
 			[]byte("request-b"),
 		}
 
-		streamIO := streamIOHandler{streamMsgReader: &mockStreamReader{requests: requests}}
+		streamIO := streamIOInitializer{streamMsgReader: &mockStreamReader{requests: requests}}
 
 		for i, expectedReq := range requests {
 			req, err := streamIO.NextRequest()
 			require.NoError(t, err)
 			assert.Equal(t, expectedReq, req, "requests[%d] is not equal", i)
 		}
+
+		_, err := streamIO.NextRequest()
+		assert.EqualError(t, err, io.EOF.Error())
+		assert.True(t, streamIO.eofReached)
+
+		// NextRequest must return EOF for every call once EOF was returned earlier
+		_, err = streamIO.NextRequest()
+		assert.EqualError(t, err, io.EOF.Error())
+	})
+
+	t.Run("eof reached true", func(t *testing.T) {
+		streamIO := streamIOInitializer{eofReached: true}
 
 		_, err := streamIO.NextRequest()
 		assert.EqualError(t, err, io.EOF.Error())
@@ -81,9 +95,8 @@ func TestStreamRequestRecorder(t *testing.T) {
 }
 
 `
-		streamIO := streamIOHandler{out: out, serializer: encoding.NewJSON("test")}
+		streamIO := streamIOInitializer{out: out, serializer: encoding.NewJSON("test")}
 		require.NoError(t, streamIO.HandleResponse([]byte(body)))
-
 		assert.Equal(t, body, out.String())
 	})
 
@@ -93,7 +106,48 @@ func TestStreamRequestRecorder(t *testing.T) {
 			Buffer: &outBuf,
 		}
 
-		streamIO := streamIOHandler{out: out, serializer: encoding.NewJSON("test")}
+		streamIO := streamIOInitializer{out: out, serializer: encoding.NewJSON("test")}
 		require.Error(t, streamIO.HandleResponse([]byte("a:b")))
+	})
+
+	t.Run("all request failure", func(t *testing.T) {
+		var errBuf bytes.Buffer
+		out := testOutput{
+			fatalf: func(format string, args ...interface{}) {
+				errBuf.WriteString(fmt.Sprintf(format, args...))
+			},
+		}
+
+		streamIO := streamIOInitializer{
+			streamMsgReader: &mockStreamReader{returnErr: errors.New("test")},
+			out:             out,
+		}
+
+		runDone := make(chan struct{})
+
+		// Run in a separate goroutine since the all-Request will call Fatalf
+		// which will kill the running goroutine.
+		go func() {
+			defer close(runDone)
+			streamIO.allRequests()
+		}()
+
+		<-runDone
+
+		assert.Equal(t, "Failed while reading stream input: test\n", errBuf.String())
+	})
+
+	t.Run("all requests success", func(t *testing.T) {
+		requests := [][]byte{
+			[]byte("request-a"),
+			[]byte("request-b"),
+		}
+
+		streamIO := streamIOInitializer{streamMsgReader: &mockStreamReader{requests: requests}}
+
+		_, err := streamIO.NextRequest()
+		require.NoError(t, err)
+
+		assert.Equal(t, requests, streamIO.allRequests())
 	})
 }
