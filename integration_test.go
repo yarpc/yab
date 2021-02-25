@@ -399,7 +399,6 @@ func (s *simpleService) ClientStream(stream simple.Bar_ClientStreamServer) error
 		}
 
 		s.streamMessagesReceived.Inc()
-
 		idx++
 	}
 
@@ -446,7 +445,6 @@ func (s *simpleService) BidiStream(stream simple.Bar_BidiStreamServer) error {
 		}
 
 		s.streamMessagesReceived.Inc()
-
 		idx++
 	}
 

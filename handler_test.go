@@ -131,7 +131,6 @@ func TestStreamRequestRecorder(t *testing.T) {
 			defer close(runDone)
 			streamIO.allRequests()
 		}()
-
 		<-runDone
 
 		assert.Equal(t, "Failed while reading stream input: test\n", errBuf.String())
@@ -142,7 +141,6 @@ func TestStreamRequestRecorder(t *testing.T) {
 			[]byte("request-a"),
 			[]byte("request-b"),
 		}
-
 		streamIO := streamIOInitializer{streamMsgReader: &mockStreamReader{requests: requests}}
 
 		_, err := streamIO.NextRequest()

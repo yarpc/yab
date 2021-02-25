@@ -55,9 +55,9 @@ type peerTransport struct {
 	peerID int
 }
 
-// benchmarker creates transports and dispatches requests for benchmark.
+// benchmarker exposes method to dispatch requests for benchmark.
 type benchmarker interface {
-	// Call dispatches a request on the provided transport.
+	// Call dispatches a request using the provided transport.
 	Call(transport.Transport) (time.Duration, error)
 }
 
