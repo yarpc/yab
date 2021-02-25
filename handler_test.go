@@ -69,6 +69,10 @@ func TestStreamRequestRecorder(t *testing.T) {
 		_, err := streamIO.NextRequest()
 		assert.EqualError(t, err, io.EOF.Error())
 		assert.True(t, streamIO.eofReached)
+
+		// NextRequest must return EOF for every call once EOF was returned earlier
+		_, err = streamIO.NextRequest()
+		assert.EqualError(t, err, io.EOF.Error())
 	})
 
 	t.Run("eof reached true", func(t *testing.T) {
@@ -91,7 +95,6 @@ func TestStreamRequestRecorder(t *testing.T) {
 `
 		streamIO := streamIOInitializer{out: out, serializer: encoding.NewJSON("test")}
 		require.NoError(t, streamIO.HandleResponse([]byte(body)))
-
 		assert.Equal(t, body, out.String())
 	})
 
