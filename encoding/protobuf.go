@@ -6,12 +6,12 @@ import (
 	"io"
 	"strings"
 
+	"github.com/ghodss/yaml"
 	"github.com/yarpc/yab/encoding/encodingerror"
 	"github.com/yarpc/yab/encoding/inputdecoder"
 	"github.com/yarpc/yab/protobuf"
 	"github.com/yarpc/yab/transport"
 
-	"github.com/ghodss/yaml"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/jhump/protoreflect/desc"
@@ -126,11 +126,7 @@ func (p protoSerializer) Request(body []byte) (*transport.Request, error) {
 		return nil, fmt.Errorf("request method must be invoked only with unary rpc method: %q", p.method.GetInputType().GetFullyQualifiedName())
 	}
 
-	jsonContent, err := yaml.YAMLToJSON(body)
-	if err != nil {
-		return nil, err
-	}
-	bytes, err := p.encode(jsonContent)
+	bytes, err := p.encode(body)
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +186,12 @@ func (p protoSerializer) CheckSuccess(body *transport.Response) error {
 	return err
 }
 
-func (p protoSerializer) encode(jsonBytes []byte) ([]byte, error) {
+func (p protoSerializer) encode(yamlBytes []byte) ([]byte, error) {
+	jsonBytes, err := yaml.YAMLToJSON(yamlBytes)
+	if err != nil {
+		return nil, err
+	}
+
 	req := dynamic.NewMessage(p.method.GetInputType())
 	if err := req.UnmarshalJSON(jsonBytes); err != nil {
 		return nil, fmt.Errorf("could not parse given request body as message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
@@ -210,7 +211,7 @@ type protoStreamRequestReader struct {
 }
 
 func (p protoStreamRequestReader) NextBody() ([]byte, error) {
-	body, err := p.decoder.NextJSONBytes()
+	body, err := p.decoder.NextYAMLBytes()
 	if err != nil {
 		return nil, err
 	}
