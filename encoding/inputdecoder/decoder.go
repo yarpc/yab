@@ -25,22 +25,21 @@ import (
 	"encoding/json"
 	"io"
 
-	gyaml "github.com/ghodss/yaml"
 	"gopkg.in/yaml.v2"
 )
 
 // Decoder interface exposes method for reading multiple input requests
 type Decoder interface {
-	// NextJSONBytes returns JSON marshaled bytes of the next request body
+	// NextYAMLBytes returns YAML marshaled bytes of the next request body
 	// It returns io.EOF when there are no more requests
-	NextJSONBytes() ([]byte, error)
+	NextYAMLBytes() ([]byte, error)
 }
 
 // jsonInputDecoder parses multiple JSON objects from given reader
 // JSON objects can be delimited by space or newline
 type jsonInputDecoder struct{ dec *json.Decoder }
 
-func (r *jsonInputDecoder) NextJSONBytes() ([]byte, error) {
+func (r *jsonInputDecoder) NextYAMLBytes() ([]byte, error) {
 	if !r.dec.More() {
 		return nil, io.EOF
 	}
@@ -54,18 +53,13 @@ func (r *jsonInputDecoder) NextJSONBytes() ([]byte, error) {
 // consecutive YAML objects must be delimited by `---`
 type yamlInputDecoder struct{ dec *yaml.Decoder }
 
-func (r *yamlInputDecoder) NextJSONBytes() ([]byte, error) {
+func (r *yamlInputDecoder) NextYAMLBytes() ([]byte, error) {
 	var v interface{}
 	if err := r.dec.Decode(&v); err != nil {
 		return nil, err
 	}
 
-	bytes, err := yaml.Marshal(v)
-	if err != nil {
-		return nil, err
-	}
-
-	return gyaml.YAMLToJSON(bytes)
+	return yaml.Marshal(v)
 }
 
 // isJSONInput assumes the input is JSON compatible if the initial

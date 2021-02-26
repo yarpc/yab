@@ -36,7 +36,7 @@ import (
 	"go.uber.org/atomic"
 )
 
-func benchmarkMethodForTest(t *testing.T, procedure string, p transport.Protocol) benchmarkMethod {
+func benchmarkMethodForTest(t *testing.T, procedure string, p transport.Protocol) benchmarkUnaryMethod {
 	return benchmarkMethodForROpts(t, RequestOptions{
 		Encoding:   encoding.Thrift,
 		ThriftFile: validThrift,
@@ -44,7 +44,7 @@ func benchmarkMethodForTest(t *testing.T, procedure string, p transport.Protocol
 	}, p)
 }
 
-func benchmarkMethodForROpts(t *testing.T, rOpts RequestOptions, p transport.Protocol) benchmarkMethod {
+func benchmarkMethodForROpts(t *testing.T, rOpts RequestOptions, p transport.Protocol) benchmarkUnaryMethod {
 	serializer, err := NewSerializer(Options{ROpts: rOpts}, resolvedProtocolEncoding{
 		protocol: p,
 		enc:      encoding.Thrift,
@@ -55,7 +55,7 @@ func benchmarkMethodForROpts(t *testing.T, rOpts RequestOptions, p transport.Pro
 	require.NoError(t, err, "Failed to serialize Thrift body")
 
 	req.Timeout = time.Second
-	return benchmarkMethod{serializer, req}
+	return benchmarkUnaryMethod{serializer, req}
 }
 
 func TestBenchmarkMethodWarmTransport(t *testing.T) {

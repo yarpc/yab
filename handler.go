@@ -69,7 +69,7 @@ func (r requestHandler) handleUnaryRequest() {
 		makeInitialRequest(r.out, r.transport, r.serializer, req)
 	}
 
-	runBenchmark(r.out, r.logger, r.opts, r.resolved, req.Method, benchmarkMethod{
+	runBenchmark(r.out, r.logger, r.opts, r.resolved, req.Method, benchmarkUnaryMethod{
 		serializer: r.serializer,
 		req:        req,
 	})

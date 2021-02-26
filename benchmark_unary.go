@@ -1,4 +1,4 @@
-// Copyright (c) 2016 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,13 +27,14 @@ import (
 	"github.com/yarpc/yab/transport"
 )
 
-// benchmarkMethod benchmarks unary requests
-type benchmarkMethod struct {
+// benchmarkUnaryMethod benchmarks unary requests.
+type benchmarkUnaryMethod struct {
 	serializer encoding.Serializer
 	req        *transport.Request
 }
 
-func (m benchmarkMethod) Call(t transport.Transport) (time.Duration, error) {
+// Call dispatches unary request on the provided transport.
+func (m benchmarkUnaryMethod) Call(t transport.Transport) (time.Duration, error) {
 	start := time.Now()
 	res, err := makeRequest(t, m.req)
 	duration := time.Since(start)

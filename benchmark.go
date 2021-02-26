@@ -25,7 +25,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"math/rand"
 	"os"
 	"os/signal"
 	"runtime"
@@ -33,7 +32,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/yarpc/yab/limiter"
 	"github.com/yarpc/yab/statsd"
 	"github.com/yarpc/yab/transport"
@@ -49,17 +47,6 @@ var (
 	// the same array around to multiple functions
 	_quantiles = []float64{0.5000, 0.9000, 0.9500, 0.9900, 0.9990, 0.9995, 1.0000}
 )
-
-type peerTransport struct {
-	transport.Transport
-	peerID int
-}
-
-// benchmarker exposes method to dispatch requests for benchmark.
-type benchmarker interface {
-	// Call dispatches a request using the provided transport.
-	Call(transport.Transport) (time.Duration, error)
-}
 
 // Parameters holds values of all benchmark parameters
 type Parameters struct {
@@ -122,9 +109,9 @@ func (o BenchmarkOptions) enabled() bool {
 	return o.MaxDuration != 0 || o.MaxRequests != 0
 }
 
-func runWorker(t transport.Transport, m benchmarker, s *benchmarkState, run *limiter.Run, logger *zap.Logger) {
+func runWorker(t transport.Transport, b benchmarker, s *benchmarkState, run *limiter.Run, logger *zap.Logger) {
 	for cur := run; cur.More(); {
-		latency, err := m.Call(t)
+		latency, err := b.Call(t)
 		if err != nil {
 			s.recordError(err)
 			// TODO: Add information about which peer specifically failed.
@@ -136,7 +123,7 @@ func runWorker(t transport.Transport, m benchmarker, s *benchmarkState, run *lim
 	}
 }
 
-func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved resolvedProtocolEncoding, methodName string, m benchmarker) {
+func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved resolvedProtocolEncoding, methodName string, b benchmarker) {
 	opts := allOpts.BOpts
 
 	if err := opts.validate(); err != nil {
@@ -180,7 +167,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 
 	// Warm up number of connections.
 	logger.Debug("Warming up connections.", zap.Int("numConns", numConns))
-	connections, err := warmTransports(m, numConns, allOpts.TOpts, resolved, opts.WarmupRequests)
+	connections, err := warmTransports(b, numConns, allOpts.TOpts, resolved, opts.WarmupRequests)
 	if err != nil {
 		out.Fatalf("Failed to warmup connections for benchmark: %v", err)
 	}
@@ -223,7 +210,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 			wg.Add(1)
 			go func(c peerTransport) {
 				defer wg.Done()
-				runWorker(c.Transport, m, state, run, logger)
+				runWorker(c, b, state, run, logger)
 			}(c)
 		}
 	}
@@ -324,64 +311,4 @@ func stopOnInterrupt(out output, r *limiter.Run) {
 		out.Printf("\n!!Benchmark interrupted!!\n")
 		r.Stop()
 	}()
-}
-
-func peerBalancer(peers []string) func(i int) (string, int) {
-	numPeers := len(peers)
-	startOffset := rand.Intn(numPeers)
-	return func(i int) (string, int) {
-		offset := (startOffset + i) % numPeers
-		return peers[offset], offset
-	}
-}
-
-// warmTransport warms up a transport and returns it. The transport is warmed
-// up by making some number of requests through it.
-func warmTransport(m benchmarker, opts TransportOptions, resolved resolvedProtocolEncoding, warmupRequests int) (transport.Transport, error) {
-	transport, err := getTransport(opts, resolved, opentracing.NoopTracer{})
-	if err != nil {
-		return nil, err
-	}
-
-	for i := 0; i < warmupRequests; i++ {
-		if _, err := m.Call(transport); err != nil {
-			return nil, err
-		}
-	}
-
-	return transport, nil
-}
-
-// warmTransports returns n transports that have been warmed up.
-// No requests may fail during the warmup period.
-func warmTransports(m benchmarker, n int, tOpts TransportOptions, resolved resolvedProtocolEncoding, warmupRequests int) ([]peerTransport, error) {
-	peerFor := peerBalancer(tOpts.Peers)
-	transports := make([]peerTransport, n)
-	errs := make([]error, n)
-
-	var wg sync.WaitGroup
-	for i := range transports {
-		wg.Add(1)
-		go func(i int, tOpts TransportOptions) {
-			defer wg.Done()
-
-			peerHostPort, peerIndex := peerFor(i)
-			tOpts.Peers = []string{peerHostPort}
-
-			tp, err := warmTransport(m, tOpts, resolved, warmupRequests)
-			transports[i] = peerTransport{tp, peerIndex}
-			errs[i] = err
-		}(i, tOpts)
-	}
-
-	wg.Wait()
-
-	// If we hit any errors, return the first one.
-	for _, err := range errs {
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return transports, nil
 }
