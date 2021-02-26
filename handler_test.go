@@ -123,17 +123,8 @@ func TestStreamRequestRecorder(t *testing.T) {
 			out:             out,
 		}
 
-		runDone := make(chan struct{})
-
-		// Run in a separate goroutine since the all-Request will call Fatalf
-		// which will kill the running goroutine.
-		go func() {
-			defer close(runDone)
-			streamIO.allRequests()
-		}()
-		<-runDone
-
-		assert.Equal(t, "Failed while reading stream input: test\n", errBuf.String())
+		_, err := streamIO.allRequests()
+		assert.EqualError(t, err, "Failed while reading stream input: test")
 	})
 
 	t.Run("all requests success", func(t *testing.T) {
@@ -146,6 +137,8 @@ func TestStreamRequestRecorder(t *testing.T) {
 		_, err := streamIO.NextRequest()
 		require.NoError(t, err)
 
-		assert.Equal(t, requests, streamIO.allRequests())
+		gotRequests, err := streamIO.allRequests()
+		require.NoError(t, err)
+		assert.Equal(t, requests, gotRequests)
 	})
 }

@@ -36,52 +36,50 @@ import (
 
 func TestBenchmarkMethodWarmTransportGRPCStreams(t *testing.T) {
 	tests := []struct {
-		name                 string
-		procedure            string
-		method               string
-		num                  int
-		requests             [][]byte
-		returnOutput         []simple.Foo
-		expectedInput        []simple.Foo
-		expectStreams        int32
-		expectSentMessage    int32
-		expectReceiveMessage int32
+		name                                 string
+		procedure                            string
+		method                               string
+		numConnections                       int
+		requests                             [][]byte
+		returnOutput                         []simple.Foo
+		expectedInput                        []simple.Foo
+		expectedStreamsOpened                int32
+		expectedServerSentStreamMessages     int32
+		expectedServerReceivedStreamMessages int32
 	}{
 		{
-			name:                 "client stream success",
-			procedure:            "Bar::ClientStream",
-			method:               "Bar/ClientStream",
-			num:                  10,
-			requests:             [][]byte{nil, nil},
-			returnOutput:         []simple.Foo{{}},
-			expectedInput:        []simple.Foo{{}, {}},
-			expectStreams:        10,
-			expectSentMessage:    0,
-			expectReceiveMessage: 20,
+			name:                                 "client stream success",
+			procedure:                            "Bar::ClientStream",
+			method:                               "Bar/ClientStream",
+			numConnections:                       10,
+			requests:                             [][]byte{nil, nil},
+			returnOutput:                         []simple.Foo{{}},
+			expectedInput:                        []simple.Foo{{}, {}},
+			expectedStreamsOpened:                10,
+			expectedServerReceivedStreamMessages: 20,
 		},
 		{
-			name:                 "bidirectional stream success",
-			procedure:            "Bar::BidiStream",
-			method:               "Bar/BidiStream",
-			num:                  10,
-			requests:             [][]byte{nil, nil},
-			returnOutput:         []simple.Foo{{}, {}},
-			expectedInput:        []simple.Foo{{}, {}},
-			expectStreams:        10,
-			expectSentMessage:    20,
-			expectReceiveMessage: 20,
+			name:                                 "bidirectional stream success",
+			procedure:                            "Bar::BidiStream",
+			method:                               "Bar/BidiStream",
+			numConnections:                       10,
+			requests:                             [][]byte{nil, nil},
+			returnOutput:                         []simple.Foo{{}, {}},
+			expectedInput:                        []simple.Foo{{}, {}},
+			expectedStreamsOpened:                10,
+			expectedServerSentStreamMessages:     20,
+			expectedServerReceivedStreamMessages: 20,
 		},
 		{
-			name:                 "bidirectional stream success",
-			procedure:            "Bar::ServerStream",
-			method:               "Bar/ServerStream",
-			num:                  10,
-			requests:             [][]byte{nil},
-			returnOutput:         []simple.Foo{{}},
-			expectedInput:        []simple.Foo{{}},
-			expectStreams:        10,
-			expectSentMessage:    10,
-			expectReceiveMessage: 0,
+			name:                             "server stream success",
+			procedure:                        "Bar::ServerStream",
+			method:                           "Bar/ServerStream",
+			numConnections:                   10,
+			requests:                         [][]byte{nil},
+			returnOutput:                     []simple.Foo{{}},
+			expectedInput:                    []simple.Foo{{}},
+			expectedStreamsOpened:            10,
+			expectedServerSentStreamMessages: 10,
 		},
 	}
 
@@ -112,7 +110,7 @@ func TestBenchmarkMethodWarmTransportGRPCStreams(t *testing.T) {
 				streamRequestMessages: tt.requests,
 			}
 
-			transports, err := warmTransports(bench, tt.num, TransportOptions{
+			transports, err := warmTransports(bench, tt.numConnections, TransportOptions{
 				ServiceName: "foo",
 				CallerName:  "test",
 				Peers:       []string{"grpc://" + lis.String()},
@@ -123,57 +121,55 @@ func TestBenchmarkMethodWarmTransportGRPCStreams(t *testing.T) {
 				assert.NotNil(t, transport, "transports[%d] must not be nil", i)
 			}
 
-			assert.Equal(t, tt.expectStreams, svc.streamsOpened.Load())
-			assert.Equal(t, tt.expectSentMessage, svc.streamMessagesSent.Load())
-			assert.Equal(t, tt.expectReceiveMessage, svc.streamMessagesReceived.Load())
+			assert.Equal(t, tt.expectedStreamsOpened, svc.streamsOpened.Load())
+			assert.Equal(t, tt.expectedServerSentStreamMessages, svc.serverSentStreamMessages.Load())
+			assert.Equal(t, tt.expectedServerReceivedStreamMessages, svc.serverReceivedStreamMessages.Load())
 		})
 	}
 }
 
 func TestStreamBenchmarkCallMethod(t *testing.T) {
 	tests := []struct {
-		name                 string
-		procedure            string
-		method               string
-		requests             [][]byte
-		returnOutput         []simple.Foo
-		expectedInput        []simple.Foo
-		expectStreams        int32
-		expectSentMessage    int32
-		expectReceiveMessage int32
+		name                                 string
+		procedure                            string
+		method                               string
+		requests                             [][]byte
+		returnOutput                         []simple.Foo
+		expectedInput                        []simple.Foo
+		expectedStreamsOpened                int32
+		expectedServerSentStreamMessages     int32
+		expectedServerReceivedStreamMessages int32
 	}{
 		{
-			name:                 "client stream success",
-			procedure:            "Bar::ClientStream",
-			method:               "Bar/ClientStream",
-			requests:             [][]byte{nil, nil},
-			returnOutput:         []simple.Foo{{}},
-			expectedInput:        []simple.Foo{{}, {}},
-			expectStreams:        1,
-			expectSentMessage:    0,
-			expectReceiveMessage: 2,
+			name:                                 "client stream success",
+			procedure:                            "Bar::ClientStream",
+			method:                               "Bar/ClientStream",
+			requests:                             [][]byte{nil, nil},
+			returnOutput:                         []simple.Foo{{}},
+			expectedInput:                        []simple.Foo{{}, {}},
+			expectedStreamsOpened:                1,
+			expectedServerReceivedStreamMessages: 2,
 		},
 		{
-			name:                 "bidirectional stream success",
-			procedure:            "Bar::BidiStream",
-			method:               "Bar/BidiStream",
-			requests:             [][]byte{nil, nil},
-			returnOutput:         []simple.Foo{{}, {}},
-			expectedInput:        []simple.Foo{{}, {}},
-			expectStreams:        1,
-			expectSentMessage:    2,
-			expectReceiveMessage: 2,
+			name:                                 "bidirectional stream success",
+			procedure:                            "Bar::BidiStream",
+			method:                               "Bar/BidiStream",
+			requests:                             [][]byte{nil, nil},
+			returnOutput:                         []simple.Foo{{}, {}},
+			expectedInput:                        []simple.Foo{{}, {}},
+			expectedStreamsOpened:                1,
+			expectedServerSentStreamMessages:     2,
+			expectedServerReceivedStreamMessages: 2,
 		},
 		{
-			name:                 "bidirectional stream success",
-			procedure:            "Bar::ServerStream",
-			method:               "Bar/ServerStream",
-			requests:             [][]byte{nil},
-			returnOutput:         []simple.Foo{{}},
-			expectedInput:        []simple.Foo{{}},
-			expectStreams:        1,
-			expectSentMessage:    1,
-			expectReceiveMessage: 0,
+			name:                             "server stream success",
+			procedure:                        "Bar::ServerStream",
+			method:                           "Bar/ServerStream",
+			requests:                         [][]byte{nil},
+			returnOutput:                     []simple.Foo{{}},
+			expectedInput:                    []simple.Foo{{}},
+			expectedStreamsOpened:            1,
+			expectedServerSentStreamMessages: 1,
 		},
 	}
 
@@ -214,9 +210,9 @@ func TestStreamBenchmarkCallMethod(t *testing.T) {
 			_, err = bench.Call(grpcTransport)
 			require.NoError(t, err)
 
-			assert.Equal(t, tt.expectStreams, svc.streamsOpened.Load())
-			assert.Equal(t, tt.expectSentMessage, svc.streamMessagesSent.Load())
-			assert.Equal(t, tt.expectReceiveMessage, svc.streamMessagesReceived.Load())
+			assert.Equal(t, tt.expectedStreamsOpened, svc.streamsOpened.Load())
+			assert.Equal(t, tt.expectedServerSentStreamMessages, svc.serverSentStreamMessages.Load())
+			assert.Equal(t, tt.expectedServerReceivedStreamMessages, svc.serverReceivedStreamMessages.Load())
 		})
 	}
 }

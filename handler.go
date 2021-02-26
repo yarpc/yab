@@ -100,10 +100,19 @@ func (r requestHandler) handleStreamRequest() {
 		}
 	}
 
+	// Fetch all the request messages from the provided stream request reader.
+	// This is compatible with warmup+benchmark or benchmark only mode where
+	// during warmup all the requests are recorded and the same are returned from
+	// allRequests method.
+	streamRequests, err := streamIO.allRequests()
+	if err != nil {
+		r.out.Fatalf("%v\n", err)
+	}
+
 	runBenchmark(r.out, r.logger, r.opts, r.resolved, streamReq.Request.Method, benchmarkStreamMethod{
 		serializer:            r.serializer,
 		streamRequest:         streamReq,
-		streamRequestMessages: streamIO.allRequests(),
+		streamRequestMessages: streamRequests,
 	})
 }
 
@@ -371,14 +380,16 @@ func (s *streamIOInitializer) HandleResponse(body []byte) error {
 }
 
 // allRequests returns all the requests from the stream reader.
-func (s *streamIOInitializer) allRequests() [][]byte {
+// It reads all the requests until provided reader reaches EOF and then returns
+// all the requests.
+func (s *streamIOInitializer) allRequests() ([][]byte, error) {
 	for !s.eofReached {
 		if _, err := s.NextRequest(); err != nil && err != io.EOF {
-			s.out.Fatalf("%v\n", err)
+			return nil, err
 		}
 	}
 
-	return s.streamRequests
+	return s.streamRequests, nil
 }
 
 // newStreamIOInitializer returns streamIO which also records requests.
