@@ -227,7 +227,7 @@ func TestBenchmarkStreamIO(t *testing.T) {
 			[]byte("1"),
 			[]byte("2"),
 		}
-		streamIO := benchmarkStreamIO{streamRequests: requests}
+		streamIO := newStreamIOBenchmark(requests)
 
 		for _, expectedRequest := range requests {
 			req, err := streamIO.NextRequest()
@@ -244,7 +244,7 @@ func TestBenchmarkStreamIO(t *testing.T) {
 			[]byte("1"),
 			[]byte("2"),
 		}
-		var streamIO benchmarkStreamIO
+		var streamIO streamIOBenchmark
 
 		for _, response := range responses {
 			require.NoError(t, streamIO.HandleResponse(response))

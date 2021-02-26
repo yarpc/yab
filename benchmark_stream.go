@@ -28,15 +28,16 @@ import (
 	"github.com/yarpc/yab/transport"
 )
 
-// benchmarkStreamMethod benchmarks stream requests
+// benchmarkStreamMethod benchmarks stream requests.
 type benchmarkStreamMethod struct {
 	serializer            encoding.Serializer
 	streamRequest         *transport.StreamRequest
 	streamRequestMessages [][]byte
 }
 
+// Call dispatches stream request on the provided transport.
 func (m benchmarkStreamMethod) Call(t transport.Transport) (time.Duration, error) {
-	streamIO := &benchmarkStreamIO{streamRequests: m.streamRequestMessages}
+	streamIO := newStreamIOBenchmark(m.streamRequestMessages)
 
 	start := time.Now()
 	err := makeStreamRequest(t, m.streamRequest, m.serializer, streamIO)
@@ -57,9 +58,9 @@ func (m benchmarkStreamMethod) Call(t transport.Transport) (time.Duration, error
 	return duration, err
 }
 
-// benchmarkStreamIO provides stream IO methods using the provided stream requests
-// and records the stream responses
-type benchmarkStreamIO struct {
+// streamIOBenchmark provides stream IO methods using the provided stream requests
+// and records the stream responses.
+type streamIOBenchmark struct {
 	streamRequestsIdx int      // current stream request iterator index
 	streamRequests    [][]byte // provided stream requests
 
@@ -67,8 +68,8 @@ type benchmarkStreamIO struct {
 }
 
 // NextRequest returns next stream request from provided requests
-// returns EOF if last index has been reached
-func (b *benchmarkStreamIO) NextRequest() ([]byte, error) {
+// returns EOF if last index has been reached.
+func (b *streamIOBenchmark) NextRequest() ([]byte, error) {
 	if len(b.streamRequests) == b.streamRequestsIdx {
 		return nil, io.EOF
 	}
@@ -81,8 +82,14 @@ func (b *benchmarkStreamIO) NextRequest() ([]byte, error) {
 	return req, nil
 }
 
-// HandleResponse records stream response
-func (b *benchmarkStreamIO) HandleResponse(res []byte) error {
+// HandleResponse records stream response.
+func (b *streamIOBenchmark) HandleResponse(res []byte) error {
 	b.streamResponses = append(b.streamResponses, res)
 	return nil
+}
+
+func newStreamIOBenchmark(streamRequests [][]byte) *streamIOBenchmark {
+	return &streamIOBenchmark{
+		streamRequests: streamRequests,
+	}
 }
