@@ -90,7 +90,7 @@ func TestBenchmark(t *testing.T) {
 				Concurrency: 2,
 			},
 			TOpts: s.transportOpts(),
-		}, _resolvedTChannelThrift, m)
+		}, _resolvedTChannelThrift, fooMethod, m)
 
 		bufStr := buf.String()
 		assert.Contains(t, bufStr, "Max RPS")
@@ -146,7 +146,7 @@ func TestRunBenchmarkErrors(t *testing.T) {
 		// need to run the benchmark in a separate goroutine.
 		go func() {
 			defer wg.Done()
-			runBenchmark(out, _testLogger, opts, _resolvedTChannelThrift, m)
+			runBenchmark(out, _testLogger, opts, _resolvedTChannelThrift, fooMethod, m)
 		}()
 
 		wg.Wait()
@@ -198,7 +198,7 @@ func TestBenchmarkStatsPerPeer(t *testing.T) {
 		ROpts: RequestOptions{
 			Procedure: fooMethod,
 		},
-	}, _resolvedTChannelThrift, m)
+	}, _resolvedTChannelThrift, fooMethod, m)
 
 	// Ensure one backend gets more calls than the other
 	want := map[string]int{
@@ -284,7 +284,7 @@ func TestBenchmarkOutput(t *testing.T) {
 					TOpts: s.transportOpts(),
 				}
 
-				runBenchmark(out, _testLogger, opts, _resolvedTChannelThrift, m)
+				runBenchmark(out, _testLogger, opts, _resolvedTChannelThrift, fooMethod, m)
 				bufStr := buf.String()
 				bufWarnStr := bufWarn.String()
 

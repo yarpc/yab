@@ -109,9 +109,9 @@ func (o BenchmarkOptions) enabled() bool {
 	return o.MaxDuration != 0 || o.MaxRequests != 0
 }
 
-func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run *limiter.Run, logger *zap.Logger) {
+func runWorker(t transport.Transport, b benchmarker, s *benchmarkState, run *limiter.Run, logger *zap.Logger) {
 	for cur := run; cur.More(); {
-		latency, err := m.call(t)
+		latency, err := b.Call(t)
 		if err != nil {
 			s.recordError(err)
 			// TODO: Add information about which peer specifically failed.
@@ -123,7 +123,7 @@ func runWorker(t transport.Transport, m benchmarkMethod, s *benchmarkState, run 
 	}
 }
 
-func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved resolvedProtocolEncoding, m benchmarkMethod) {
+func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved resolvedProtocolEncoding, methodName string, b benchmarker) {
 	opts := allOpts.BOpts
 
 	if err := opts.validate(); err != nil {
@@ -167,12 +167,12 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 
 	// Warm up number of connections.
 	logger.Debug("Warming up connections.", zap.Int("numConns", numConns))
-	connections, err := m.WarmTransports(numConns, allOpts.TOpts, resolved, opts.WarmupRequests)
+	connections, err := warmTransports(b, numConns, allOpts.TOpts, resolved, opts.WarmupRequests)
 	if err != nil {
 		out.Fatalf("Failed to warmup connections for benchmark: %v", err)
 	}
 
-	globalStatter, err := statsd.NewClient(logger, opts.StatsdHostPort, allOpts.TOpts.ServiceName, m.Method())
+	globalStatter, err := statsd.NewClient(logger, opts.StatsdHostPort, allOpts.TOpts.ServiceName, methodName)
 	if err != nil {
 		out.Fatalf("Failed to create statsd client for benchmark: %v", err)
 	}
@@ -210,7 +210,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 			wg.Add(1)
 			go func(c transport.Transport) {
 				defer wg.Done()
-				runWorker(c, m, state, run, logger)
+				runWorker(c, b, state, run, logger)
 			}(c)
 		}
 	}
