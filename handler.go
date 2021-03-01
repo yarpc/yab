@@ -159,7 +159,6 @@ func makeStreamRequest(t transport.Transport, streamReq *transport.StreamRequest
 
 // makeServerStream starts server-side streaming rpc
 func makeServerStream(ctx context.Context, stream *yarpctransport.ClientStream, streamIO StreamIO) error {
-
 	req, err := streamIO.NextRequest()
 	// Use nil body if no initial request input is empty, since request
 	// is mandatory in server streaming rpc.
@@ -196,7 +195,6 @@ func makeServerStream(ctx context.Context, stream *yarpctransport.ClientStream, 
 
 // makeClientStream starts client-side streaming rpc
 func makeClientStream(ctx context.Context, stream *yarpctransport.ClientStream, streamIO StreamIO) error {
-
 	var err error
 	for err == nil {
 		var reqBody []byte
@@ -223,7 +221,6 @@ func makeClientStream(ctx context.Context, stream *yarpctransport.ClientStream, 
 
 // makeBidiStream starts bi-directional streaming rpc
 func makeBidiStream(ctx context.Context, stream *yarpctransport.ClientStream, streamIO StreamIO) error {
-
 	var wg sync.WaitGroup
 	var sendErr error
 
@@ -247,7 +244,6 @@ func makeBidiStream(ctx context.Context, stream *yarpctransport.ClientStream, st
 				// Cancel the context to unblock the routine waiting on receiving
 				// stream messages.
 				cancel()
-
 				break
 			}
 
@@ -359,7 +355,6 @@ func (s *streamIOInitializer) NextRequest() ([]byte, error) {
 	}
 
 	s.streamRequests = append(s.streamRequests, msg)
-
 	return msg, nil
 }
 

@@ -23,7 +23,6 @@ package main
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"testing"
 
@@ -85,9 +84,8 @@ func TestStreamRequestRecorder(t *testing.T) {
 	})
 
 	t.Run("handle response success", func(t *testing.T) {
-		var outBuf bytes.Buffer
 		out := testOutput{
-			Buffer: &outBuf,
+			Buffer: &bytes.Buffer{},
 		}
 
 		body := `{
@@ -101,26 +99,13 @@ func TestStreamRequestRecorder(t *testing.T) {
 	})
 
 	t.Run("handle response failure", func(t *testing.T) {
-		var outBuf bytes.Buffer
-		out := testOutput{
-			Buffer: &outBuf,
-		}
-
-		streamIO := streamIOInitializer{out: out, serializer: encoding.NewJSON("test")}
+		streamIO := streamIOInitializer{serializer: encoding.NewJSON("test")}
 		require.Error(t, streamIO.HandleResponse([]byte("a:b")))
 	})
 
 	t.Run("all request failure", func(t *testing.T) {
-		var errBuf bytes.Buffer
-		out := testOutput{
-			fatalf: func(format string, args ...interface{}) {
-				errBuf.WriteString(fmt.Sprintf(format, args...))
-			},
-		}
-
 		streamIO := streamIOInitializer{
 			streamMsgReader: &mockStreamReader{returnErr: errors.New("test")},
-			out:             out,
 		}
 
 		_, err := streamIO.allRequests()
