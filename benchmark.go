@@ -109,7 +109,7 @@ func (o BenchmarkOptions) enabled() bool {
 	return o.MaxDuration != 0 || o.MaxRequests != 0
 }
 
-func runWorker(t transport.Transport, b benchmarker, s *benchmarkState, run *limiter.Run, logger *zap.Logger) {
+func runWorker(t transport.Transport, b benchmarkCaller, s *benchmarkState, run *limiter.Run, logger *zap.Logger) {
 	for cur := run; cur.More(); {
 		latency, err := b.Call(t)
 		if err != nil {
@@ -123,7 +123,7 @@ func runWorker(t transport.Transport, b benchmarker, s *benchmarkState, run *lim
 	}
 }
 
-func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved resolvedProtocolEncoding, methodName string, b benchmarker) {
+func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved resolvedProtocolEncoding, methodName string, b benchmarkCaller) {
 	opts := allOpts.BOpts
 
 	if err := opts.validate(); err != nil {
