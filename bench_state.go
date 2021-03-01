@@ -36,6 +36,9 @@ type benchmarkState struct {
 	totalSuccess  int
 	totalRequests int
 	latencies     []time.Duration
+
+	totalStreamMessagesSent     int
+	totalStreamMessagesReceived int
 }
 
 func newBenchmarkState(statter statsd.Client) *benchmarkState {
@@ -69,6 +72,8 @@ func (s *benchmarkState) merge(other *benchmarkState) {
 	s.totalErrors += other.totalErrors
 	s.totalSuccess += other.totalSuccess
 	s.totalRequests += other.totalRequests
+	s.totalStreamMessagesReceived += other.totalStreamMessagesReceived
+	s.totalStreamMessagesSent += other.totalStreamMessagesSent
 }
 
 func (s *benchmarkState) recordLatency(d time.Duration) {
@@ -77,6 +82,11 @@ func (s *benchmarkState) recordLatency(d time.Duration) {
 	s.totalSuccess++
 	s.statter.Inc("success")
 	s.statter.Timing("latency", d)
+}
+
+func (s *benchmarkState) recordStreamMessages(sent, received int) {
+	s.totalStreamMessagesSent += sent
+	s.totalStreamMessagesReceived += received
 }
 
 // Returns a mapping of quantiles to latency values

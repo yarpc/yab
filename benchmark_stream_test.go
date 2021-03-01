@@ -211,8 +211,14 @@ func TestStreamBenchmarkCallMethod(t *testing.T) {
 				Encoding:  _resolvedGrpcProto.enc.String(),
 			})
 
-			_, err = bench.Call(grpcTransport)
+			callResult, err := bench.Call(grpcTransport)
 			require.NoError(t, err)
+
+			streamResult, ok := callResult.(benchmarkStreamCallResult)
+			require.True(t, ok)
+
+			assert.Equal(t, int(tt.expectedServerSentStreamMessages), streamResult.StreamMessagesReceived())
+			assert.Equal(t, int(tt.expectedServerReceivedStreamMessages), streamResult.StreamMessagesSent())
 
 			assert.Equal(t, tt.expectedStreamsOpened, svc.streamsOpened.Load())
 			assert.Equal(t, tt.expectedServerSentStreamMessages, svc.serverSentStreamMessages.Load())
@@ -227,7 +233,7 @@ func TestBenchmarkStreamIO(t *testing.T) {
 			[]byte("1"),
 			[]byte("2"),
 		}
-		streamIO := newStreamIOBenchmark(requests)
+		streamIO := newStreamIOBenchmark(requests, &streamCallResult{})
 
 		for _, expectedRequest := range requests {
 			req, err := streamIO.NextRequest()
@@ -244,12 +250,48 @@ func TestBenchmarkStreamIO(t *testing.T) {
 			[]byte("1"),
 			[]byte("2"),
 		}
-		var streamIO streamIOBenchmark
+		streamIO := newStreamIOBenchmark(nil, &streamCallResult{})
 
 		for _, response := range responses {
 			require.NoError(t, streamIO.HandleResponse(response))
 		}
 
 		assert.Equal(t, streamIO.streamResponses, responses)
+	})
+
+	t.Run("next request must increment sent msgs counter", func(t *testing.T) {
+		requests := [][]byte{
+			[]byte("1"),
+			[]byte("2"),
+			[]byte("3"),
+		}
+		expectedMsgsSent := 2
+
+		streamResult := &streamCallResult{}
+		streamIO := newStreamIOBenchmark(requests, streamResult)
+
+		for i := 0; i < expectedMsgsSent; i++ {
+			_, err := streamIO.NextRequest()
+			require.NoError(t, err)
+		}
+
+		assert.Equal(t, expectedMsgsSent, streamResult.streamMsgsSent)
+	})
+
+	t.Run("next request must increment sent msgs counter", func(t *testing.T) {
+		responses := [][]byte{
+			[]byte("1"),
+			[]byte("2"),
+			[]byte("3"),
+		}
+
+		streamResult := &streamCallResult{}
+		streamIO := newStreamIOBenchmark(nil, streamResult)
+
+		for _, res := range responses {
+			require.NoError(t, streamIO.HandleResponse(res))
+		}
+
+		assert.Equal(t, len(responses), streamResult.streamMsgsReceived)
 	})
 }

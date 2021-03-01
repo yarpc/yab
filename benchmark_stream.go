@@ -28,6 +28,8 @@ import (
 	"github.com/yarpc/yab/transport"
 )
 
+var _ benchmarkStreamCallResult = (*streamCallResult)(nil)
+
 // benchmarkStreamMethod benchmarks stream requests.
 type benchmarkStreamMethod struct {
 	serializer            encoding.Serializer
@@ -37,11 +39,12 @@ type benchmarkStreamMethod struct {
 
 // Call dispatches stream request on the provided transport.
 func (m benchmarkStreamMethod) Call(t transport.Transport) (benchmarkCallResult, error) {
-	streamIO := newStreamIOBenchmark(m.streamRequestMessages)
+	callResult := &streamCallResult{}
+	streamIO := newStreamIOBenchmark(m.streamRequestMessages, callResult)
 
 	start := time.Now()
 	err := makeStreamRequest(t, m.streamRequest, m.serializer, streamIO)
-	callResult := newBenchmarkCallLatencyResult(time.Since(start))
+	callResult.latency = time.Since(start)
 
 	if err != nil {
 		return callResult, err
@@ -65,6 +68,8 @@ type streamIOBenchmark struct {
 	streamRequests    [][]byte // provided stream requests
 
 	streamResponses [][]byte // recorded stream responses
+
+	streamCallResult *streamCallResult
 }
 
 // NextRequest returns next stream request from provided requests
@@ -77,6 +82,8 @@ func (b *streamIOBenchmark) NextRequest() ([]byte, error) {
 	req := b.streamRequests[b.streamRequestsIdx]
 	b.streamRequestsIdx++
 
+	b.streamCallResult.streamMsgsSent++
+
 	// TODO: support `stream-interval` option which throttles the rate of input.
 
 	return req, nil
@@ -85,11 +92,34 @@ func (b *streamIOBenchmark) NextRequest() ([]byte, error) {
 // HandleResponse records stream response.
 func (b *streamIOBenchmark) HandleResponse(res []byte) error {
 	b.streamResponses = append(b.streamResponses, res)
+
+	b.streamCallResult.streamMsgsReceived++
+
 	return nil
 }
 
-func newStreamIOBenchmark(streamRequests [][]byte) *streamIOBenchmark {
+func newStreamIOBenchmark(streamRequests [][]byte, r *streamCallResult) *streamIOBenchmark {
 	return &streamIOBenchmark{
-		streamRequests: streamRequests,
+		streamRequests:   streamRequests,
+		streamCallResult: r,
 	}
+}
+
+type streamCallResult struct {
+	latency time.Duration
+
+	streamMsgsSent     int
+	streamMsgsReceived int
+}
+
+func (r streamCallResult) Latency() time.Duration {
+	return r.latency
+}
+
+func (r streamCallResult) StreamMessagesSent() int {
+	return r.streamMsgsSent
+}
+
+func (r streamCallResult) StreamMessagesReceived() int {
+	return r.streamMsgsReceived
 }

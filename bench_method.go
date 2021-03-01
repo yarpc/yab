@@ -47,6 +47,14 @@ type benchmarkCallResult interface {
 	Latency() time.Duration
 }
 
+type benchmarkStreamCallResult interface {
+	// StreamMessagesSent returns number of stream messages sent from the client.
+	StreamMessagesSent() int
+
+	// StreamMessagesReceived returns number of stream messages received from the server.
+	StreamMessagesReceived() int
+}
+
 type benchmarkCallLatencyResult struct {
 	latency time.Duration
 }
