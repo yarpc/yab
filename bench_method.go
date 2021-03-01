@@ -35,15 +35,15 @@ type peerTransport struct {
 	peerID int
 }
 
-// benchmarker exposes method to dispatch requests for benchmark.
-type benchmarker interface {
+// benchmarkCaller exposes method to dispatch requests for benchmark.
+type benchmarkCaller interface {
 	// Call dispatches a request using the provided transport.
 	Call(transport.Transport) (time.Duration, error)
 }
 
 // warmTransport warms up a transport and returns it. The transport is warmed
 // up by making some number of requests through it.
-func warmTransport(b benchmarker, opts TransportOptions, resolved resolvedProtocolEncoding, warmupRequests int) (transport.Transport, error) {
+func warmTransport(b benchmarkCaller, opts TransportOptions, resolved resolvedProtocolEncoding, warmupRequests int) (transport.Transport, error) {
 	transport, err := getTransport(opts, resolved, opentracing.NoopTracer{})
 	if err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func peerBalancer(peers []string) func(i int) (string, int) {
 
 // warmTransports returns n transports that have been warmed up.
 // No requests may fail during the warmup period.
-func warmTransports(b benchmarker, n int, tOpts TransportOptions, resolved resolvedProtocolEncoding, warmupRequests int) ([]peerTransport, error) {
+func warmTransports(b benchmarkCaller, n int, tOpts TransportOptions, resolved resolvedProtocolEncoding, warmupRequests int) ([]peerTransport, error) {
 	peerFor := peerBalancer(tOpts.Peers)
 	transports := make([]peerTransport, n)
 	errs := make([]error, n)
