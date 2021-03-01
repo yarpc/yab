@@ -403,6 +403,8 @@ func (s *simpleService) ClientStream(stream simple.Bar_ClientStreamServer) error
 	}
 
 	if len(s.returnOutput) > 0 {
+		s.serverSentStreamMessages.Inc()
+
 		return stream.SendAndClose(&s.returnOutput[0])
 	}
 
@@ -411,6 +413,7 @@ func (s *simpleService) ClientStream(stream simple.Bar_ClientStreamServer) error
 
 func (s *simpleService) ServerStream(req *simple.Foo, stream simple.Bar_ServerStreamServer) error {
 	s.streamsOpened.Inc()
+	s.serverReceivedStreamMessages.Inc()
 
 	if len(s.expectedInput) > 0 && !reflect.DeepEqual(*req, s.expectedInput[0]) {
 		return fmt.Errorf("unexpected input found")
@@ -486,14 +489,12 @@ func TestGRPCStreamBenchmark(t *testing.T) {
 		// expectedStreamsOpened = warmup + benchmark connection warmup + benchmark
 		expectedStreamsOpened int32
 
-		// available only for server and bidirectional streaming calls
 		// warmup (if warmup is not 0) -> len(returnOutput)
 		// benchmark connection warmup -> (total connections * warmup count * len(returnOutput))
 		// benchmark -> (total benchmark requests * len(returnOutput))
 		// expectedServerSentStreamMessages = warmup + benchmark connection warmup + benchmark
 		expectedServerSentStreamMessages int32
 
-		// available only for client and bidirectional streaming calls
 		// warmup (if warmup is not 0) -> len(expectedInput)
 		// benchmark connection warmup -> (total connections * len(expectedInput))
 		// benchmark -> (total benchmark requests * len(expectedInput))
@@ -524,6 +525,7 @@ func TestGRPCStreamBenchmark(t *testing.T) {
 			expectedInput:                        []simple.Foo{{Test: 1}, {Test: 2}, {Test: 4}},
 			expectedStreamsOpened:                100,
 			expectedServerReceivedStreamMessages: 300,
+			expectedServerSentStreamMessages:     100,
 		},
 		{
 			desc: "client streaming - with warmup",
@@ -549,6 +551,7 @@ func TestGRPCStreamBenchmark(t *testing.T) {
 			expectedInput:                        []simple.Foo{{Test: 1}, {Test: 2}, {Test: -1}, {Test: 10}},
 			expectedStreamsOpened:                103,
 			expectedServerReceivedStreamMessages: 412,
+			expectedServerSentStreamMessages:     103,
 		},
 		{
 			desc: "server streaming - without warmup",
@@ -569,11 +572,12 @@ func TestGRPCStreamBenchmark(t *testing.T) {
 					Concurrency:    2,
 				},
 			},
-			wantRes:                          `Total requests:           100`,
-			returnOutput:                     []simple.Foo{{Test: 1}, {Test: 2}},
-			expectedInput:                    []simple.Foo{{Test: 2}},
-			expectedStreamsOpened:            100,
-			expectedServerSentStreamMessages: 200,
+			wantRes:                              `Total requests:           100`,
+			returnOutput:                         []simple.Foo{{Test: 1}, {Test: 2}},
+			expectedInput:                        []simple.Foo{{Test: 2}},
+			expectedStreamsOpened:                100,
+			expectedServerSentStreamMessages:     200,
+			expectedServerReceivedStreamMessages: 100,
 		},
 		{
 			desc: "server streaming - with warmup",
@@ -594,11 +598,12 @@ func TestGRPCStreamBenchmark(t *testing.T) {
 					Concurrency:    2,
 				},
 			},
-			wantRes:                          `Total requests:           100`,
-			returnOutput:                     []simple.Foo{{Test: 1}, {Test: 2}},
-			expectedInput:                    []simple.Foo{{Test: 1}},
-			expectedStreamsOpened:            103,
-			expectedServerSentStreamMessages: 206,
+			wantRes:                              `Total requests:           100`,
+			returnOutput:                         []simple.Foo{{Test: 1}, {Test: 2}},
+			expectedInput:                        []simple.Foo{{Test: 1}},
+			expectedStreamsOpened:                103,
+			expectedServerSentStreamMessages:     206,
+			expectedServerReceivedStreamMessages: 103,
 		},
 		{
 			desc: "bidirectional streaming - with warmup",
