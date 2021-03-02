@@ -39,12 +39,11 @@ type benchmarkStreamMethod struct {
 
 // Call dispatches stream request on the provided transport.
 func (m benchmarkStreamMethod) Call(t transport.Transport) (benchmarkCallResult, error) {
-	callResult := &streamCallResult{}
-	streamIO := newStreamIOBenchmark(m.streamRequestMessages, callResult)
+	streamIO := newStreamIOBenchmark(m.streamRequestMessages)
 
 	start := time.Now()
 	err := makeStreamRequest(t, m.streamRequest, m.serializer, streamIO)
-	callResult.latency = time.Since(start)
+	callResult := newStreamCallResult(time.Since(start), streamIO.streamMessagesReceived(), streamIO.streamMessagesSent())
 
 	if err != nil {
 		return callResult, err
@@ -68,8 +67,12 @@ type streamIOBenchmark struct {
 	streamRequests    [][]byte // provided stream requests
 
 	streamResponses [][]byte // recorded stream responses
+}
 
-	streamCallResult *streamCallResult
+func newStreamIOBenchmark(streamRequests [][]byte) *streamIOBenchmark {
+	return &streamIOBenchmark{
+		streamRequests: streamRequests,
+	}
 }
 
 // NextRequest returns next stream request from provided requests
@@ -81,7 +84,6 @@ func (b *streamIOBenchmark) NextRequest() ([]byte, error) {
 
 	req := b.streamRequests[b.streamRequestsIdx]
 	b.streamRequestsIdx++
-	b.streamCallResult.streamMessagesSent++
 	// TODO: support `stream-interval` option which throttles the rate of input.
 	return req, nil
 }
@@ -89,15 +91,15 @@ func (b *streamIOBenchmark) NextRequest() ([]byte, error) {
 // HandleResponse records stream response.
 func (b *streamIOBenchmark) HandleResponse(res []byte) error {
 	b.streamResponses = append(b.streamResponses, res)
-	b.streamCallResult.streamMessagesReceived++
 	return nil
 }
 
-func newStreamIOBenchmark(streamRequests [][]byte, r *streamCallResult) *streamIOBenchmark {
-	return &streamIOBenchmark{
-		streamRequests:   streamRequests,
-		streamCallResult: r,
-	}
+func (b *streamIOBenchmark) streamMessagesReceived() int {
+	return len(b.streamResponses)
+}
+
+func (b *streamIOBenchmark) streamMessagesSent() int {
+	return b.streamRequestsIdx
 }
 
 type streamCallResult struct {
@@ -107,14 +109,22 @@ type streamCallResult struct {
 	streamMessagesReceived int
 }
 
+func newStreamCallResult(latency time.Duration, streamMessagesReceived, streamMessagesSent int) streamCallResult {
+	return streamCallResult{
+		latency:                latency,
+		streamMessagesReceived: streamMessagesReceived,
+		streamMessagesSent:     streamMessagesSent,
+	}
+}
+
 func (r streamCallResult) Latency() time.Duration {
 	return r.latency
 }
 
-func (r streamCallResult) StreamMessagesSent() int {
-	return r.streamMessagesSent
-}
-
 func (r streamCallResult) StreamMessagesReceived() int {
 	return r.streamMessagesReceived
+}
+
+func (r streamCallResult) StreamMessagesSent() int {
+	return r.streamMessagesSent
 }

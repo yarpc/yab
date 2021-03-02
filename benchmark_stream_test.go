@@ -233,7 +233,7 @@ func TestBenchmarkStreamIO(t *testing.T) {
 			[]byte("1"),
 			[]byte("2"),
 		}
-		streamIO := newStreamIOBenchmark(requests, &streamCallResult{})
+		streamIO := newStreamIOBenchmark(requests)
 
 		for _, expectedRequest := range requests {
 			req, err := streamIO.NextRequest()
@@ -243,6 +243,7 @@ func TestBenchmarkStreamIO(t *testing.T) {
 
 		_, err := streamIO.NextRequest()
 		assert.EqualError(t, err, io.EOF.Error())
+		assert.Equal(t, len(requests), streamIO.streamMessagesSent())
 	})
 
 	t.Run("handle response", func(t *testing.T) {
@@ -250,47 +251,13 @@ func TestBenchmarkStreamIO(t *testing.T) {
 			[]byte("1"),
 			[]byte("2"),
 		}
-		streamIO := newStreamIOBenchmark(nil, &streamCallResult{})
+		streamIO := newStreamIOBenchmark(nil)
 
 		for _, response := range responses {
 			require.NoError(t, streamIO.HandleResponse(response))
 		}
 
 		assert.Equal(t, streamIO.streamResponses, responses)
-	})
-
-	t.Run("next request must increment sent msgs counter", func(t *testing.T) {
-		requests := [][]byte{
-			[]byte("1"),
-			[]byte("2"),
-			[]byte("3"),
-		}
-
-		streamResult := &streamCallResult{}
-		streamIO := newStreamIOBenchmark(requests, streamResult)
-
-		for range requests {
-			_, err := streamIO.NextRequest()
-			require.NoError(t, err)
-		}
-
-		assert.Equal(t, len(requests), streamResult.streamMessagesSent)
-	})
-
-	t.Run("next request must increment sent msgs counter", func(t *testing.T) {
-		responses := [][]byte{
-			[]byte("1"),
-			[]byte("2"),
-			[]byte("3"),
-		}
-
-		streamResult := &streamCallResult{}
-		streamIO := newStreamIOBenchmark(nil, streamResult)
-
-		for _, res := range responses {
-			require.NoError(t, streamIO.HandleResponse(res))
-		}
-
-		assert.Equal(t, len(responses), streamResult.streamMessagesReceived)
+		assert.Equal(t, len(responses), streamIO.streamMessagesReceived())
 	})
 }
