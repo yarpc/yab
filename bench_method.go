@@ -38,13 +38,7 @@ type peerTransport struct {
 // benchmarkCaller exposes method to dispatch requests for benchmark.
 type benchmarkCaller interface {
 	// Call dispatches a request using the provided transport.
-	Call(transport.Transport) (benchmarkCallResult, error)
-}
-
-// benchmarkCallResult exposes method to access benchmark call latency.
-type benchmarkCallResult interface {
-	// Latency returns the time taken to send request and receive response.
-	Latency() time.Duration
+	Call(transport.Transport) (benchmarkCallLatencyResult, error)
 }
 
 type benchmarkStreamCallResult interface {

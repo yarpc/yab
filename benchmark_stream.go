@@ -38,7 +38,7 @@ type benchmarkStreamMethod struct {
 }
 
 // Call dispatches stream request on the provided transport.
-func (m benchmarkStreamMethod) Call(t transport.Transport) (benchmarkCallResult, error) {
+func (m benchmarkStreamMethod) Call(t transport.Transport) (benchmarkCallLatencyResult, error) {
 	streamIO := newStreamIOBenchmark(m.streamRequestMessages)
 
 	start := time.Now()
