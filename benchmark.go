@@ -65,7 +65,7 @@ type Summary struct {
 	RPS                float64 `json:"rps"`
 }
 
-// StreamSummary stores the stream messages send and received summary
+// StreamSummary stores summary of stream messages sent and received
 type StreamSummary struct {
 	TotalStreamMessagesSent     int `json:"totalStreamMessagesSent"`
 	TotalStreamMessagesReceived int `json:"totalStreamMessagesReceived"`
@@ -78,7 +78,7 @@ type BenchmarkOutput struct {
 	Summary    Summary           `json:"summary"`
 
 	// StreamSummary is available only for streaming benchmark. It is nil and
-	// not omitted in unary benchmark.
+	// omitted in unary benchmark.
 	StreamSummary *StreamSummary `json:"streamSummary,omitempty"`
 }
 
@@ -131,8 +131,8 @@ func runWorker(t transport.Transport, b benchmarkCaller, s *benchmarkState, run 
 
 		s.recordLatency(callResult.Latency())
 
-		if streamResult, ok := callResult.(benchmarkStreamCallResult); ok {
-			s.recordStreamMessages(streamResult.StreamMessagesSent(), streamResult.StreamMessagesReceived())
+		if streamCallResult, ok := callResult.(benchmarkStreamCallResult); ok {
+			s.recordStreamMessages(streamCallResult.StreamMessagesSent(), streamCallResult.StreamMessagesReceived())
 		}
 	}
 }
