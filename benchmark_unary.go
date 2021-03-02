@@ -34,7 +34,7 @@ type benchmarkUnaryMethod struct {
 }
 
 // Call dispatches unary request on the provided transport.
-func (m benchmarkUnaryMethod) Call(t transport.Transport) (benchmarkCallResult, error) {
+func (m benchmarkUnaryMethod) Call(t transport.Transport) (benchmarkCallLatencyResult, error) {
 	start := time.Now()
 	res, err := makeRequest(t, m.req)
 	latency := time.Since(start)
