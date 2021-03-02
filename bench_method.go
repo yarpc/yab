@@ -41,6 +41,7 @@ type benchmarkCaller interface {
 	Call(transport.Transport) (benchmarkCallResult, error)
 }
 
+// benchmarkCallResult exposes method to access benchmark call latency.
 type benchmarkCallResult interface {
 	// Latency returns the time taken to send request and receive response.
 	Latency() time.Duration
@@ -50,12 +51,12 @@ type benchmarkCallLatencyResult struct {
 	latency time.Duration
 }
 
-func (r benchmarkCallLatencyResult) Latency() time.Duration {
-	return r.latency
-}
-
 func newBenchmarkCallLatencyResult(latency time.Duration) benchmarkCallLatencyResult {
 	return benchmarkCallLatencyResult{latency}
+}
+
+func (r benchmarkCallLatencyResult) Latency() time.Duration {
+	return r.latency
 }
 
 // warmTransport warms up a transport and returns it. The transport is warmed
