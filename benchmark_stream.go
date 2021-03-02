@@ -82,9 +82,9 @@ func (b *streamIOBenchmark) NextRequest() ([]byte, error) {
 		return nil, io.EOF
 	}
 
+	// TODO: support `stream-interval` option which throttles the rate of input.
 	req := b.streamRequests[b.streamRequestsIdx]
 	b.streamRequestsIdx++
-	// TODO: support `stream-interval` option which throttles the rate of input.
 	return req, nil
 }
 
