@@ -36,26 +36,26 @@ type benchmarkStreamMethod struct {
 }
 
 // Call dispatches stream request on the provided transport.
-func (m benchmarkStreamMethod) Call(t transport.Transport) (benchmarkCallLatencyResult, error) {
+func (m benchmarkStreamMethod) Call(t transport.Transport) (time.Duration, error) {
 	streamIO := newStreamIOBenchmark(m.streamRequestMessages)
 
 	start := time.Now()
 	err := makeStreamRequest(t, m.streamRequest, m.serializer, streamIO)
-	callResult := newBenchmarkCallLatencyResult(time.Since(start))
+	duration := time.Since(start)
 
 	if err != nil {
-		return callResult, err
+		return duration, err
 	}
 
 	// response validation is delayed to avoid consuming benchmark time for
 	// deserializing the responses.
 	for _, res := range streamIO.streamResponses {
 		if err = m.serializer.CheckSuccess(&transport.Response{Body: res}); err != nil {
-			return callResult, err
+			return duration, err
 		}
 	}
 
-	return callResult, err
+	return duration, err
 }
 
 // streamIOBenchmark provides stream IO methods using the provided stream requests

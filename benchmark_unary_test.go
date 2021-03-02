@@ -159,7 +159,7 @@ func TestBenchmarkMethodCall(t *testing.T) {
 			m.req.Method = tt.reqMethod
 		}
 
-		res, err := m.Call(tp)
+		d, err := m.Call(tp)
 		if tt.wantErr != "" {
 			if assert.Error(t, err, "call should fail") {
 				assert.Contains(t, err.Error(), tt.wantErr, "call should return 0 duration")
@@ -168,7 +168,7 @@ func TestBenchmarkMethodCall(t *testing.T) {
 		}
 
 		assert.NoError(t, err, "call should not fail")
-		assert.True(t, res.Latency() > time.Microsecond, "duration was too short, got %v", res.Latency())
+		assert.True(t, d > time.Microsecond, "duration was too short, got %v", d)
 	}
 }
 
