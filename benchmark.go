@@ -67,8 +67,8 @@ type Summary struct {
 
 // StreamSummary stores the stream messages send and received summary
 type StreamSummary struct {
-	TotalStreamMessagesSent     int `json:"totalStreamMessagesSent,omitempty"`
-	TotalStreamMessagesReceived int `json:"totalStreamMessagesReceived,omitempty"`
+	TotalStreamMessagesSent     int `json:"totalStreamMessagesSent"`
+	TotalStreamMessagesReceived int `json:"totalStreamMessagesReceived"`
 }
 
 // BenchmarkOutput stores benchmark settings and results for JSON output
