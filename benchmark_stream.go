@@ -81,20 +81,15 @@ func (b *streamIOBenchmark) NextRequest() ([]byte, error) {
 
 	req := b.streamRequests[b.streamRequestsIdx]
 	b.streamRequestsIdx++
-
-	b.streamCallResult.streamMsgsSent++
-
+	b.streamCallResult.streamMessagesSent++
 	// TODO: support `stream-interval` option which throttles the rate of input.
-
 	return req, nil
 }
 
 // HandleResponse records stream response.
 func (b *streamIOBenchmark) HandleResponse(res []byte) error {
 	b.streamResponses = append(b.streamResponses, res)
-
-	b.streamCallResult.streamMsgsReceived++
-
+	b.streamCallResult.streamMessagesReceived++
 	return nil
 }
 
@@ -108,8 +103,8 @@ func newStreamIOBenchmark(streamRequests [][]byte, r *streamCallResult) *streamI
 type streamCallResult struct {
 	latency time.Duration
 
-	streamMsgsSent     int
-	streamMsgsReceived int
+	streamMessagesSent     int
+	streamMessagesReceived int
 }
 
 func (r streamCallResult) Latency() time.Duration {
@@ -117,9 +112,9 @@ func (r streamCallResult) Latency() time.Duration {
 }
 
 func (r streamCallResult) StreamMessagesSent() int {
-	return r.streamMsgsSent
+	return r.streamMessagesSent
 }
 
 func (r streamCallResult) StreamMessagesReceived() int {
-	return r.streamMsgsReceived
+	return r.streamMessagesReceived
 }

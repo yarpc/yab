@@ -73,10 +73,13 @@ type StreamSummary struct {
 
 // BenchmarkOutput stores benchmark settings and results for JSON output
 type BenchmarkOutput struct {
-	Parameters    Parameters        `json:"benchmarkParameters"`
-	Latencies     map[string]string `json:"latencies"`
-	Summary       Summary           `json:"summary"`
-	StreamSummary *StreamSummary    `json:"streamSummary,omitempty"`
+	Parameters Parameters        `json:"benchmarkParameters"`
+	Latencies  map[string]string `json:"latencies"`
+	Summary    Summary           `json:"summary"`
+
+	// StreamSummary is available only for streaming benchmark. It is nil and
+	// not omitted in unary benchmark.
+	StreamSummary *StreamSummary `json:"streamSummary,omitempty"`
 }
 
 // setGoMaxProcs sets runtime.GOMAXPROCS if the option is set

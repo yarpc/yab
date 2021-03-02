@@ -265,17 +265,16 @@ func TestBenchmarkStreamIO(t *testing.T) {
 			[]byte("2"),
 			[]byte("3"),
 		}
-		expectedMsgsSent := 2
 
 		streamResult := &streamCallResult{}
 		streamIO := newStreamIOBenchmark(requests, streamResult)
 
-		for i := 0; i < expectedMsgsSent; i++ {
+		for range requests {
 			_, err := streamIO.NextRequest()
 			require.NoError(t, err)
 		}
 
-		assert.Equal(t, expectedMsgsSent, streamResult.streamMsgsSent)
+		assert.Equal(t, len(requests), streamResult.streamMessagesSent)
 	})
 
 	t.Run("next request must increment sent msgs counter", func(t *testing.T) {
@@ -292,6 +291,6 @@ func TestBenchmarkStreamIO(t *testing.T) {
 			require.NoError(t, streamIO.HandleResponse(res))
 		}
 
-		assert.Equal(t, len(responses), streamResult.streamMsgsReceived)
+		assert.Equal(t, len(responses), streamResult.streamMessagesReceived)
 	})
 }
