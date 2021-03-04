@@ -45,12 +45,14 @@ type benchmarkCaller interface {
 	CallMethodType() encoding.MethodType
 }
 
-// benchmarkCallReporter exposes method to access benchmark call latency.
+// benchmarkCallReporter exposes method to access benchmark call report like latency.
 type benchmarkCallReporter interface {
 	// Latency returns the time taken to send request and receive response.
 	Latency() time.Duration
 }
 
+// benchmarkStreamCallReporter exposes method to access benchmark stream call report
+// like stream messages send and received.
 type benchmarkStreamCallReporter interface {
 	// StreamMessagesSent returns number of stream messages sent from the client.
 	StreamMessagesSent() int

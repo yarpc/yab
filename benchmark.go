@@ -122,7 +122,7 @@ func (o BenchmarkOptions) enabled() bool {
 
 func runWorker(t transport.Transport, b benchmarkCaller, s *benchmarkState, run *limiter.Run, logger *zap.Logger) {
 	for cur := run; cur.More(); {
-		callResult, err := b.Call(t)
+		callReport, err := b.Call(t)
 		if err != nil {
 			s.recordError(err)
 			// TODO: Add information about which peer specifically failed.
@@ -130,10 +130,10 @@ func runWorker(t transport.Transport, b benchmarkCaller, s *benchmarkState, run 
 			continue
 		}
 
-		s.recordLatency(callResult.Latency())
+		s.recordLatency(callReport.Latency())
 
-		if streamCallResult, ok := callResult.(benchmarkStreamCallReporter); ok {
-			s.recordStreamMessages(streamCallResult.StreamMessagesSent(), streamCallResult.StreamMessagesReceived())
+		if streamCallReport, ok := callReport.(benchmarkStreamCallReporter); ok {
+			s.recordStreamMessages(streamCallReport.StreamMessagesSent(), streamCallReport.StreamMessagesReceived())
 		}
 	}
 }

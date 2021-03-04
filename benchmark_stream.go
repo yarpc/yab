@@ -41,21 +41,21 @@ func (m benchmarkStreamMethod) Call(t transport.Transport) (benchmarkCallReporte
 
 	start := time.Now()
 	err := makeStreamRequest(t, m.streamRequest, m.serializer, streamIO)
-	callResult := newBenchmarkStreamCallResult(time.Since(start), streamIO.streamMessagesReceived(), streamIO.streamMessagesSent())
+	callReport := newBenchmarkStreamCallReport(time.Since(start), streamIO.streamMessagesReceived(), streamIO.streamMessagesSent())
 
 	if err != nil {
-		return callResult, err
+		return callReport, err
 	}
 
 	// response validation is delayed to avoid consuming benchmark time for
 	// deserializing the responses.
 	for _, res := range streamIO.streamResponses {
 		if err = m.serializer.CheckSuccess(&transport.Response{Body: res}); err != nil {
-			return callResult, err
+			return callReport, err
 		}
 	}
 
-	return callResult, err
+	return callReport, err
 }
 
 func (m benchmarkStreamMethod) CallMethodType() encoding.MethodType {
@@ -105,13 +105,12 @@ func (b *streamIOBenchmark) streamMessagesSent() int {
 }
 
 type benchmarkStreamCallReport struct {
-	latency time.Duration
-
-	streamMessagesSent     int
+	latency                time.Duration
 	streamMessagesReceived int
+	streamMessagesSent     int
 }
 
-func newBenchmarkStreamCallResult(latency time.Duration, streamMessagesReceived, streamMessagesSent int) benchmarkStreamCallReport {
+func newBenchmarkStreamCallReport(latency time.Duration, streamMessagesReceived, streamMessagesSent int) benchmarkStreamCallReport {
 	return benchmarkStreamCallReport{
 		latency:                latency,
 		streamMessagesReceived: streamMessagesReceived,

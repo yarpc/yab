@@ -211,14 +211,13 @@ func TestStreamBenchmarkCallMethod(t *testing.T) {
 				Encoding:  _resolvedGrpcProto.enc.String(),
 			})
 
-			callResult, err := bench.Call(grpcTransport)
+			callReport, err := bench.Call(grpcTransport)
 			require.NoError(t, err)
 
-			streamResult, ok := callResult.(benchmarkStreamCallReporter)
+			streamCallReport, ok := callReport.(benchmarkStreamCallReporter)
 			require.True(t, ok)
-
-			assert.Equal(t, int(tt.expectedServerSentStreamMessages), streamResult.StreamMessagesReceived())
-			assert.Equal(t, int(tt.expectedServerReceivedStreamMessages), streamResult.StreamMessagesSent())
+			assert.Equal(t, int(tt.expectedServerSentStreamMessages), streamCallReport.StreamMessagesReceived())
+			assert.Equal(t, int(tt.expectedServerReceivedStreamMessages), streamCallReport.StreamMessagesSent())
 
 			assert.Equal(t, tt.expectedStreamsOpened, svc.streamsOpened.Load())
 			assert.Equal(t, tt.expectedServerSentStreamMessages, svc.serverSentStreamMessages.Load())
