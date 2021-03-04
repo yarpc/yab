@@ -28,8 +28,6 @@ import (
 	"github.com/yarpc/yab/transport"
 )
 
-var _ benchmarkStreamCallResult = (*streamCallResult)(nil)
-
 // benchmarkStreamMethod benchmarks stream requests.
 type benchmarkStreamMethod struct {
 	serializer            encoding.Serializer
@@ -38,12 +36,12 @@ type benchmarkStreamMethod struct {
 }
 
 // Call dispatches stream request on the provided transport.
-func (m benchmarkStreamMethod) Call(t transport.Transport) (benchmarkCallResult, error) {
+func (m benchmarkStreamMethod) Call(t transport.Transport) (benchmarkCallReporter, error) {
 	streamIO := newStreamIOBenchmark(m.streamRequestMessages)
 
 	start := time.Now()
 	err := makeStreamRequest(t, m.streamRequest, m.serializer, streamIO)
-	callResult := newStreamCallResult(time.Since(start), streamIO.streamMessagesReceived(), streamIO.streamMessagesSent())
+	callResult := newBenchmarkStreamCallResult(time.Since(start), streamIO.streamMessagesReceived(), streamIO.streamMessagesSent())
 
 	if err != nil {
 		return callResult, err
@@ -58,6 +56,10 @@ func (m benchmarkStreamMethod) Call(t transport.Transport) (benchmarkCallResult,
 	}
 
 	return callResult, err
+}
+
+func (m benchmarkStreamMethod) CallMethodType() encoding.MethodType {
+	return m.serializer.MethodType()
 }
 
 // streamIOBenchmark provides stream IO methods using the provided stream requests
@@ -102,29 +104,29 @@ func (b *streamIOBenchmark) streamMessagesSent() int {
 	return b.streamRequestsIdx
 }
 
-type streamCallResult struct {
+type benchmarkStreamCallReport struct {
 	latency time.Duration
 
 	streamMessagesSent     int
 	streamMessagesReceived int
 }
 
-func newStreamCallResult(latency time.Duration, streamMessagesReceived, streamMessagesSent int) streamCallResult {
-	return streamCallResult{
+func newBenchmarkStreamCallResult(latency time.Duration, streamMessagesReceived, streamMessagesSent int) benchmarkStreamCallReport {
+	return benchmarkStreamCallReport{
 		latency:                latency,
 		streamMessagesReceived: streamMessagesReceived,
 		streamMessagesSent:     streamMessagesSent,
 	}
 }
 
-func (r streamCallResult) Latency() time.Duration {
+func (r benchmarkStreamCallReport) Latency() time.Duration {
 	return r.latency
 }
 
-func (r streamCallResult) StreamMessagesReceived() int {
+func (r benchmarkStreamCallReport) StreamMessagesReceived() int {
 	return r.streamMessagesReceived
 }
 
-func (r streamCallResult) StreamMessagesSent() int {
+func (r benchmarkStreamCallReport) StreamMessagesSent() int {
 	return r.streamMessagesSent
 }

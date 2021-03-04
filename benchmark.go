@@ -32,6 +32,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/limiter"
 	"github.com/yarpc/yab/statsd"
 	"github.com/yarpc/yab/transport"
@@ -131,7 +132,7 @@ func runWorker(t transport.Transport, b benchmarkCaller, s *benchmarkState, run 
 
 		s.recordLatency(callResult.Latency())
 
-		if streamCallResult, ok := callResult.(benchmarkStreamCallResult); ok {
+		if streamCallResult, ok := callResult.(benchmarkStreamCallReporter); ok {
 			s.recordStreamMessages(streamCallResult.StreamMessagesSent(), streamCallResult.StreamMessagesReceived())
 		}
 	}
@@ -262,7 +263,8 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 
 	var streamSummary *StreamSummary
 
-	if overall.totalStreamMessagesReceived > 0 || overall.totalStreamMessagesSent > 0 {
+	// create stream summary for streaming calls only.
+	if b.CallMethodType() != encoding.Unary {
 		streamSummary = &StreamSummary{
 			TotalStreamMessagesSent:     overall.totalStreamMessagesSent,
 			TotalStreamMessagesReceived: overall.totalStreamMessagesReceived,

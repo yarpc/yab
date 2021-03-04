@@ -214,7 +214,7 @@ func TestStreamBenchmarkCallMethod(t *testing.T) {
 			callResult, err := bench.Call(grpcTransport)
 			require.NoError(t, err)
 
-			streamResult, ok := callResult.(benchmarkStreamCallResult)
+			streamResult, ok := callResult.(benchmarkStreamCallReporter)
 			require.True(t, ok)
 
 			assert.Equal(t, int(tt.expectedServerSentStreamMessages), streamResult.StreamMessagesReceived())
