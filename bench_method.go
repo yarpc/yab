@@ -38,7 +38,19 @@ type peerTransport struct {
 // benchmarkCaller exposes method to dispatch requests for benchmark.
 type benchmarkCaller interface {
 	// Call dispatches a request using the provided transport.
-	Call(transport.Transport) (time.Duration, error)
+	Call(transport.Transport) (benchmarkCallLatencyResult, error)
+}
+
+type benchmarkCallLatencyResult struct {
+	latency time.Duration
+}
+
+func newBenchmarkCallLatencyResult(latency time.Duration) benchmarkCallLatencyResult {
+	return benchmarkCallLatencyResult{latency}
+}
+
+func (r benchmarkCallLatencyResult) Latency() time.Duration {
+	return r.latency
 }
 
 // warmTransport warms up a transport and returns it. The transport is warmed
