@@ -100,7 +100,20 @@ func (r requestHandler) handleStreamRequest() {
 		}
 	}
 
-	// TODO: handle streaming benchmark.
+	// Fetch all the request messages from the provided stream request reader.
+	// This is compatible with warmup+benchmark or benchmark only mode where
+	// during warmup all the requests are recorded and the same are returned from
+	// allRequests method.
+	streamRequests, err := streamIO.allRequests()
+	if err != nil {
+		r.out.Fatalf("%v\n", err)
+	}
+
+	runBenchmark(r.out, r.logger, r.opts, r.resolved, streamReq.Request.Method, benchmarkStreamMethod{
+		serializer:            r.serializer,
+		streamRequest:         streamReq,
+		streamRequestMessages: streamRequests,
+	})
 }
 
 // shouldMakeInitialRequest returns true if initial request must be made
@@ -146,7 +159,6 @@ func makeStreamRequest(t transport.Transport, streamReq *transport.StreamRequest
 
 // makeServerStream starts server-side streaming rpc
 func makeServerStream(ctx context.Context, stream *yarpctransport.ClientStream, streamIO StreamIO) error {
-
 	req, err := streamIO.NextRequest()
 	// Use nil body if no initial request input is empty, since request
 	// is mandatory in server streaming rpc.
@@ -183,7 +195,6 @@ func makeServerStream(ctx context.Context, stream *yarpctransport.ClientStream, 
 
 // makeClientStream starts client-side streaming rpc
 func makeClientStream(ctx context.Context, stream *yarpctransport.ClientStream, streamIO StreamIO) error {
-
 	var err error
 	for err == nil {
 		var reqBody []byte
@@ -210,7 +221,6 @@ func makeClientStream(ctx context.Context, stream *yarpctransport.ClientStream, 
 
 // makeBidiStream starts bi-directional streaming rpc
 func makeBidiStream(ctx context.Context, stream *yarpctransport.ClientStream, streamIO StreamIO) error {
-
 	var wg sync.WaitGroup
 	var sendErr error
 
@@ -313,8 +323,13 @@ func closeSendStream(ctx context.Context, stream *yarpctransport.ClientStream) e
 
 // streamIOInitializer uses provided stream message reader to provide stream
 // IO methods to get next requests and handle responses.
+//
+// It also records all the requests read from provided stream message reader
+// which can be passed to benchmark, useful when user wants warmup + benchmark
+// requests together.
 type streamIOInitializer struct {
-	eofReached bool // flag indicates if streamMsgReader returned EOF
+	eofReached     bool     // flag indicates if streamMsgReader returned EOF
+	streamRequests [][]byte // recorded stream requests
 
 	out             output
 	serializer      encoding.Serializer
@@ -339,6 +354,7 @@ func (s *streamIOInitializer) NextRequest() ([]byte, error) {
 		return nil, fmt.Errorf("Failed while reading stream input: %v", err)
 	}
 
+	s.streamRequests = append(s.streamRequests, msg)
 	return msg, nil
 }
 
@@ -356,6 +372,19 @@ func (s *streamIOInitializer) HandleResponse(body []byte) error {
 
 	s.out.Printf("%s\n\n", bs)
 	return nil
+}
+
+// allRequests returns all the requests from the stream reader.
+// It reads all the requests until provided reader reaches EOF and then returns
+// all the requests.
+func (s *streamIOInitializer) allRequests() ([][]byte, error) {
+	for !s.eofReached {
+		if _, err := s.NextRequest(); err != nil && err != io.EOF {
+			return nil, err
+		}
+	}
+
+	return s.streamRequests, nil
 }
 
 // newStreamIOInitializer returns streamIO which also records requests.

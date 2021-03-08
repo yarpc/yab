@@ -46,6 +46,7 @@ import (
 	"github.com/uber/tchannel-go"
 	"github.com/uber/tchannel-go/testutils"
 	"github.com/uber/tchannel-go/thrift"
+	"go.uber.org/atomic"
 	"go.uber.org/yarpc"
 	ytransport "go.uber.org/yarpc/api/transport"
 	ythrift "go.uber.org/yarpc/encoding/thrift"
@@ -362,6 +363,10 @@ func setupYARPCServer(t *testing.T, inbound ytransport.Inbound, opts ...ythrift.
 }
 
 type simpleService struct {
+	streamsOpened                atomic.Int32 // number of streams opened by the client
+	serverReceivedStreamMessages atomic.Int32 // number of stream messages received by server
+	serverSentStreamMessages     atomic.Int32 // number of stream messages send by server
+
 	expectedInput []simple.Foo // messages expected from the client
 
 	returnOutput []simple.Foo // messages to be streamed back to client
@@ -377,6 +382,8 @@ func (s *simpleService) Baz(c context.Context, in *simple.Foo) (*simple.Foo, err
 }
 
 func (s *simpleService) ClientStream(stream simple.Bar_ClientStreamServer) error {
+	s.streamsOpened.Inc()
+
 	idx := 0
 	for idx < len(s.expectedInput) {
 		msg, err := stream.Recv()
@@ -391,10 +398,13 @@ func (s *simpleService) ClientStream(stream simple.Bar_ClientStreamServer) error
 			return fmt.Errorf("unexpected input found at index: %d", idx)
 		}
 
+		s.serverReceivedStreamMessages.Inc()
 		idx++
 	}
 
 	if len(s.returnOutput) > 0 {
+		s.serverSentStreamMessages.Inc()
+
 		return stream.SendAndClose(&s.returnOutput[0])
 	}
 
@@ -402,6 +412,9 @@ func (s *simpleService) ClientStream(stream simple.Bar_ClientStreamServer) error
 }
 
 func (s *simpleService) ServerStream(req *simple.Foo, stream simple.Bar_ServerStreamServer) error {
+	s.streamsOpened.Inc()
+	s.serverReceivedStreamMessages.Inc()
+
 	if len(s.expectedInput) > 0 && !reflect.DeepEqual(*req, s.expectedInput[0]) {
 		return fmt.Errorf("unexpected input found")
 	}
@@ -410,12 +423,16 @@ func (s *simpleService) ServerStream(req *simple.Foo, stream simple.Bar_ServerSt
 		if err := stream.Send(&req); err != nil {
 			return err
 		}
+
+		s.serverSentStreamMessages.Inc()
 	}
 
 	return s.returnError
 }
 
 func (s *simpleService) BidiStream(stream simple.Bar_BidiStreamServer) error {
+	s.streamsOpened.Inc()
+
 	idx := 0
 	for idx < len(s.expectedInput) {
 		msg, err := stream.Recv()
@@ -430,6 +447,7 @@ func (s *simpleService) BidiStream(stream simple.Bar_BidiStreamServer) error {
 			return fmt.Errorf("unexpected input found at index: %d", idx)
 		}
 
+		s.serverReceivedStreamMessages.Inc()
 		idx++
 	}
 
@@ -437,6 +455,8 @@ func (s *simpleService) BidiStream(stream simple.Bar_BidiStreamServer) error {
 		if err := stream.Send(&req); err != nil {
 			return err
 		}
+
+		s.serverSentStreamMessages.Inc()
 	}
 
 	return s.returnError
@@ -451,6 +471,240 @@ func setupGRPCServer(t *testing.T, svc *simpleService) (net.Addr, *grpc.Server) 
 	reflection.Register(s)
 	go s.Serve(ln)
 	return ln.Addr(), s
+}
+
+func TestGRPCStreamBenchmark(t *testing.T) {
+	tests := []struct {
+		desc          string
+		opts          Options
+		wantRes       []string
+		wantErr       string
+		returnError   error
+		returnOutput  []simple.Foo
+		expectedInput []simple.Foo
+
+		// warmup (if warmup is not 0) -> 1
+		// benchmark connection warmup -> (total connections * warmup count)
+		// benchmark -> (total benchmark requests)
+		// expectedStreamsOpened = warmup + benchmark connection warmup + benchmark
+		expectedStreamsOpened int32
+
+		// warmup (if warmup is not 0) -> len(returnOutput)
+		// benchmark connection warmup -> (total connections * warmup count * len(returnOutput))
+		// benchmark -> (total benchmark requests * len(returnOutput))
+		// expectedServerSentStreamMessages = warmup + benchmark connection warmup + benchmark
+		expectedServerSentStreamMessages int32
+
+		// warmup (if warmup is not 0) -> len(expectedInput)
+		// benchmark connection warmup -> (total connections * len(expectedInput))
+		// benchmark -> (total benchmark requests * len(expectedInput))
+		// expectedServerReceivedStreamMessages = warmup + benchmark connection warmup + benchmark
+		expectedServerReceivedStreamMessages int32
+	}{
+		{
+			desc: "client streaming - without warmup",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/ClientStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `{"test":1}{"test":2} {"test":4}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+				},
+				BOpts: BenchmarkOptions{
+					MaxRequests:    100,
+					WarmupRequests: 0,
+					Connections:    2,
+					Concurrency:    2,
+				},
+			},
+			wantRes: []string{
+				"Total requests:                 100",
+				"Total stream messages sent:     300",
+				"Total stream messages received: 100",
+			},
+			returnOutput:                         []simple.Foo{{Test: 1}},
+			expectedInput:                        []simple.Foo{{Test: 1}, {Test: 2}, {Test: 4}},
+			expectedStreamsOpened:                100,
+			expectedServerReceivedStreamMessages: 300,
+			expectedServerSentStreamMessages:     100,
+		},
+		{
+			desc: "client streaming - with warmup",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/ClientStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `{"test":1}{"test":2}{"test":-1} {"test":10}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+				},
+				BOpts: BenchmarkOptions{
+					MaxRequests:    100,
+					WarmupRequests: 1,
+					Connections:    2,
+					Concurrency:    2,
+				},
+			},
+			wantRes: []string{
+				"Total requests:                 100",
+				"Total stream messages sent:     400",
+				"Total stream messages received: 100",
+			},
+			returnOutput:                         []simple.Foo{{Test: 1}},
+			expectedInput:                        []simple.Foo{{Test: 1}, {Test: 2}, {Test: -1}, {Test: 10}},
+			expectedStreamsOpened:                103,
+			expectedServerReceivedStreamMessages: 412,
+			expectedServerSentStreamMessages:     103,
+		},
+		{
+			desc: "server streaming - without warmup",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/ServerStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `{"test":"2"}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+				},
+				BOpts: BenchmarkOptions{
+					MaxRequests:    100,
+					WarmupRequests: 0,
+					Connections:    2,
+					Concurrency:    2,
+				},
+			},
+			wantRes: []string{
+				"Total requests:                 100",
+				"Total stream messages sent:     100",
+				"Total stream messages received: 200",
+			},
+			returnOutput:                         []simple.Foo{{Test: 1}, {Test: 2}},
+			expectedInput:                        []simple.Foo{{Test: 2}},
+			expectedStreamsOpened:                100,
+			expectedServerSentStreamMessages:     200,
+			expectedServerReceivedStreamMessages: 100,
+		},
+		{
+			desc: "server streaming - with warmup",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/ServerStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `{"test":1}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+				},
+				BOpts: BenchmarkOptions{
+					MaxRequests:    100,
+					WarmupRequests: 1,
+					Connections:    2,
+					Concurrency:    2,
+				},
+			},
+			wantRes: []string{
+				"Total requests:                 100",
+				"Total stream messages sent:     100",
+				"Total stream messages received: 200",
+			},
+			returnOutput:                         []simple.Foo{{Test: 1}, {Test: 2}},
+			expectedInput:                        []simple.Foo{{Test: 1}},
+			expectedStreamsOpened:                103,
+			expectedServerSentStreamMessages:     206,
+			expectedServerReceivedStreamMessages: 103,
+		},
+		{
+			desc: "bidirectional streaming - with warmup",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/BidiStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `{"test":1}{"test":2}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+				},
+				BOpts: BenchmarkOptions{
+					MaxRequests:    100,
+					WarmupRequests: 1,
+					Connections:    2,
+					Concurrency:    2,
+				},
+			},
+			wantRes: []string{
+				"Total requests:                 100",
+				"Total stream messages sent:     200",
+				"Total stream messages received: 200",
+			},
+			returnOutput:                         []simple.Foo{{Test: 1}, {Test: 2}},
+			expectedInput:                        []simple.Foo{{Test: 1}, {Test: 2}},
+			expectedStreamsOpened:                103,
+			expectedServerSentStreamMessages:     206,
+			expectedServerReceivedStreamMessages: 206,
+		},
+		{
+			desc: "bidirectional streaming - without warmup",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/BidiStream",
+					Timeout:           timeMillisFlag(time.Second),
+					RequestJSON:       `{"test":1}{"test":2}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+				},
+				BOpts: BenchmarkOptions{
+					MaxRequests:    100,
+					WarmupRequests: 0,
+					Connections:    2,
+					Concurrency:    2,
+				},
+			},
+			wantRes: []string{
+				"Total requests:                 100",
+				"Total stream messages sent:     200",
+				"Total stream messages received: 200",
+			},
+			returnOutput:                         []simple.Foo{{Test: 1}, {Test: 2}},
+			expectedInput:                        []simple.Foo{{Test: 1}, {Test: 2}},
+			expectedStreamsOpened:                100,
+			expectedServerSentStreamMessages:     200,
+			expectedServerReceivedStreamMessages: 200,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			svc := &simpleService{
+				expectedInput: tt.expectedInput,
+				returnOutput:  tt.returnOutput,
+				returnError:   tt.returnError,
+			}
+			addr, server := setupGRPCServer(t, svc)
+			defer server.Stop()
+
+			tt.opts.TOpts.Peers = []string{"grpc://" + addr.String()}
+
+			gotOut, gotErr := runTestWithOpts(tt.opts)
+			assert.Contains(t, gotErr, tt.wantErr)
+			for _, wantOut := range tt.wantRes {
+				assert.Contains(t, gotOut, wantOut)
+			}
+
+			assert.Equal(t, tt.expectedStreamsOpened, svc.streamsOpened.Load())
+			assert.Equal(t, tt.expectedServerSentStreamMessages, svc.serverSentStreamMessages.Load())
+			assert.Equal(t, tt.expectedServerReceivedStreamMessages, svc.serverReceivedStreamMessages.Load())
+		})
+	}
 }
 
 func TestGRPCStream(t *testing.T) {
@@ -583,7 +837,7 @@ test: 10
 					ServiceName: "foo",
 				},
 			},
-			wantErr: "Failed while making stream call: code:unavailable message:roundrobin peer list timed out waiting for peer: context deadline exceeded\n",
+			wantErr: "Failed while making stream call",
 		},
 		{
 			desc: "server streaming",
@@ -723,7 +977,7 @@ test: 1
 			tt.opts.TOpts.Peers = []string{"grpc://" + addr.String()}
 
 			gotOut, gotErr := runTestWithOpts(tt.opts)
-			assert.Equal(t, tt.wantErr, gotErr)
+			assert.Contains(t, gotErr, tt.wantErr)
 			assert.Contains(t, gotOut, tt.wantRes)
 		})
 	}

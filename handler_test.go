@@ -22,6 +22,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"testing"
 
@@ -83,9 +84,8 @@ func TestStreamRequestRecorder(t *testing.T) {
 	})
 
 	t.Run("handle response success", func(t *testing.T) {
-		var outBuf bytes.Buffer
 		out := testOutput{
-			Buffer: &outBuf,
+			Buffer: &bytes.Buffer{},
 		}
 
 		body := `{
@@ -99,12 +99,31 @@ func TestStreamRequestRecorder(t *testing.T) {
 	})
 
 	t.Run("handle response failure", func(t *testing.T) {
-		var outBuf bytes.Buffer
-		out := testOutput{
-			Buffer: &outBuf,
+		streamIO := streamIOInitializer{serializer: encoding.NewJSON("test")}
+		require.Error(t, streamIO.HandleResponse([]byte("a:b")))
+	})
+
+	t.Run("all request failure", func(t *testing.T) {
+		streamIO := streamIOInitializer{
+			streamMsgReader: &mockStreamReader{returnErr: errors.New("test")},
 		}
 
-		streamIO := streamIOInitializer{out: out, serializer: encoding.NewJSON("test")}
-		require.Error(t, streamIO.HandleResponse([]byte("a:b")))
+		_, err := streamIO.allRequests()
+		assert.EqualError(t, err, "Failed while reading stream input: test")
+	})
+
+	t.Run("all requests success", func(t *testing.T) {
+		requests := [][]byte{
+			[]byte("request-a"),
+			[]byte("request-b"),
+		}
+		streamIO := streamIOInitializer{streamMsgReader: &mockStreamReader{requests: requests}}
+
+		_, err := streamIO.NextRequest()
+		require.NoError(t, err)
+
+		gotRequests, err := streamIO.allRequests()
+		require.NoError(t, err)
+		assert.Equal(t, requests, gotRequests)
 	})
 }

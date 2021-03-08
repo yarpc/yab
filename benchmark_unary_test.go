@@ -1,4 +1,4 @@
-// Copyright (c) 2016 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -159,7 +159,7 @@ func TestBenchmarkMethodCall(t *testing.T) {
 			m.req.Method = tt.reqMethod
 		}
 
-		callResult, err := m.Call(tp)
+		res, err := m.Call(tp)
 		if tt.wantErr != "" {
 			if assert.Error(t, err, "call should fail") {
 				assert.Contains(t, err.Error(), tt.wantErr, "call should return 0 duration")
@@ -168,7 +168,7 @@ func TestBenchmarkMethodCall(t *testing.T) {
 		}
 
 		assert.NoError(t, err, "call should not fail")
-		assert.True(t, callResult.Latency() > time.Microsecond, "duration was too short, got %v", callResult.Latency())
+		assert.True(t, res.Latency() > time.Microsecond, "duration was too short, got %v", res.Latency())
 	}
 }
 

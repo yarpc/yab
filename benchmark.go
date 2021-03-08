@@ -32,6 +32,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/limiter"
 	"github.com/yarpc/yab/statsd"
 	"github.com/yarpc/yab/transport"
@@ -65,11 +66,21 @@ type Summary struct {
 	RPS                float64 `json:"rps"`
 }
 
+// StreamSummary stores summary of stream messages sent and received
+type StreamSummary struct {
+	TotalStreamMessagesSent     int `json:"totalStreamMessagesSent"`
+	TotalStreamMessagesReceived int `json:"totalStreamMessagesReceived"`
+}
+
 // BenchmarkOutput stores benchmark settings and results for JSON output
 type BenchmarkOutput struct {
 	Parameters Parameters        `json:"benchmarkParameters"`
 	Latencies  map[string]string `json:"latencies"`
 	Summary    Summary           `json:"summary"`
+
+	// StreamSummary is available only for streaming benchmark. It is nil and
+	// omitted in unary benchmark.
+	StreamSummary *StreamSummary `json:"streamSummary,omitempty"`
 }
 
 // setGoMaxProcs sets runtime.GOMAXPROCS if the option is set
@@ -111,7 +122,7 @@ func (o BenchmarkOptions) enabled() bool {
 
 func runWorker(t transport.Transport, b benchmarkCaller, s *benchmarkState, run *limiter.Run, logger *zap.Logger) {
 	for cur := run; cur.More(); {
-		callResult, err := b.Call(t)
+		callReport, err := b.Call(t)
 		if err != nil {
 			s.recordError(err)
 			// TODO: Add information about which peer specifically failed.
@@ -119,7 +130,11 @@ func runWorker(t transport.Transport, b benchmarkCaller, s *benchmarkState, run 
 			continue
 		}
 
-		s.recordLatency(callResult.Latency())
+		s.recordLatency(callReport.Latency())
+
+		if streamCallReport, ok := callReport.(benchmarkStreamCallReporter); ok {
+			s.recordStreamMessages(streamCallReport.StreamMessagesSent(), streamCallReport.StreamMessagesReceived())
+		}
 	}
 }
 
@@ -208,10 +223,10 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 			state := states[i*opts.Concurrency+j]
 
 			wg.Add(1)
-			go func(c transport.Transport) {
+			go func(t transport.Transport) {
 				defer wg.Done()
-				runWorker(c, b, state, run, logger)
-			}(c)
+				runWorker(t, b, state, run, logger)
+			}(c.Transport)
 		}
 	}
 
@@ -246,23 +261,34 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 		RPS:                rps,
 	}
 
+	var streamSummary *StreamSummary
+
+	// create stream summary for streaming calls only.
+	if b.CallMethodType() != encoding.Unary {
+		streamSummary = &StreamSummary{
+			TotalStreamMessagesSent:     overall.totalStreamMessagesSent,
+			TotalStreamMessagesReceived: overall.totalStreamMessagesReceived,
+		}
+	}
+
 	if formatAsJSON {
-		outputJSON(out, parameters, latencyValues, summary)
+		outputJSON(out, parameters, latencyValues, summary, streamSummary)
 	} else {
-		outputPlaintext(out, latencyValues, summary)
+		outputPlaintext(out, latencyValues, summary, streamSummary)
 	}
 }
 
-func outputJSON(out output, parameters Parameters, latencyValues map[float64]time.Duration, summary Summary) {
+func outputJSON(out output, parameters Parameters, latencyValues map[float64]time.Duration, summary Summary, streamSummary *StreamSummary) {
 	latencies := make(map[string]string, len(_quantiles))
 	for _, quantile := range _quantiles {
 		latencies[fmt.Sprintf("%.4f", quantile)] = latencyValues[quantile].String()
 	}
 
 	benchmarkOutput := BenchmarkOutput{
-		Parameters: parameters,
-		Latencies:  latencies,
-		Summary:    summary,
+		Parameters:    parameters,
+		Latencies:     latencies,
+		Summary:       summary,
+		StreamSummary: streamSummary,
 	}
 
 	jsonOutput, err := json.MarshalIndent(&benchmarkOutput, "" /* prefix */, "  " /* indent */)
@@ -272,14 +298,19 @@ func outputJSON(out output, parameters Parameters, latencyValues map[float64]tim
 	out.Printf("%s\n", jsonOutput)
 }
 
-func outputPlaintext(out output, latencyValues map[float64]time.Duration, summary Summary) {
+func outputPlaintext(out output, latencyValues map[float64]time.Duration, summary Summary, streamSummary *StreamSummary) {
 	// Print out latencies
 	printLatencies(out, latencyValues)
 
 	// Print out summary
-	out.Printf("Elapsed time (seconds):   %.2f\n", summary.ElapsedTimeSeconds)
-	out.Printf("Total requests:           %v\n", summary.TotalRequests)
-	out.Printf("RPS:                      %.2f\n", summary.RPS)
+	out.Printf("Elapsed time (seconds):         %.2f\n", summary.ElapsedTimeSeconds)
+	out.Printf("Total requests:                 %v\n", summary.TotalRequests)
+	out.Printf("RPS:                            %.2f\n", summary.RPS)
+
+	if streamSummary != nil {
+		out.Printf("Total stream messages sent:     %v\n", streamSummary.TotalStreamMessagesSent)
+		out.Printf("Total stream messages received: %v\n", streamSummary.TotalStreamMessagesReceived)
+	}
 }
 
 func printParameters(out output, parameters Parameters) {

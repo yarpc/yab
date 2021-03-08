@@ -25,6 +25,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/transport"
 
 	"github.com/opentracing/opentracing-go"
@@ -38,18 +39,37 @@ type peerTransport struct {
 // benchmarkCaller exposes method to dispatch requests for benchmark.
 type benchmarkCaller interface {
 	// Call dispatches a request using the provided transport.
-	Call(transport.Transport) (benchmarkCallLatencyResult, error)
+	Call(transport.Transport) (benchmarkCallReporter, error)
+
+	// CallMethodType returns the type of the RPC method invoked by `Call`.
+	CallMethodType() encoding.MethodType
 }
 
-type benchmarkCallLatencyResult struct {
+// benchmarkCallReporter exposes method to access benchmark call report like latency.
+type benchmarkCallReporter interface {
+	// Latency returns the time taken to send request and receive response.
+	Latency() time.Duration
+}
+
+// benchmarkStreamCallReporter exposes method to access benchmark stream call report
+// like stream messages send and received.
+type benchmarkStreamCallReporter interface {
+	// StreamMessagesSent returns number of stream messages sent from the client.
+	StreamMessagesSent() int
+
+	// StreamMessagesReceived returns number of stream messages received from the server.
+	StreamMessagesReceived() int
+}
+
+type benchmarkCallLatencyReport struct {
 	latency time.Duration
 }
 
-func newBenchmarkCallLatencyResult(latency time.Duration) benchmarkCallLatencyResult {
-	return benchmarkCallLatencyResult{latency}
+func newBenchmarkCallLatencyReport(latency time.Duration) benchmarkCallLatencyReport {
+	return benchmarkCallLatencyReport{latency}
 }
 
-func (r benchmarkCallLatencyResult) Latency() time.Duration {
+func (r benchmarkCallLatencyReport) Latency() time.Duration {
 	return r.latency
 }
 
