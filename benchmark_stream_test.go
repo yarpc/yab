@@ -211,8 +211,13 @@ func TestStreamBenchmarkCallMethod(t *testing.T) {
 				Encoding:  _resolvedGrpcProto.enc.String(),
 			})
 
-			_, err = bench.Call(grpcTransport)
+			callReport, err := bench.Call(grpcTransport)
 			require.NoError(t, err)
+
+			streamCallReport, ok := callReport.(benchmarkStreamCallReporter)
+			require.True(t, ok)
+			assert.Equal(t, int(tt.expectedServerSentStreamMessages), streamCallReport.StreamMessagesReceived())
+			assert.Equal(t, int(tt.expectedServerReceivedStreamMessages), streamCallReport.StreamMessagesSent())
 
 			assert.Equal(t, tt.expectedStreamsOpened, svc.streamsOpened.Load())
 			assert.Equal(t, tt.expectedServerSentStreamMessages, svc.serverSentStreamMessages.Load())
@@ -237,6 +242,7 @@ func TestBenchmarkStreamIO(t *testing.T) {
 
 		_, err := streamIO.NextRequest()
 		assert.EqualError(t, err, io.EOF.Error())
+		assert.Equal(t, len(requests), streamIO.streamMessagesSent())
 	})
 
 	t.Run("handle response", func(t *testing.T) {
@@ -244,12 +250,13 @@ func TestBenchmarkStreamIO(t *testing.T) {
 			[]byte("1"),
 			[]byte("2"),
 		}
-		var streamIO streamIOBenchmark
+		streamIO := newStreamIOBenchmark(nil)
 
 		for _, response := range responses {
 			require.NoError(t, streamIO.HandleResponse(response))
 		}
 
 		assert.Equal(t, streamIO.streamResponses, responses)
+		assert.Equal(t, len(responses), streamIO.streamMessagesReceived())
 	})
 }

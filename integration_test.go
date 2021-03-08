@@ -477,7 +477,7 @@ func TestGRPCStreamBenchmark(t *testing.T) {
 	tests := []struct {
 		desc          string
 		opts          Options
-		wantRes       string
+		wantRes       []string
 		wantErr       string
 		returnError   error
 		returnOutput  []simple.Foo
@@ -520,7 +520,11 @@ func TestGRPCStreamBenchmark(t *testing.T) {
 					Concurrency:    2,
 				},
 			},
-			wantRes:                              `Total requests:           100`,
+			wantRes: []string{
+				"Total requests:                 100",
+				"Total stream messages sent:     300",
+				"Total stream messages received: 100",
+			},
 			returnOutput:                         []simple.Foo{{Test: 1}},
 			expectedInput:                        []simple.Foo{{Test: 1}, {Test: 2}, {Test: 4}},
 			expectedStreamsOpened:                100,
@@ -546,7 +550,11 @@ func TestGRPCStreamBenchmark(t *testing.T) {
 					Concurrency:    2,
 				},
 			},
-			wantRes:                              `Total requests:           100`,
+			wantRes: []string{
+				"Total requests:                 100",
+				"Total stream messages sent:     400",
+				"Total stream messages received: 100",
+			},
 			returnOutput:                         []simple.Foo{{Test: 1}},
 			expectedInput:                        []simple.Foo{{Test: 1}, {Test: 2}, {Test: -1}, {Test: 10}},
 			expectedStreamsOpened:                103,
@@ -572,7 +580,11 @@ func TestGRPCStreamBenchmark(t *testing.T) {
 					Concurrency:    2,
 				},
 			},
-			wantRes:                              `Total requests:           100`,
+			wantRes: []string{
+				"Total requests:                 100",
+				"Total stream messages sent:     100",
+				"Total stream messages received: 200",
+			},
 			returnOutput:                         []simple.Foo{{Test: 1}, {Test: 2}},
 			expectedInput:                        []simple.Foo{{Test: 2}},
 			expectedStreamsOpened:                100,
@@ -598,7 +610,11 @@ func TestGRPCStreamBenchmark(t *testing.T) {
 					Concurrency:    2,
 				},
 			},
-			wantRes:                              `Total requests:           100`,
+			wantRes: []string{
+				"Total requests:                 100",
+				"Total stream messages sent:     100",
+				"Total stream messages received: 200",
+			},
 			returnOutput:                         []simple.Foo{{Test: 1}, {Test: 2}},
 			expectedInput:                        []simple.Foo{{Test: 1}},
 			expectedStreamsOpened:                103,
@@ -624,7 +640,11 @@ func TestGRPCStreamBenchmark(t *testing.T) {
 					Concurrency:    2,
 				},
 			},
-			wantRes:                              `Total requests:           100`,
+			wantRes: []string{
+				"Total requests:                 100",
+				"Total stream messages sent:     200",
+				"Total stream messages received: 200",
+			},
 			returnOutput:                         []simple.Foo{{Test: 1}, {Test: 2}},
 			expectedInput:                        []simple.Foo{{Test: 1}, {Test: 2}},
 			expectedStreamsOpened:                103,
@@ -650,7 +670,11 @@ func TestGRPCStreamBenchmark(t *testing.T) {
 					Concurrency:    2,
 				},
 			},
-			wantRes:                              `Total requests:           100`,
+			wantRes: []string{
+				"Total requests:                 100",
+				"Total stream messages sent:     200",
+				"Total stream messages received: 200",
+			},
 			returnOutput:                         []simple.Foo{{Test: 1}, {Test: 2}},
 			expectedInput:                        []simple.Foo{{Test: 1}, {Test: 2}},
 			expectedStreamsOpened:                100,
@@ -672,7 +696,9 @@ func TestGRPCStreamBenchmark(t *testing.T) {
 
 			gotOut, gotErr := runTestWithOpts(tt.opts)
 			assert.Contains(t, gotErr, tt.wantErr)
-			assert.Contains(t, gotOut, tt.wantRes)
+			for _, wantOut := range tt.wantRes {
+				assert.Contains(t, gotOut, wantOut)
+			}
 
 			assert.Equal(t, tt.expectedStreamsOpened, svc.streamsOpened.Load())
 			assert.Equal(t, tt.expectedServerSentStreamMessages, svc.serverSentStreamMessages.Load())
