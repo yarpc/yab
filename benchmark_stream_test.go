@@ -56,8 +56,8 @@ func TestBenchmarkMethodWarmTransportGRPCStreams(t *testing.T) {
 			returnOutput:                         []simple.Foo{{}},
 			expectedInput:                        []simple.Foo{{}, {}},
 			expectedStreamsOpened:                10,
-			expectedServerReceivedStreamMessages: 20,
-			expectedServerSentStreamMessages:     10,
+			expectedServerReceivedStreamMessages: 20, // 10 client streams, each of them send 2 messages
+			expectedServerSentStreamMessages:     10, // server responds with 1 message for each client stream
 		},
 		{
 			name:                                 "bidirectional stream success",
@@ -68,8 +68,8 @@ func TestBenchmarkMethodWarmTransportGRPCStreams(t *testing.T) {
 			returnOutput:                         []simple.Foo{{}, {}},
 			expectedInput:                        []simple.Foo{{}, {}},
 			expectedStreamsOpened:                10,
-			expectedServerSentStreamMessages:     20,
-			expectedServerReceivedStreamMessages: 20,
+			expectedServerSentStreamMessages:     20, // 10 client streams, each of them send 2 messages
+			expectedServerReceivedStreamMessages: 20, // server responds with 2 messages for each client stream
 		},
 		{
 			name:                                 "server stream success",
@@ -80,8 +80,8 @@ func TestBenchmarkMethodWarmTransportGRPCStreams(t *testing.T) {
 			returnOutput:                         []simple.Foo{{}},
 			expectedInput:                        []simple.Foo{{}},
 			expectedStreamsOpened:                10,
-			expectedServerSentStreamMessages:     10,
-			expectedServerReceivedStreamMessages: 10,
+			expectedServerSentStreamMessages:     10, // 10 client streams, each of them send 1 message
+			expectedServerReceivedStreamMessages: 10, // server responds with 1 message for each client stream
 		},
 	}
 
@@ -150,8 +150,8 @@ func TestStreamBenchmarkCallMethod(t *testing.T) {
 			returnOutput:                         []simple.Foo{{}},
 			expectedInput:                        []simple.Foo{{}, {}},
 			expectedStreamsOpened:                1,
-			expectedServerReceivedStreamMessages: 2,
-			expectedServerSentStreamMessages:     1,
+			expectedServerReceivedStreamMessages: 2, // client stream sends 2 messages
+			expectedServerSentStreamMessages:     1, // server responds with 1 message
 		},
 		{
 			name:                                 "bidirectional stream success",
@@ -161,8 +161,8 @@ func TestStreamBenchmarkCallMethod(t *testing.T) {
 			returnOutput:                         []simple.Foo{{}, {}},
 			expectedInput:                        []simple.Foo{{}, {}},
 			expectedStreamsOpened:                1,
-			expectedServerSentStreamMessages:     2,
-			expectedServerReceivedStreamMessages: 2,
+			expectedServerSentStreamMessages:     2, // client stream sends 2 messages
+			expectedServerReceivedStreamMessages: 2, // server responds with 2 messages
 		},
 		{
 			name:                                 "server stream success",
@@ -172,8 +172,8 @@ func TestStreamBenchmarkCallMethod(t *testing.T) {
 			returnOutput:                         []simple.Foo{{}},
 			expectedInput:                        []simple.Foo{{}},
 			expectedStreamsOpened:                1,
-			expectedServerSentStreamMessages:     1,
-			expectedServerReceivedStreamMessages: 1,
+			expectedServerSentStreamMessages:     1, // client stream sends 1 message
+			expectedServerReceivedStreamMessages: 1, // server responds with 1 message
 		},
 	}
 
