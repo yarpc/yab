@@ -67,6 +67,12 @@ type streamIOBenchmark struct {
 	streamResponses [][]byte // recorded stream responses
 }
 
+func newStreamIOBenchmark(streamRequests [][]byte) *streamIOBenchmark {
+	return &streamIOBenchmark{
+		streamRequests: streamRequests,
+	}
+}
+
 // NextRequest returns next stream request from provided requests
 // returns EOF if last index has been reached.
 func (b *streamIOBenchmark) NextRequest() ([]byte, error) {
@@ -84,10 +90,4 @@ func (b *streamIOBenchmark) NextRequest() ([]byte, error) {
 func (b *streamIOBenchmark) HandleResponse(res []byte) error {
 	b.streamResponses = append(b.streamResponses, res)
 	return nil
-}
-
-func newStreamIOBenchmark(streamRequests [][]byte) *streamIOBenchmark {
-	return &streamIOBenchmark{
-		streamRequests: streamRequests,
-	}
 }
