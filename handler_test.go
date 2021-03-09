@@ -136,7 +136,7 @@ func TestIntervalWaiter(t *testing.T) {
 		now := time.Now()
 		waiter.wait(context.Background())
 		timeTaken := time.Now().Sub(now)
-		assert.True(t, timeTaken < time.Millisecond, "Unexpected time taken on wait: %v", timeTaken)
+		assert.LessOrEqual(t, int64(timeTaken), int64(time.Millisecond), "Unexpected time taken on wait: %v", timeTaken)
 	})
 
 	t.Run("interval gap must be 100ms between consecutive calls", func(t *testing.T) {
@@ -147,8 +147,8 @@ func TestIntervalWaiter(t *testing.T) {
 			now := time.Now()
 			waiter.wait(context.Background())
 			timeTaken := time.Now().Sub(now)
-			assert.True(t, timeTaken > (time.Millisecond*100), "Unexpected time taken on wait: %v", timeTaken)
-			assert.True(t, timeTaken < (time.Millisecond*200), "Unexpected time taken on wait: %v", timeTaken)
+			assert.GreaterOrEqual(t, int64(timeTaken), int64(time.Millisecond*100), "Unexpected time taken on wait: %v", timeTaken)
+			assert.LessOrEqual(t, int64(timeTaken), int64(time.Millisecond*200), "Unexpected time taken on wait: %v", timeTaken)
 		}
 	})
 }
