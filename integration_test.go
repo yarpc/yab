@@ -999,6 +999,74 @@ test: 1
 	}
 }
 
+func TestGRPCStreamWithStreamIntervalOption(t *testing.T) {
+	t.Run("client stream", func(t *testing.T) {
+		addr, server := setupGRPCServer(t, &simpleService{
+			returnOutput:  []simple.Foo{{Test: 4}},
+			expectedInput: []simple.Foo{{Test: 1}, {Test: 2}, {Test: -1}},
+		})
+		defer server.Stop()
+
+		opts := Options{
+			ROpts: RequestOptions{
+				FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+				Procedure:         "Bar/ClientStream",
+				Timeout:           timeMillisFlag(time.Second * 5),
+				RequestJSON:       `{"test":1}{"test":2}{"test":-1}`,
+				StreamRequestOptions: StreamRequestOptions{
+					Interval: timeMillisFlag(time.Millisecond * 1000),
+				},
+			},
+			TOpts: TransportOptions{
+				ServiceName: "foo",
+				Peers:       []string{"grpc://" + addr.String()},
+			},
+		}
+
+		now := time.Now()
+		_, gotErr := runTestWithOpts(opts)
+		duration := time.Now().Sub(now)
+
+		assert.Empty(t, gotErr)
+		// test must run for more than 2 seconds as there are three requests and
+		// it must take 2 seconds totally between consecutive messages
+		assert.True(t, duration > (time.Second*2), "Unexpected time taken on wait: %v", duration)
+	})
+
+	t.Run("bidirectional stream", func(t *testing.T) {
+		addr, server := setupGRPCServer(t, &simpleService{
+			returnOutput:  []simple.Foo{{Test: 4}, {Test: 9}},
+			expectedInput: []simple.Foo{{Test: 1}, {Test: 2}, {Test: -1}},
+		})
+		defer server.Stop()
+
+		opts := Options{
+			ROpts: RequestOptions{
+				FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+				Procedure:         "Bar/BidiStream",
+				Timeout:           timeMillisFlag(time.Second * 5),
+				RequestJSON:       `{"test":1}{"test":2}{"test":-1}`,
+				StreamRequestOptions: StreamRequestOptions{
+					Interval: timeMillisFlag(time.Millisecond * 1000),
+				},
+			},
+			TOpts: TransportOptions{
+				ServiceName: "foo",
+				Peers:       []string{"grpc://" + addr.String()},
+			},
+		}
+
+		now := time.Now()
+		_, gotErr := runTestWithOpts(opts)
+		duration := time.Now().Sub(now)
+
+		assert.Empty(t, gotErr)
+		// test must run for more than 2 seconds as there are three requests and
+		// it must take 2 seconds totally between consecutive messages
+		assert.True(t, duration > (time.Second*2), "Unexpected time taken on wait: %v", duration)
+	})
+}
+
 func TestGRPCReflectionSource(t *testing.T) {
 	addr, server := setupGRPCServer(t, &simpleService{})
 	defer server.GracefulStop()
