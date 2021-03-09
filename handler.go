@@ -436,5 +436,4 @@ func (s *intervalWaiter) wait(ctx context.Context) {
 	}
 
 	s.lastAllowed = time.Now()
-	return
 }

@@ -131,27 +131,29 @@ func TestStreamRequestRecorder(t *testing.T) {
 }
 
 func TestIntervalWaiter(t *testing.T) {
+	duration := time.Millisecond * 100
+
 	t.Run("initial call must not wait", func(t *testing.T) {
-		waiter := newIntervalWaiter(time.Millisecond * 100)
+		waiter := newIntervalWaiter(duration)
 		now := time.Now()
 		waiter.wait(context.Background())
 		assert.True(t, time.Now().Sub(now) < time.Millisecond)
 	})
 
 	t.Run("interval gap must be 100ms between consecutive calls", func(t *testing.T) {
-		waiter := newIntervalWaiter(time.Millisecond * 100)
+		waiter := newIntervalWaiter(duration)
 		waiter.wait(context.Background())
 
 		now := time.Now()
 		waiter.wait(context.Background())
 		duration := time.Now().Sub(now)
-		assert.True(t, duration > (time.Millisecond*100), "Unexpected time taken on wait: %v", duration)
-		assert.True(t, duration < (time.Millisecond*200), "Unexpected time taken on wait: %v", duration)
+		assert.True(t, duration > (duration), "Unexpected time taken on wait: %v", duration)
+		assert.True(t, duration < (duration), "Unexpected time taken on wait: %v", duration)
 
 		now = time.Now()
 		waiter.wait(context.Background())
 		duration = time.Now().Sub(now)
-		assert.True(t, duration > (time.Millisecond*100), "Unexpected time taken on wait: %v", duration)
-		assert.True(t, duration < (time.Millisecond*200), "Unexpected time taken on wait: %v", duration)
+		assert.True(t, duration > (duration), "Unexpected time taken on wait: %v", duration)
+		assert.True(t, duration < (duration), "Unexpected time taken on wait: %v", duration)
 	})
 }
