@@ -70,6 +70,13 @@ type RequestOptions struct {
 		JSON     bool        `long:"json" hidden:"true"`
 		Raw      bool        `long:"raw" hidden:"true"`
 	}
+
+	StreamRequestOptions StreamRequestOptions
+}
+
+// StreamRequestOptions are stream request related options
+type StreamRequestOptions struct {
+	Interval timeMillisFlag `long:"stream-interval" description:"Interval between consecutive stream request message sends."`
 }
 
 // TransportOptions are transport related options.

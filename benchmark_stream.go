@@ -33,6 +33,7 @@ type benchmarkStreamMethod struct {
 	serializer            encoding.Serializer
 	streamRequest         *transport.StreamRequest
 	streamRequestMessages [][]byte
+	opts                  StreamRequestOptions
 }
 
 // Call dispatches stream request on the provided transport.
@@ -40,7 +41,7 @@ func (m benchmarkStreamMethod) Call(t transport.Transport) (benchmarkCallReporte
 	streamIO := newStreamIOBenchmark(m.streamRequestMessages)
 
 	start := time.Now()
-	err := makeStreamRequest(t, m.streamRequest, m.serializer, streamIO)
+	err := makeStreamRequest(t, m.streamRequest, m.serializer, streamIO, m.opts)
 	callReport := newBenchmarkStreamCallReport(time.Since(start), streamIO.streamMessagesReceived(), streamIO.streamMessagesSent())
 
 	if err != nil {
