@@ -76,7 +76,7 @@ type RequestOptions struct {
 
 // StreamRequestOptions are stream request related options
 type StreamRequestOptions struct {
-	Interval timeMillisFlag `long:"stream-interval" description:"Interval between consecutive stream request message sends."`
+	Interval timeMillisFlag `long:"stream-interval" description:"Interval between consecutive stream message sends, applicable separately to every stream request opened on a connection."`
 }
 
 // TransportOptions are transport related options.
