@@ -33,6 +33,7 @@ import (
 
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/plugin"
+	"github.com/yarpc/yab/testdata/protobuf/simple"
 	"github.com/yarpc/yab/transport"
 
 	"github.com/opentracing/opentracing-go"
@@ -354,6 +355,31 @@ func TestGRPCHealthReflectionWithTemplate(t *testing.T) {
 	}
 
 	main()
+}
+
+func TestGRPCStreamsWithTemplate(t *testing.T) {
+	originalArgs := os.Args
+	defer func() { os.Args = originalArgs }()
+
+	svc := &simpleService{
+		expectedInput: []simple.Foo{{Test: 1}, {Test: 2}},
+		returnOutput:  []simple.Foo{{Test: 100}, {Test: 200}},
+	}
+	addr, server := setupGRPCServer(t, svc)
+	defer server.Stop()
+	os.Args = []string{
+		"yab",
+		"-y",
+		"./testdata/templates/stream.yab",
+		"-p",
+		"grpc://" + addr.String(),
+	}
+
+	main()
+
+	assert.Equal(t, int32(2), svc.serverReceivedStreamMessages.Load())
+	assert.Equal(t, int32(2), svc.serverSentStreamMessages.Load())
+	assert.Equal(t, int32(1), svc.streamsOpened.Load())
 }
 
 func TestGRPCHealthReflection(t *testing.T) {

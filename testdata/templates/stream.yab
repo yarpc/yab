@@ -1,0 +1,7 @@
+service: foo
+procedure: Bar/BidiStream
+caller: bar
+timeout: 4.5s
+requests:
+    - test: 1
+    - test: 2

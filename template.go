@@ -47,11 +47,12 @@ type template struct {
 	RoutingKey      string `yaml:"routingKey" yaml-aliases:"routingkey,routing-key,rk"`
 	RoutingDelegate string `yaml:"routingDelegate" yaml-aliases:"routingdelegate,routing-delegate,rd"`
 
-	Headers map[string]string           `yaml:"headers"`
-	Baggage map[string]string           `yaml:"baggage"`
-	Jaeger  bool                        `yaml:"jaeger"`
-	Request map[interface{}]interface{} `yaml:"request"`
-	Timeout time.Duration               `yaml:"timeout"`
+	Headers  map[string]string             `yaml:"headers"`
+	Baggage  map[string]string             `yaml:"baggage"`
+	Jaeger   bool                          `yaml:"jaeger"`
+	Request  map[interface{}]interface{}   `yaml:"request"`
+	Requests []map[interface{}]interface{} `yaml:"requests"`
+	Timeout  time.Duration                 `yaml:"timeout"`
 }
 
 func readYAMLFile(yamlTemplate string, templateArgs map[string]string, opts *Options) error {
@@ -79,19 +80,42 @@ func readYAMLFile(yamlTemplate string, templateArgs map[string]string, opts *Opt
 	return readYAMLRequest(base, contents, templateArgs, opts)
 }
 
+func getYAMLRequestBody(t template, templateArgs map[string]string) ([]byte, error) {
+	if t.Request != nil {
+		req, err := templateargs.ProcessMap(t.Request, templateArgs)
+		if err != nil {
+			return nil, err
+		}
+
+		return yaml.Marshal(req)
+	}
+
+	var body string
+	for _, req := range t.Requests {
+		processedReq, err := templateargs.ProcessMap(req, templateArgs)
+		if err != nil {
+			return nil, err
+		}
+
+		bytes, err := yaml.Marshal(processedReq)
+		if err != nil {
+			return nil, err
+		}
+
+		// append yaml object delimiter and request body
+		body += "---\n" + string(bytes)
+	}
+
+	return []byte(body), nil
+}
+
 func readYAMLRequest(base string, contents []byte, templateArgs map[string]string, opts *Options) error {
 	var t template
 	if err := yamlalias.UnmarshalStrict(contents, &t); err != nil {
 		return err
 	}
 
-	var err error
-	t.Request, err = templateargs.ProcessMap(t.Request, templateArgs)
-	if err != nil {
-		return err
-	}
-
-	body, err := yaml.Marshal(t.Request)
+	body, err := getYAMLRequestBody(t, templateArgs)
 	if err != nil {
 		return err
 	}

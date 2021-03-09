@@ -81,6 +81,13 @@ func TestTemplate(t *testing.T) {
 	assert.True(t, opts.ROpts.ThriftDisableEnvelopes)
 }
 
+func TestTemplateRequestsField(t *testing.T) {
+	opts := newOptions()
+	mustReadYAMLFile(t, "testdata/templates/stream.yab", opts)
+
+	assert.Equal(t, "---\ntest: 1\n---\ntest: 2\n", opts.ROpts.RequestJSON)
+}
+
 func TestTemplateArgs(t *testing.T) {
 	opts := newOptions()
 	args := map[string]string{"user": "bar", "uuids": "[1,2,3,4,5]"}
