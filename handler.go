@@ -149,7 +149,7 @@ func makeStreamRequest(t transport.Transport, streamReq *transport.StreamRequest
 
 	switch serializer.MethodType() {
 	case encoding.BidirectionalStream:
-		return makeBidiStream(ctx, stream, streamIO)
+		return makeBidiStream(ctx, cancel, stream, streamIO)
 	case encoding.ClientStream:
 		return makeClientStream(ctx, stream, streamIO)
 	default:
@@ -220,12 +220,9 @@ func makeClientStream(ctx context.Context, stream *yarpctransport.ClientStream, 
 }
 
 // makeBidiStream starts bi-directional streaming rpc
-func makeBidiStream(ctx context.Context, stream *yarpctransport.ClientStream, streamIO StreamIO) error {
+func makeBidiStream(ctx context.Context, cancel context.CancelFunc, stream *yarpctransport.ClientStream, streamIO StreamIO) error {
 	var wg sync.WaitGroup
 	var sendErr error
-
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
 
 	wg.Add(1)
 	// Start go routine to concurrently send stream messages.
