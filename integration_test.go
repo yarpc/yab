@@ -964,6 +964,22 @@ test: 1
 			},
 			wantErr: "Failed while reading stream input: could not parse given request body as message of type \"Foo\": Message type Foo has no known field named test_err\n",
 		},
+		{
+			desc: "bidirectional streaming with input and long timeout",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/BidiStream",
+					Timeout:           timeMillisFlag(time.Minute),
+					RequestJSON:       `{"test_err": 1}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+				},
+			},
+			expectedInput: []simple.Foo{{Test: 1}},
+			wantErr:       "Failed while reading stream input: could not parse given request body as message of type \"Foo\": Message type Foo has no known field named test_err\n",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
