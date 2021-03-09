@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"sync"
+	"time"
 
 	"github.com/uber/tchannel-go"
 	"github.com/yarpc/yab/encoding"
@@ -95,7 +96,7 @@ func (r requestHandler) handleStreamRequest() {
 	streamIO := newStreamIOInitializer(r.out, r.serializer, streamMsgReader)
 
 	if r.shouldMakeInitialRequest() {
-		if err = makeStreamRequest(r.transport, streamReq, r.serializer, streamIO); err != nil {
+		if err = makeStreamRequest(r.transport, streamReq, r.serializer, streamIO, r.opts.ROpts.StreamRequestOptions); err != nil {
 			r.out.Fatalf("%v\n", err)
 		}
 	}
@@ -113,6 +114,7 @@ func (r requestHandler) handleStreamRequest() {
 		serializer:            r.serializer,
 		streamRequest:         streamReq,
 		streamRequestMessages: streamRequests,
+		opts:                  r.opts.ROpts.StreamRequestOptions,
 	})
 }
 
@@ -130,7 +132,7 @@ func (r requestHandler) isStreamingMethod() bool {
 // it then delegates to handler based on rpc type to handle request and response of the stream
 // nextBodyFn is called to get the next stream message body
 // responseHandlerFn is called with the response of the stream
-func makeStreamRequest(t transport.Transport, streamReq *transport.StreamRequest, serializer encoding.Serializer, streamIO StreamIO) error {
+func makeStreamRequest(t transport.Transport, streamReq *transport.StreamRequest, serializer encoding.Serializer, streamIO StreamIO, opts StreamRequestOptions) error {
 	streamTransport, ok := t.(transport.StreamTransport)
 	if !ok {
 		return fmt.Errorf("Transport does not support stream calls: %q", t.Protocol())
@@ -149,9 +151,9 @@ func makeStreamRequest(t transport.Transport, streamReq *transport.StreamRequest
 
 	switch serializer.MethodType() {
 	case encoding.BidirectionalStream:
-		return makeBidiStream(ctx, stream, streamIO)
+		return makeBidiStream(ctx, stream, streamIO, opts)
 	case encoding.ClientStream:
-		return makeClientStream(ctx, stream, streamIO)
+		return makeClientStream(ctx, stream, streamIO, opts)
 	default:
 		return makeServerStream(ctx, stream, streamIO)
 	}
@@ -194,14 +196,18 @@ func makeServerStream(ctx context.Context, stream *yarpctransport.ClientStream, 
 }
 
 // makeClientStream starts client-side streaming rpc
-func makeClientStream(ctx context.Context, stream *yarpctransport.ClientStream, streamIO StreamIO) error {
+func makeClientStream(ctx context.Context, stream *yarpctransport.ClientStream, streamIO StreamIO, opts StreamRequestOptions) error {
 	var err error
+	reqWaiter := newIntervalWaiter(opts.Interval.Duration())
+
 	for err == nil {
 		var reqBody []byte
 		reqBody, err = streamIO.NextRequest()
 		if err != nil {
 			break
 		}
+
+		reqWaiter.wait(ctx)
 		err = sendStreamMessage(ctx, stream, reqBody)
 	}
 
@@ -220,12 +226,13 @@ func makeClientStream(ctx context.Context, stream *yarpctransport.ClientStream, 
 }
 
 // makeBidiStream starts bi-directional streaming rpc
-func makeBidiStream(ctx context.Context, stream *yarpctransport.ClientStream, streamIO StreamIO) error {
+func makeBidiStream(ctx context.Context, stream *yarpctransport.ClientStream, streamIO StreamIO, opts StreamRequestOptions) error {
 	var wg sync.WaitGroup
 	var sendErr error
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	reqWaiter := newIntervalWaiter(opts.Interval.Duration())
 
 	wg.Add(1)
 	// Start go routine to concurrently send stream messages.
@@ -247,6 +254,7 @@ func makeBidiStream(ctx context.Context, stream *yarpctransport.ClientStream, st
 				break
 			}
 
+			reqWaiter.wait(ctx)
 			err = sendStreamMessage(ctx, stream, reqBody)
 		}
 
@@ -394,4 +402,38 @@ func newStreamIOInitializer(out output, serializer encoding.Serializer, streamMs
 		serializer:      serializer,
 		streamMsgReader: streamMsgReader,
 	}
+}
+
+// intervalWaiter provides `wait` method to maintain time gap of `interval` between
+// consecutive `wait` calls.
+type intervalWaiter struct {
+	interval    time.Duration // required time gap between calls.
+	lastAllowed time.Time
+}
+
+func newIntervalWaiter(interval time.Duration) *intervalWaiter {
+	return &intervalWaiter{
+		interval: interval,
+	}
+}
+
+// wait method waits until the time gap between previous call and current call is
+// more than interval provided. It returns early if the provided context is done.
+func (s *intervalWaiter) wait(ctx context.Context) {
+	now := time.Now()
+	diff := now.Sub(s.lastAllowed)
+
+	// gap between this and previous call is more than required interval.
+	if diff >= s.interval {
+		s.lastAllowed = now
+		return
+	}
+
+	// wait for the remaining duration or context completion.
+	select {
+	case <-ctx.Done():
+	case <-time.After(s.interval - diff):
+	}
+
+	s.lastAllowed = time.Now()
 }
