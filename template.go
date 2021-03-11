@@ -21,6 +21,7 @@
 package main
 
 import (
+	"errors"
 	"io/ioutil"
 	"net/url"
 	"path/filepath"
@@ -32,6 +33,8 @@ import (
 
 	"gopkg.in/yaml.v2"
 )
+
+var errIncorrectRequestFields = errors.New("do not set `request` and `requests` fields in the template together")
 
 type template struct {
 	Peers                 []string `yaml:"peers"`
@@ -81,6 +84,11 @@ func readYAMLFile(yamlTemplate string, templateArgs map[string]string, opts *Opt
 }
 
 func getYAMLRequestBody(t template, templateArgs map[string]string) ([]byte, error) {
+	// request and requests must not be set together
+	if t.Request != nil && t.Requests != nil {
+		return nil, errIncorrectRequestFields
+	}
+
 	if t.Request != nil {
 		req, err := templateargs.ProcessMap(t.Request, templateArgs)
 		if err != nil {
@@ -90,7 +98,7 @@ func getYAMLRequestBody(t template, templateArgs map[string]string) ([]byte, err
 		return yaml.Marshal(req)
 	}
 
-	var body string
+	var body []byte
 	for _, req := range t.Requests {
 		processedReq, err := templateargs.ProcessMap(req, templateArgs)
 		if err != nil {
@@ -103,10 +111,11 @@ func getYAMLRequestBody(t template, templateArgs map[string]string) ([]byte, err
 		}
 
 		// append yaml object delimiter and request body
-		body += "---\n" + string(bytes)
+		body = append(body, "---\n"...)
+		body = append(body, bytes...)
 	}
 
-	return []byte(body), nil
+	return body, nil
 }
 
 func readYAMLRequest(base string, contents []byte, templateArgs map[string]string, opts *Options) error {

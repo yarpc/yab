@@ -82,10 +82,22 @@ func TestTemplate(t *testing.T) {
 }
 
 func TestTemplateRequestsField(t *testing.T) {
-	opts := newOptions()
-	mustReadYAMLFile(t, "testdata/templates/stream.yab", opts)
+	t.Run("only requests field set", func(t *testing.T) {
+		opts := newOptions()
+		mustReadYAMLFile(t, "testdata/templates/stream.yab", opts)
+		want := `---
+test: 1
+---
+test: 2
+`
+		assert.Equal(t, want, opts.ROpts.RequestJSON)
+	})
 
-	assert.Equal(t, "---\ntest: 1\n---\ntest: 2\n", opts.ROpts.RequestJSON)
+	t.Run("error when request and requests fields are set", func(t *testing.T) {
+		opts := newOptions()
+		err := readYAMLFile("testdata/templates/invalid-fields.yab", map[string]string{}, opts)
+		assert.EqualError(t, err, errIncorrectRequestFields.Error())
+	})
 }
 
 func TestTemplateArgs(t *testing.T) {
