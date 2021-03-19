@@ -970,8 +970,10 @@ test: 1
 				ROpts: RequestOptions{
 					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
 					Procedure:         "Bar/BidiStream",
-					Timeout:           timeMillisFlag(time.Minute),
-					RequestJSON:       `{"test_err": 1}`,
+					// Ensure request timeout is longer than go test timeout (30s)
+					// See MakeFile(test_ci,test) for go test timeout.
+					Timeout:     timeMillisFlag(time.Second * 31),
+					RequestJSON: `{"test_err": 1}`,
 				},
 				TOpts: TransportOptions{
 					ServiceName: "foo",
