@@ -12,7 +12,7 @@ install:
 
 .PHONY: test
 test:
-	go test -cover -race ./...
+	go test -cover -timeout 30s -race ./...
 
 
 .PHONY: docs
@@ -28,6 +28,6 @@ docs:
 
 .PHONY: test_ci
 test_ci: install build
-	go test -race -coverprofile=cover_temp.out -coverpkg=./... ./...
+	go test -timeout 30s -race -coverprofile=cover_temp.out -coverpkg=./... ./...
 	grep -v "^github.com/yarpc/yab/testdata/*" cover_temp.out > cover.out
 	go tool cover -html=cover.out -o cover.html
