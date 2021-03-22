@@ -163,13 +163,13 @@ yab keyvalue pkg.keyvalue/GetValue --file-descriptor-set-bin=keyValue.proto.bin 
 
 You can make a call to the bi-directional stream method `GetValueStream` with multiple requests by running:
 ```bash
-yab keyvalue pkg.keyvalue/GetValue --file-descriptor-set-bin=keyValue.proto.bin -r '{"key": "hello1"} {"key": "hello2"}' -p localhost:12345
+yab keyvalue pkg.keyvalue/GetValueStream --file-descriptor-set-bin=keyValue.proto.bin -r '{"key": "hello1"} {"key": "hello2"}' -p localhost:12345
 ```
 
 You can also interactively pass request data (JSON or YAML) on STDIN to the bi-directional stream method `GetValueStream` by setting option `-request='-'`:
 
 ```bash
-yab keyvalue pkg.keyvalue/GetValue --file-descriptor-set-bin=keyValue.proto.bin -r '-' -p localhost:12345
+yab keyvalue pkg.keyvalue/GetValueStream --file-descriptor-set-bin=keyValue.proto.bin -r '-' -p localhost:12345
 
 {"key": "hello1"} // STDIN request-1
 {...} //Response-1
