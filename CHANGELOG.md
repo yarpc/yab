@@ -1,7 +1,7 @@
 Changelog
 =========
 
-# 0.19.0 (2021-03-22)
+# Unreleased
 * Add support for gRPC streaming:
    - Support of benchmark and curl-like fashion mode
    - Multiple requests can be passed through the CLI option `--request`, optionally delimited by space or comma
