@@ -2,12 +2,13 @@ Changelog
 =========
 
 # 0.19.0 (2021-03-22)
-* Add support for gRPC streaming requests and responses for both single and benchmark RPC calls.
-  - Multiple requests can be passed from the CLI option `-request`, optionally delimited by space or comma
-    `-request='{"request": "1"} {"request": "2"}'`.
-  - Requests can be interactively passed from the STDIN by setting CLI option `-request='-'`, this is useful with bi-directional streaming to interactively send and receive stream messages.
-  - Delay between each consecutive stream request can be ensured by setting CLI option `-stream-interval='5s'`, this ensures there is at least a gap of 5 seconds between requests.
-* Add `grpc-max-response-size` option to accept large responses for gRPC calls.
+* Add support for gRPC streaming:
+   - Support of benchmark and curl-like fashion mode
+   - Multiple requests can be passed through the CLI option `--request`, optionally delimited by space or comma
+     `--request='{"request": "1"} {"request": "2"}'` or `--request='{"request": "1"},{"request": "2"}'`
+   - Requests can be interactively passed from STDIN by setting CLI option `--request='-'`.
+   - Interval between each consecutive stream requests can be ensured by setting CLI option `--stream-interval='5s'`, this ensures there is at least an interval of 5 seconds between requests.
+ * Add option `grpc-max-response-size` to set the maximum response size of gRPC response. Default to 4mb.
 
 # 0.18.0 (2020-06-26)
 * Add support for benchmark output in JSON format.
