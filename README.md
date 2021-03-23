@@ -228,10 +228,34 @@ You can also control rate limit the benchmark (`--rps`), or customize the number
 connections (`--connections`) or control the amount of concurrent calls per
 connection (`--concurrency`).
 
-In a gRPC stream method benchmark, a stream benchmark request is considered successful when a stream sends all the requests and receives response messages successfully.
-
 ```bash
 yab -t ~/keyvalue.thrift -p localhost:12345 keyvalue KeyValue::get -r '{"key": "hello"}' -d 5s --rps 100 --connections 4
+```
+
+In a gRPC stream method benchmark, a stream benchmark request is considered successful when a stream sends all the requests and receives response messages successfully. Example stream benchmark command and output:
+```bash
+> yab keyvalue pkg.keyvalue/GetValueStream -r '{"key": "hello1"} {"key": "hello2"}' -p localhost:12345 --duration=1s
+
+Benchmark parameters:
+  CPUs:            12
+  Connections:     24
+  Concurrency:     1
+  Max requests:    10000
+  Max duration:    1s
+  Max RPS:         0
+Latencies:
+  0.5000: 779.01µs
+  0.9000: 2.034852ms
+  0.9500: 2.932846ms
+  0.9900: 11.698821ms
+  0.9990: 15.839751ms
+  0.9995: 16.651223ms
+  1.0000: 17.198644ms
+Elapsed time (seconds):         0.49
+Total requests:                 10000
+RPS:                            20190.25
+Total stream messages sent:     20000
+Total stream messages received: 20000
 ```
 
 [releases]: https://github.com/yarpc/yab/releases
