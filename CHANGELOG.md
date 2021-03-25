@@ -1,6 +1,8 @@
 Changelog
 =========
 
+## [Unreleased]
+- No changes yet
 # 0.19.0 (2021-03-24)
 * Add support for gRPC streaming:
    - Support of benchmark and curl-like fashion mode
