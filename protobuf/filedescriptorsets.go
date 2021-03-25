@@ -93,4 +93,13 @@ func (fs *fileSource) FindService(fullyQualifiedName string) (*desc.ServiceDescr
 	}
 }
 
+func (fs *fileSource) FindMessage(messageType string) (*desc.MessageDescriptor, error) {
+	for _, fd := range fs.files {
+		if md := fd.FindMessage(messageType); md != nil {
+			return md, nil
+		}
+	}
+	return nil, nil
+}
+
 func (fs *fileSource) Close() {}

@@ -49,6 +49,7 @@ var _testLogger = zap.NewNop()
 var (
 	_resolvedTChannelThrift = resolvedProtocolEncoding{protocol: transport.TChannel, enc: encoding.Thrift}
 	_resolvedTChannelRaw    = resolvedProtocolEncoding{protocol: transport.TChannel, enc: encoding.Raw}
+	_resolvedGrpcProto      = resolvedProtocolEncoding{protocol: transport.GRPC, enc: encoding.Protobuf}
 )
 
 type testOutput struct {

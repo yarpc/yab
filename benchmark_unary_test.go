@@ -1,4 +1,4 @@
-// Copyright (c) 2016 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,7 @@ import (
 	"go.uber.org/atomic"
 )
 
-func benchmarkMethodForTest(t *testing.T, procedure string, p transport.Protocol) benchmarkMethod {
+func benchmarkMethodForTest(t *testing.T, procedure string, p transport.Protocol) benchmarkUnaryMethod {
 	return benchmarkMethodForROpts(t, RequestOptions{
 		Encoding:   encoding.Thrift,
 		ThriftFile: validThrift,
@@ -44,7 +44,7 @@ func benchmarkMethodForTest(t *testing.T, procedure string, p transport.Protocol
 	}, p)
 }
 
-func benchmarkMethodForROpts(t *testing.T, rOpts RequestOptions, p transport.Protocol) benchmarkMethod {
+func benchmarkMethodForROpts(t *testing.T, rOpts RequestOptions, p transport.Protocol) benchmarkUnaryMethod {
 	serializer, err := NewSerializer(Options{ROpts: rOpts}, resolvedProtocolEncoding{
 		protocol: p,
 		enc:      encoding.Thrift,
@@ -55,7 +55,7 @@ func benchmarkMethodForROpts(t *testing.T, rOpts RequestOptions, p transport.Pro
 	require.NoError(t, err, "Failed to serialize Thrift body")
 
 	req.Timeout = time.Second
-	return benchmarkMethod{serializer, req}
+	return benchmarkUnaryMethod{serializer, req}
 }
 
 func TestBenchmarkMethodWarmTransport(t *testing.T) {
@@ -96,7 +96,7 @@ func TestBenchmarkMethodWarmTransport(t *testing.T) {
 			Peers:       []string{tt.peer},
 		}
 
-		transport, err := m.WarmTransport(tOpts, resolvedProtocolEncoding{
+		transport, err := warmTransport(m, tOpts, resolvedProtocolEncoding{
 			protocol: transport.TChannel,
 			enc:      encoding.JSON,
 		}, 1 /* warmupRequests */)
@@ -159,7 +159,7 @@ func TestBenchmarkMethodCall(t *testing.T) {
 			m.req.Method = tt.reqMethod
 		}
 
-		d, err := m.call(tp)
+		res, err := m.Call(tp)
 		if tt.wantErr != "" {
 			if assert.Error(t, err, "call should fail") {
 				assert.Contains(t, err.Error(), tt.wantErr, "call should return 0 duration")
@@ -168,7 +168,7 @@ func TestBenchmarkMethodCall(t *testing.T) {
 		}
 
 		assert.NoError(t, err, "call should not fail")
-		assert.True(t, d > time.Microsecond, "duration was too short, got %v", d)
+		assert.True(t, res.Latency() > time.Microsecond, "duration was too short, got %v", res.Latency())
 	}
 }
 
@@ -233,7 +233,7 @@ func TestBenchmarkMethodWarmTransportsSuccess(t *testing.T) {
 		ServiceName: "foo",
 		Peers:       serverHPs,
 	}
-	transports, err := m.WarmTransports(numServers, tOpts, _resolvedTChannelThrift, 1 /* warmupRequests */)
+	transports, err := warmTransports(m, numServers, tOpts, _resolvedTChannelThrift, 1 /* warmupRequests */)
 	assert.NoError(t, err, "WarmTransports should not fail")
 	assert.Equal(t, numServers, len(transports), "Got unexpected number of transports")
 	for i, transport := range transports {
@@ -292,19 +292,11 @@ func TestBenchmarkMethodWarmTransportsError(t *testing.T) {
 			ServiceName: "foo",
 			Peers:       []string{s.hostPort()},
 		}
-		_, err := m.WarmTransports(10, tOpts, _resolvedTChannelThrift, tt.warmup)
+		_, err := warmTransports(m, 10, tOpts, _resolvedTChannelThrift, tt.warmup)
 		if tt.wantErr {
 			assert.Error(t, err, "%v: WarmTransports should fail", msg)
 		} else {
 			assert.NoError(t, err, "%v: WarmTransports should succeed", msg)
 		}
 	}
-}
-
-func TestBenchmarkMethodHealth(t *testing.T) {
-	m := benchmarkMethodForROpts(t, RequestOptions{
-		Encoding: encoding.Thrift,
-		Health:   true,
-	}, transport.TChannel)
-	assert.Equal(t, "Meta::health", m.Method())
 }

@@ -81,6 +81,25 @@ func TestTemplate(t *testing.T) {
 	assert.True(t, opts.ROpts.ThriftDisableEnvelopes)
 }
 
+func TestTemplateRequestsField(t *testing.T) {
+	t.Run("only requests field set", func(t *testing.T) {
+		opts := newOptions()
+		mustReadYAMLFile(t, "testdata/templates/stream.yab", opts)
+		want := `---
+test: 1
+---
+test: 2
+`
+		assert.Equal(t, want, opts.ROpts.RequestJSON)
+	})
+
+	t.Run("error when request and requests fields are set", func(t *testing.T) {
+		opts := newOptions()
+		err := readYAMLFile("testdata/templates/invalid-fields.yab", map[string]string{}, opts)
+		assert.EqualError(t, err, errIncorrectRequestFields.Error())
+	})
+}
+
 func TestTemplateArgs(t *testing.T) {
 	opts := newOptions()
 	args := map[string]string{"user": "bar", "uuids": "[1,2,3,4,5]"}

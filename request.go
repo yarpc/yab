@@ -21,9 +21,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -42,29 +44,30 @@ var (
 )
 
 // getRequestInput gets the byte body passed in by the user via flags or through a file.
-func getRequestInput(inline, file string) ([]byte, error) {
+func getRequestInput(inline, file string) (io.ReadCloser, error) {
 	if file == "-" || inline == "-" {
-		return ioutil.ReadAll(os.Stdin)
+		return os.Stdin, nil
 	}
 
 	if file != "" {
-		bs, err := ioutil.ReadFile(file)
+		f, err := os.Open(file)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open request file: %v", err)
 		}
-		return bs, nil
+		return f, nil
 	}
 
-	if inline != "" {
-		return []byte(inline), nil
-	}
-
-	// It is valid to have an empty body.
-	return nil, nil
+	return ioutil.NopCloser(bytes.NewReader([]byte(inline))), nil
 }
 
 func getHeaders(inline, file string, override map[string]string) (map[string]string, error) {
-	contents, err := getRequestInput(inline, file)
+	r, err := getRequestInput(inline, file)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Close()
+
+	contents, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}

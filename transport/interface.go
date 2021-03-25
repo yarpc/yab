@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
+	"go.uber.org/yarpc/api/transport"
 	"golang.org/x/net/context"
 )
 
@@ -38,6 +39,11 @@ type Request struct {
 	TransportHeaders map[string]string
 	ShardKey         string
 	Body             []byte
+}
+
+// StreamRequest is a wrapper of Request, to be used for streaming RPC
+type StreamRequest struct {
+	Request *Request
 }
 
 // Response represents the result of an RPC.
@@ -61,11 +67,17 @@ const (
 )
 
 // Transport defines the interface for the underlying transport over which
-// calls are made.
+// unary calls are made.
 type Transport interface {
 	Call(ctx context.Context, request *Request) (*Response, error)
 	Protocol() Protocol
 	Tracer() opentracing.Tracer
+}
+
+// StreamTransport defines the interface for the underlying transport which
+// supports streaming
+type StreamTransport interface {
+	CallStream(ctx context.Context, request *StreamRequest) (*transport.ClientStream, error)
 }
 
 // TransportCloser is a Transport that can be closed.

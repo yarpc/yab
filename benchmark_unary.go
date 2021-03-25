@@ -1,4 +1,4 @@
-// Copyright (c) 2016 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,6 +20,31 @@
 
 package main
 
-// versionString is the sem-ver version string for yab.
-// It will be bumped explicitly on releases.
-var versionString = "0.19.0"
+import (
+	"time"
+
+	"github.com/yarpc/yab/encoding"
+	"github.com/yarpc/yab/transport"
+)
+
+// benchmarkUnaryMethod benchmarks unary requests.
+type benchmarkUnaryMethod struct {
+	serializer encoding.Serializer
+	req        *transport.Request
+}
+
+// Call dispatches unary request on the provided transport.
+func (m benchmarkUnaryMethod) Call(t transport.Transport) (benchmarkCallReporter, error) {
+	start := time.Now()
+	res, err := makeRequest(t, m.req)
+	latency := time.Since(start)
+
+	if err == nil {
+		err = m.serializer.CheckSuccess(res)
+	}
+	return newBenchmarkCallLatencyReport(latency), err
+}
+
+func (m benchmarkUnaryMethod) CallMethodType() encoding.MethodType {
+	return encoding.Unary
+}

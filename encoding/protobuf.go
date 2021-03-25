@@ -3,13 +3,16 @@ package encoding
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"strings"
 
+	"github.com/ghodss/yaml"
 	"github.com/yarpc/yab/encoding/encodingerror"
+	"github.com/yarpc/yab/encoding/inputdecoder"
 	"github.com/yarpc/yab/protobuf"
 	"github.com/yarpc/yab/transport"
 
-	"github.com/ghodss/yaml"
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/dynamic"
@@ -20,6 +23,56 @@ type protoSerializer struct {
 	serviceName string
 	methodName  string
 	method      *desc.MethodDescriptor
+	anyResolver jsonpb.AnyResolver
+}
+
+// bytesMsg wraps a raw byte slice for serialization purposes. Especially
+// useful for any types where we can't find the value in the registry.
+type bytesMsg struct {
+	V []byte
+}
+
+// anyResolver is a custom resolver which will use the descriptor provider
+// and fallback to a simple byte array structure in the json encoding.
+// This is the needed otherwise the default behaviour of protoreflect
+// is to fail with an error when it can't find a type from protobuf.Any.
+type anyResolver struct {
+	source protobuf.DescriptorProvider
+}
+
+func (*bytesMsg) ProtoMessage()             {}
+func (*bytesMsg) XXX_WellKnownType() string { return "BytesValue" }
+func (m *bytesMsg) Reset()                  { *m = bytesMsg{} }
+func (m *bytesMsg) String() string {
+	return fmt.Sprintf("%x", m.V) // not compatible w/ pb oct
+}
+func (m *bytesMsg) Unmarshal(b []byte) error {
+	m.V = append([]byte(nil), b...)
+	return nil
+}
+
+func (r anyResolver) Resolve(typeUrl string) (proto.Message, error) {
+	mname := typeUrl
+	// This resolver supports types based on the spec at https://developers.google.com/protocol-buffers/docs/proto3#any
+	// Example: type.googleapis.com/_packagename_._messagename_
+	// so we want to get the fully qualified name of the type that we are dealing with
+	// i.e. everything after the last '/'
+	if slash := strings.LastIndex(mname, "/"); slash >= 0 {
+		mname = mname[slash+1:]
+	}
+
+	msgDescriptor, err := r.source.FindMessage(mname)
+	if err != nil {
+		return nil, err
+	}
+	if msgDescriptor != nil {
+		// We found a registered descriptor for our type, return it for human
+		// readable format
+		return dynamic.NewMessage(msgDescriptor), nil
+	}
+	// If me couldn't find the msg descriptor then provide a default implementation which will just
+	// output the raw bytes as base64 - it's better than nothing.
+	return &bytesMsg{}, nil
 }
 
 // NewProtobuf returns a protobuf serializer.
@@ -43,6 +96,9 @@ func NewProtobuf(fullMethodName string, source protobuf.DescriptorProvider) (Ser
 		serviceName: serviceName,
 		methodName:  methodName,
 		method:      methodDescriptor,
+		anyResolver: anyResolver{
+			source: source,
+		},
 	}, nil
 }
 
@@ -50,20 +106,31 @@ func (p protoSerializer) Encoding() Encoding {
 	return Protobuf
 }
 
+func (p protoSerializer) MethodType() MethodType {
+	if p.method.IsClientStreaming() && p.method.IsServerStreaming() {
+		return BidirectionalStream
+	}
+
+	if p.method.IsClientStreaming() {
+		return ClientStream
+	}
+
+	if p.method.IsServerStreaming() {
+		return ServerStream
+	}
+	return Unary
+}
+
 func (p protoSerializer) Request(body []byte) (*transport.Request, error) {
-	json, err := yaml.YAMLToJSON(body)
+	if p.MethodType() != Unary {
+		return nil, fmt.Errorf("request method must be invoked only with unary rpc method: %q", p.method.GetInputType().GetFullyQualifiedName())
+	}
+
+	bytes, err := p.encode(body)
 	if err != nil {
 		return nil, err
 	}
 
-	req := dynamic.NewMessage(p.method.GetInputType())
-	if err := req.UnmarshalJSON(json); err != nil {
-		return nil, fmt.Errorf("could not parse given request body as message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
-	}
-	bytes, err := proto.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("could marshal message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
-	}
 	return &transport.Request{
 		Method: procedure.ToName(p.serviceName, p.methodName),
 		Body:   bytes,
@@ -75,7 +142,11 @@ func (p protoSerializer) Response(body *transport.Response) (interface{}, error)
 	if err := resp.Unmarshal(body.Body); err != nil {
 		return nil, fmt.Errorf("could not parse given response body as message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
 	}
-	str, err := resp.MarshalJSON()
+
+	marshaler := &jsonpb.Marshaler{
+		AnyResolver: p.anyResolver,
+	}
+	str, err := resp.MarshalJSONPB(marshaler)
 	if err != nil {
 		return nil, err
 	}
@@ -86,9 +157,66 @@ func (p protoSerializer) Response(body *transport.Response) (interface{}, error)
 	return unmarshaledJSON, nil
 }
 
+func (p protoSerializer) StreamRequest(body io.Reader) (*transport.StreamRequest, StreamRequestReader, error) {
+	if p.MethodType() == Unary {
+		return nil, nil, fmt.Errorf("streamrequest method must be called only with streaming rpc method: %q", p.method.GetInputType().GetFullyQualifiedName())
+	}
+
+	decoder, err := inputdecoder.New(body)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	streamReq := &transport.StreamRequest{
+		Request: &transport.Request{
+			Method: procedure.ToName(p.serviceName, p.methodName),
+		},
+	}
+
+	reader := protoStreamRequestReader{
+		decoder: decoder,
+		proto:   p,
+	}
+
+	return streamReq, reader, nil
+}
+
 func (p protoSerializer) CheckSuccess(body *transport.Response) error {
 	_, err := p.Response(body)
 	return err
+}
+
+func (p protoSerializer) encode(yamlBytes []byte) ([]byte, error) {
+	jsonBytes, err := yaml.YAMLToJSON(yamlBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	req := dynamic.NewMessage(p.method.GetInputType())
+	if err := req.UnmarshalJSON(jsonBytes); err != nil {
+		return nil, fmt.Errorf("could not parse given request body as message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
+	}
+
+	bytes, err := proto.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("could marshal message of type %q: %v", p.method.GetInputType().GetFullyQualifiedName(), err)
+	}
+
+	return bytes, nil
+}
+
+type protoStreamRequestReader struct {
+	decoder inputdecoder.Decoder
+	proto   protoSerializer
+}
+
+func (p protoStreamRequestReader) NextBody() ([]byte, error) {
+	body, err := p.decoder.NextYAMLBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	return p.proto.encode(body)
 }
 
 func splitMethod(fullMethod string) (svc, method string, err error) {

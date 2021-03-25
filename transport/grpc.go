@@ -53,6 +53,7 @@ type GRPCOptions struct {
 	Encoding        string
 	RoutingKey      string
 	RoutingDelegate string
+	MaxResponseSize int
 }
 
 // NewGRPC returns a transport that calls a GRPC service.
@@ -63,6 +64,7 @@ func NewGRPC(options GRPCOptions) (TransportCloser, error) {
 type grpcTransport struct {
 	Transport       transport.Transport
 	Outbound        transport.UnaryOutbound
+	StreamOutbound  transport.StreamOutbound
 	Caller          string
 	Encoding        string
 	RoutingKey      string
@@ -81,7 +83,12 @@ func newGRPC(options GRPCOptions) (*grpcTransport, error) {
 		return nil, errGRPCNoCaller
 	}
 
-	transport := grpc.NewTransport(grpc.Tracer(options.Tracer))
+	transportOptions := []grpc.TransportOption{grpc.Tracer(options.Tracer)}
+	if options.MaxResponseSize > 0 {
+		transportOptions = append(transportOptions, grpc.ClientMaxRecvMsgSize(options.MaxResponseSize))
+	}
+
+	transport := grpc.NewTransport(transportOptions...)
 	outbound := transport.NewOutbound(peer.Bind(roundrobin.New(transport), peer.BindPeers(peersToIdentifiers(options.Addresses))))
 	if err := transport.Start(); err != nil {
 		return nil, err
@@ -94,6 +101,7 @@ func newGRPC(options GRPCOptions) (*grpcTransport, error) {
 	return &grpcTransport{
 		Transport:       transport,
 		Outbound:        outbound,
+		StreamOutbound:  outbound,
 		Caller:          options.Caller,
 		Encoding:        options.Encoding,
 		RoutingKey:      options.RoutingKey,
@@ -127,8 +135,31 @@ func (t *grpcTransport) Call(ctx context.Context, request *Request) (*Response, 
 	return yarpcResponseToResponse(transportResponse)
 }
 
+func (t *grpcTransport) CallStream(ctx context.Context, request *StreamRequest) (*transport.ClientStream, error) {
+	return t.StreamOutbound.CallStream(ctx, t.requestToYARPCStreamRequest(request))
+}
+
 func (t *grpcTransport) Close() error {
 	return multierr.Combine(t.Transport.Stop(), t.Outbound.Stop())
+}
+
+func (t *grpcTransport) requestToYARPCStreamRequest(streamRequest *StreamRequest) *transport.StreamRequest {
+	if t == nil || streamRequest == nil || streamRequest.Request == nil {
+		return nil
+	}
+
+	return &transport.StreamRequest{
+		Meta: &transport.RequestMeta{
+			Caller:          t.Caller,
+			Service:         streamRequest.Request.TargetService,
+			Encoding:        transport.Encoding(t.Encoding),
+			Procedure:       streamRequest.Request.Method,
+			Headers:         transport.HeadersFromMap(streamRequest.Request.Headers),
+			ShardKey:        streamRequest.Request.ShardKey,
+			RoutingKey:      t.RoutingKey,
+			RoutingDelegate: t.RoutingDelegate,
+		},
+	}
 }
 
 func (t *grpcTransport) requestToYARPCRequest(request *Request) *transport.Request {

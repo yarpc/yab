@@ -33,6 +33,7 @@ import (
 
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/plugin"
+	"github.com/yarpc/yab/testdata/protobuf/simple"
 	"github.com/yarpc/yab/transport"
 
 	"github.com/opentracing/opentracing-go"
@@ -110,7 +111,7 @@ func TestRunWithOptions(t *testing.T) {
 					Peers:       []string{"1.1.1.1:1"},
 				},
 			},
-			errMsg: "while parsing request input",
+			errMsg: "Failed while serializing the input: yaml: line 1: did not find expected ',' or '}'",
 		},
 		{
 			desc: "Invalid host:port, fail to make request",
@@ -208,6 +209,22 @@ func TestRunWithOptions(t *testing.T) {
 				},
 			},
 			errMsg: "Disallowed caller name: testBlockedCallerName",
+		},
+		{
+			desc: "Fail due to incorrect file",
+			opts: Options{
+				ROpts: RequestOptions{
+					ThriftFile:  validThrift,
+					Procedure:   fooMethod,
+					Timeout:     timeMillisFlag(time.Nanosecond),
+					RequestFile: "invalid",
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+					Peers:       []string{echoServer(t, fooMethod, nil)},
+				},
+			},
+			errMsg: "Failed while creating request reader: failed to open request file: open invalid: no such file or directory",
 		},
 	}
 
@@ -340,6 +357,31 @@ func TestGRPCHealthReflectionWithTemplate(t *testing.T) {
 	main()
 }
 
+func TestGRPCStreamsWithTemplate(t *testing.T) {
+	originalArgs := os.Args
+	defer func() { os.Args = originalArgs }()
+
+	svc := &simpleService{
+		expectedInput: []simple.Foo{{Test: 1}, {Test: 2}},
+		returnOutput:  []simple.Foo{{Test: 100}, {Test: 200}},
+	}
+	addr, server := setupGRPCServer(t, svc)
+	defer server.Stop()
+	os.Args = []string{
+		"yab",
+		"-y",
+		"./testdata/templates/stream.yab",
+		"-p",
+		"grpc://" + addr.String(),
+	}
+
+	main()
+
+	assert.Equal(t, int32(2), svc.serverReceivedStreamMessages.Load())
+	assert.Equal(t, int32(2), svc.serverSentStreamMessages.Load())
+	assert.Equal(t, int32(1), svc.streamsOpened.Load())
+}
+
 func TestGRPCHealthReflection(t *testing.T) {
 	origArgs := os.Args
 	defer func() { os.Args = origArgs }()
@@ -451,7 +493,7 @@ func TestBenchmarkLowRPSDuration(t *testing.T) {
 	start := time.Now()
 	main()
 	duration := time.Since(start)
-	assert.True(t, duration < 200*time.Millisecond, "Expected 100ms benchmark to complete within 200ms, took %v", duration)
+	assert.True(t, duration < 300*time.Millisecond, "Expected 100ms benchmark to complete within 300ms, took %v", duration)
 }
 
 func TestHelpOutput(t *testing.T) {

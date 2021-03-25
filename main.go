@@ -21,6 +21,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -287,10 +288,11 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 		return
 	}
 
-	reqInput, err := getRequestInput(opts.ROpts.RequestJSON, opts.ROpts.RequestFile)
+	reqReader, err := getRequestInput(opts.ROpts.RequestJSON, opts.ROpts.RequestFile)
 	if err != nil {
-		out.Fatalf("Failed while loading body input: %v\n", err)
+		out.Fatalf("Failed while creating request reader: %v\n", err)
 	}
+	defer reqReader.Close()
 
 	headers, err := getHeaders(opts.ROpts.HeadersJSON, opts.ROpts.HeadersFile, opts.ROpts.Headers)
 	if err != nil {
@@ -338,25 +340,17 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 		out.Fatalf("Failed while parsing options: %v\n", err)
 	}
 
-	// req is the transport.Request that will be used to make a call.
-	req, err := serializer.Request(reqInput)
-	if err != nil {
-		out.Fatalf("Failed while parsing request input: %v\n", err)
-	}
-	req, err = prepareRequest(req, headers, opts)
-	if err != nil {
-		out.Fatalf("Failed while preparing the request: %v\n", err)
-	}
-
-	// Only make the request if the user hasn't specified 0 warmup.
-	if !(opts.BOpts.enabled() && opts.BOpts.WarmupRequests == 0) {
-		makeInitialRequest(out, transport, serializer, req)
-	}
-
-	runBenchmark(out, logger, opts, resolved, benchmarkMethod{
+	handler := requestHandler{
+		out:        out,
+		logger:     logger,
+		opts:       opts,
+		transport:  transport,
+		resolved:   resolved,
 		serializer: serializer,
-		req:        req,
-	})
+		body:       reqReader,
+		headers:    headers,
+	}
+	handler.handle()
 }
 
 func createJaegerTracer(opts Options, out output) (opentracing.Tracer, io.Closer) {
@@ -459,6 +453,11 @@ func makeRequestWithTracePriority(t transport.Transport, request *transport.Requ
 	ctx, cancel := tchannel.NewContext(request.Timeout)
 	defer cancel()
 
+	ctx = makeContextWithTrace(ctx, t, request, trace)
+	return t.Call(ctx, request)
+}
+
+func makeContextWithTrace(ctx context.Context, t transport.Transport, request *transport.Request, trace uint16) context.Context {
 	if tracer := t.Tracer(); tracer != nil {
 		span := tracer.StartSpan(request.Method)
 		opentracing_ext.SamplingPriority.Set(span, trace)
@@ -467,8 +466,7 @@ func makeRequestWithTracePriority(t transport.Transport, request *transport.Requ
 		}
 		ctx = opentracing.ContextWithSpan(ctx, span)
 	}
-
-	return t.Call(ctx, request)
+	return ctx
 }
 
 func makeInitialRequest(out output, transport transport.Transport, serializer encoding.Serializer, req *transport.Request) {

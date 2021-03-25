@@ -60,7 +60,7 @@ func TestGetRequestInput(t *testing.T) {
 		want   []byte
 	}{
 		{
-			want: nil,
+			want: []byte{},
 		},
 		{
 			file:   "/fake/file",
@@ -114,7 +114,9 @@ func TestGetRequestInput(t *testing.T) {
 		}
 
 		if assert.NoError(t, err, "getRequestInput(%v, %v) should not fail", tt.inline, tt.file) {
-			assert.Equal(t, tt.want, got, "getRequestInput(%v, %v) mismatch", tt.inline, tt.file)
+			contents, err := ioutil.ReadAll(got)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, contents, "getRequestInput(%v, %v) mismatch", tt.inline, tt.file)
 		}
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jhump/protoreflect/desc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	ygrpc "go.uber.org/yarpc/transport/grpc"
@@ -54,6 +55,19 @@ func TestReflection(t *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, result)
 		assert.Contains(t, err.Error(), `could not find gRPC service "wat"`)
+	})
+
+	t.Run("valid message", func(t *testing.T) {
+		msg, err := source.FindMessage("grpc.reflection.v1alpha.ServerReflectionRequest")
+		assert.NoError(t, err)
+		assert.NotNil(t, msg)
+		assert.IsType(t, &desc.MessageDescriptor{}, msg)
+	})
+
+	t.Run("return nil if the message type is not found", func(t *testing.T) {
+		msg, err := source.FindMessage("not-to-be-found")
+		assert.NoError(t, err)
+		assert.Nil(t, msg)
 	})
 }
 
