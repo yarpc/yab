@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -120,9 +121,9 @@ func parseBinaryList(vl []interface{}) ([]byte, error) {
 		case int:
 			// from https://thrift.apache.org/docs/types, byte is an 8-bit signed integer
 			// For Go, thriftrw uses a Go byte, which is an uint8 so it is possible to have 0 to 255 over the wire.
-			// Apache Java clients respect the signed int8 and send -128 to 127.
-			// To make both sides happy, check between -128 and 255
-			if v < -(1<<7) || v >= (1<<8) {
+			// Apache Java clients respect the signed int8 and send [-128,127].
+			// To make both sides happy, check between [-128,255]
+			if v < math.MinInt8 || v > math.MaxUint8 {
 				return nil, fmt.Errorf("failed to parse list of bytes: %v is not a valid thrift byte", v)
 			}
 			bs = append(bs, byte(v))

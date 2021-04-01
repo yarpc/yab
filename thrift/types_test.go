@@ -273,6 +273,18 @@ func TestParseBinary(t *testing.T) {
 			want:  []byte("AB"),
 		},
 		{
+			value: []interface{}{1, -1},
+			want:  []byte{0x1, 0xff},
+		},
+		{
+			value: []interface{}{-128, 127}, // boundary
+			want:  []byte{0x80, 0x7f},
+		},
+		{
+			value: []interface{}{-1, 255}, // overflow causes the same results
+			want:  []byte{0xff, 0xff},
+		},
+		{
 			value: []interface{}{104, "ello", "", " ", "world"},
 			want:  []byte("hello world"),
 		},
