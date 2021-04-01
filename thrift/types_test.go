@@ -277,8 +277,8 @@ func TestParseBinary(t *testing.T) {
 			want:  []byte{0x1, 0xff},
 		},
 		{
-			value: []interface{}{-128, 127}, // boundary
-			want:  []byte{0x80, 0x7f},
+			value: []interface{}{-128, 127, 255}, // boundary for diff int types
+			want:  []byte{0x80, 0x7f, 0xff},
 		},
 		{
 			value: []interface{}{-1, 255}, // overflow causes the same results
