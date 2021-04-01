@@ -273,6 +273,18 @@ func TestParseBinary(t *testing.T) {
 			want:  []byte("AB"),
 		},
 		{
+			value: []interface{}{1, -1},
+			want:  []byte{0x1, 0xff},
+		},
+		{
+			value: []interface{}{-128, 127, 255}, // boundary for diff int types
+			want:  []byte{0x80, 0x7f, 0xff},
+		},
+		{
+			value: []interface{}{-1, 255}, // overflow causes the same results
+			want:  []byte{0xff, 0xff},
+		},
+		{
 			value: []interface{}{104, "ello", "", " ", "world"},
 			want:  []byte("hello world"),
 		},
@@ -290,6 +302,10 @@ func TestParseBinary(t *testing.T) {
 		},
 		{
 			value:  []interface{}{256},
+			errMsg: "failed to parse list of bytes",
+		},
+		{
+			value:  []interface{}{-129},
 			errMsg: "failed to parse list of bytes",
 		},
 		{

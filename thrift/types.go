@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -115,11 +116,15 @@ func parseBinaryList(vl []interface{}) ([]byte, error) {
 	bs := make([]byte, 0, len(vl))
 	for _, v := range vl {
 		switch v := v.(type) {
+		// YAML uses int for all small values. For large values, it may use int64 or uint64
+		// but those are not valid bool values anyway, so we don't need to check them.
 		case int:
-			// YAML uses int for all small values. For large values, it may use int64 or uint64
-			// but those are not valid bool values anyway, so we don't need to check them.
-			if v < 0 || v >= (1<<8) {
-				return nil, fmt.Errorf("failed to parse list of bytes: %v is not a byte", v)
+			// from https://thrift.apache.org/docs/types, byte is an 8-bit signed integer
+			// In Go, byte is an unsigned int8 (uint8) which has a range [0, 255].
+			// In Java, byte is a signed int8 which has a range of [-128,127].
+			// To make both sides happy, check between [-128,255]
+			if v < math.MinInt8 || v > math.MaxUint8 {
+				return nil, fmt.Errorf("failed to parse list of bytes: %v is not a valid thrift byte", v)
 			}
 			bs = append(bs, byte(v))
 		case string:
