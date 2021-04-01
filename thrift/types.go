@@ -118,8 +118,11 @@ func parseBinaryList(vl []interface{}) ([]byte, error) {
 		case int:
 			// YAML uses int for all small values. For large values, it may use int64 or uint64
 			// but those are not valid bool values anyway, so we don't need to check them.
-			if v < 0 || v >= (1<<8) {
-				return nil, fmt.Errorf("failed to parse list of bytes: %v is not a byte", v)
+			// from https://thrift.apache.org/docs/types:
+			// byte: An 8-bit signed integer
+			// 8-bit signed ranges from -128 to 127
+			if boundary := 1 << 7; v < -boundary || v >= boundary {
+				return nil, fmt.Errorf("failed to parse list of bytes: %v is not a valid thrift byte(8-bit signed integer) between -128 and 127 inclusive", v)
 			}
 			bs = append(bs, byte(v))
 		case string:

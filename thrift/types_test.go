@@ -289,7 +289,11 @@ func TestParseBinary(t *testing.T) {
 			want:  []byte(`{"k1": "v1", "k2": 5}` + "\n"),
 		},
 		{
-			value:  []interface{}{256},
+			value:  []interface{}{128},
+			errMsg: "failed to parse list of bytes",
+		},
+		{
+			value:  []interface{}{-129},
 			errMsg: "failed to parse list of bytes",
 		},
 		{
