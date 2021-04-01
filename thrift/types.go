@@ -115,14 +115,15 @@ func parseBinaryList(vl []interface{}) ([]byte, error) {
 	bs := make([]byte, 0, len(vl))
 	for _, v := range vl {
 		switch v := v.(type) {
+		// YAML uses int for all small values. For large values, it may use int64 or uint64
+		// but those are not valid bool values anyway, so we don't need to check them.
 		case int:
-			// YAML uses int for all small values. For large values, it may use int64 or uint64
-			// but those are not valid bool values anyway, so we don't need to check them.
-			// from https://thrift.apache.org/docs/types:
-			// byte: An 8-bit signed integer
-			// 8-bit signed ranges from -128 to 127
-			if boundary := 1 << 7; v < -boundary || v >= boundary {
-				return nil, fmt.Errorf("failed to parse list of bytes: %v is not a valid thrift byte(8-bit signed integer) between -128 and 127 inclusive", v)
+			// from https://thrift.apache.org/docs/types, byte is an 8-bit signed integer
+			// For Go, thriftrw uses a Go byte, which is an uint8 so it is possible to have 0 to 225 over the wire.
+			// Apache Java clients respects the signed int8 and send -128 to 127.
+			// To make both sides happy, check between -128 and 225
+			if v < -(1<<7) || v >= (1<<8) {
+				return nil, fmt.Errorf("failed to parse list of bytes: %v is not a valid thrift byte", v)
 			}
 			bs = append(bs, byte(v))
 		case string:
