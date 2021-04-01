@@ -119,9 +119,9 @@ func parseBinaryList(vl []interface{}) ([]byte, error) {
 		// but those are not valid bool values anyway, so we don't need to check them.
 		case int:
 			// from https://thrift.apache.org/docs/types, byte is an 8-bit signed integer
-			// For Go, thriftrw uses a Go byte, which is an uint8 so it is possible to have 0 to 225 over the wire.
-			// Apache Java clients respects the signed int8 and send -128 to 127.
-			// To make both sides happy, check between -128 and 225
+			// For Go, thriftrw uses a Go byte, which is an uint8 so it is possible to have 0 to 255 over the wire.
+			// Apache Java clients respect the signed int8 and send -128 to 127.
+			// To make both sides happy, check between -128 and 255
 			if v < -(1<<7) || v >= (1<<8) {
 				return nil, fmt.Errorf("failed to parse list of bytes: %v is not a valid thrift byte", v)
 			}
