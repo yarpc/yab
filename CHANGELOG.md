@@ -1,8 +1,9 @@
 Changelog
 =========
 
-## [Unreleased]
-- No changes yet
+# 0.19.1 (2021-04-02)
+* Fix byte parsing to allow 8-bit signed integers to match the Thrift spec & other language implementations.
+
 # 0.19.0 (2021-03-24)
 * Add support for gRPC streaming:
    - Support of benchmark and curl-like fashion mode
