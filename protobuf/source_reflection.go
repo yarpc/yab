@@ -64,14 +64,17 @@ func NewDescriptorProviderReflection(args ReflectionArgs) (DescriptorProvider, e
 		routingHeaders.Append(ygrpc.RoutingKeyHeader, args.RoutingKey)
 	}
 
-	metadataContext := metadata.NewOutgoingContext(context.Background(), routingHeaders)
+	ctx, cancel := context.WithTimeout(context.Background(), args.Timeout)
+	metadataContext := metadata.NewOutgoingContext(ctx, routingHeaders)
 	return &grpcreflectSource{
-		client: grpcreflect.NewClient(metadataContext, pbClient),
+		client:    grpcreflect.NewClient(metadataContext, pbClient),
+		ctxCancel: cancel,
 	}, nil
 }
 
 type grpcreflectSource struct {
-	client *grpcreflect.Client
+	client    *grpcreflect.Client
+	ctxCancel context.CancelFunc
 }
 
 func (s *grpcreflectSource) FindMessage(messageType string) (*desc.MessageDescriptor, error) {
@@ -95,7 +98,7 @@ func (s *grpcreflectSource) FindService(fullyQualifiedName string) (*desc.Servic
 		}
 
 		if !grpcreflect.IsElementNotFoundError(err) {
-			return nil, err
+			return nil, fmt.Errorf("error in protobuf reflection: %v", err)
 		}
 
 		return nil, encodingerror.NotFound{
@@ -111,5 +114,6 @@ func (s *grpcreflectSource) FindService(fullyQualifiedName string) (*desc.Servic
 }
 
 func (s *grpcreflectSource) Close() {
+	s.ctxCancel()
 	s.client.Reset()
 }
