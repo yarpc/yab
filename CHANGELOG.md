@@ -1,6 +1,9 @@
 Changelog
 =========
 
+# Unreleased
+* Add `delay-close-send-stream` option which delays client send stream closure.
+
 # 0.19.1 (2021-04-02)
 * Fix byte parsing to allow 8-bit signed integers to match the Thrift spec & other language implementations.
 

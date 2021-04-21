@@ -1001,72 +1001,113 @@ test: 1
 	}
 }
 
-func TestGRPCStreamWithStreamIntervalOption(t *testing.T) {
-	t.Run("client stream", func(t *testing.T) {
-		addr, server := setupGRPCServer(t, &simpleService{
+func TestGRPCStreamWithBoundedExecutionTime(t *testing.T) {
+	tests := []struct {
+		desc         string
+		opts         Options
+		wantExecTime time.Duration
+
+		returnOutput  []simple.Foo
+		expectedInput []simple.Foo
+	}{
+		{
+			desc: "client side streaming with stream interval option",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/ClientStream",
+					Timeout:           timeMillisFlag(time.Second * 5),
+					RequestJSON:       `{"test":1}{"test":2}{"test":-1}`,
+					StreamRequestOptions: StreamRequestOptions{
+						Interval: timeMillisFlag(time.Millisecond * 1000),
+					},
+				},
+			},
 			returnOutput:  []simple.Foo{{Test: 4}},
 			expectedInput: []simple.Foo{{Test: 1}, {Test: 2}, {Test: -1}},
-		})
-		defer server.Stop()
-
-		opts := Options{
-			ROpts: RequestOptions{
-				FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-				Procedure:         "Bar/ClientStream",
-				Timeout:           timeMillisFlag(time.Second * 5),
-				RequestJSON:       `{"test":1}{"test":2}{"test":-1}`,
-				StreamRequestOptions: StreamRequestOptions{
-					Interval: timeMillisFlag(time.Millisecond * 1000),
+			// Test must run for more than 2 seconds as there are three requests and
+			// it must take 2 seconds totally between consecutive messages.
+			wantExecTime: time.Second * 2,
+		},
+		{
+			desc: "bidirectional streaming with stream interval option",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/BidiStream",
+					Timeout:           timeMillisFlag(time.Second * 5),
+					RequestJSON:       `{"test":1}{"test":2}{"test":-1}`,
+					StreamRequestOptions: StreamRequestOptions{
+						Interval: timeMillisFlag(time.Millisecond * 1000),
+					},
 				},
 			},
-			TOpts: TransportOptions{
-				ServiceName: "foo",
-				Peers:       []string{"grpc://" + addr.String()},
-			},
-		}
-
-		now := time.Now()
-		_, gotErr := runTestWithOpts(opts)
-		duration := time.Now().Sub(now)
-
-		assert.Empty(t, gotErr)
-		// test must run for more than 2 seconds as there are three requests and
-		// it must take 2 seconds totally between consecutive messages
-		assert.True(t, duration > (time.Second*2), "Unexpected time taken on wait: %v", duration)
-	})
-
-	t.Run("bidirectional stream", func(t *testing.T) {
-		addr, server := setupGRPCServer(t, &simpleService{
 			returnOutput:  []simple.Foo{{Test: 4}, {Test: 9}},
 			expectedInput: []simple.Foo{{Test: 1}, {Test: 2}, {Test: -1}},
-		})
-		defer server.Stop()
-
-		opts := Options{
-			ROpts: RequestOptions{
-				FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-				Procedure:         "Bar/BidiStream",
-				Timeout:           timeMillisFlag(time.Second * 5),
-				RequestJSON:       `{"test":1}{"test":2}{"test":-1}`,
-				StreamRequestOptions: StreamRequestOptions{
-					Interval: timeMillisFlag(time.Millisecond * 1000),
+			// Test must run for more than 2 seconds as there are three requests and
+			// it must take 2 seconds totally between consecutive messages.
+			wantExecTime: time.Second * 2,
+		},
+		{
+			desc: "client side streaming with close send stream delay",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/ClientStream",
+					Timeout:           timeMillisFlag(time.Second * 5),
+					RequestJSON:       `{"test":1}{"test":2}{"test":-1}`,
+					StreamRequestOptions: StreamRequestOptions{
+						DelayCloseSendStream: timeMillisFlag(time.Millisecond * 1000),
+					},
 				},
 			},
-			TOpts: TransportOptions{
+			returnOutput:  []simple.Foo{{Test: 4}},
+			expectedInput: []simple.Foo{{Test: 1}, {Test: 2}, {Test: -1}},
+			// Test must run for more than 1 seconds as send stream closure has a delay
+			// of 1 second.
+			wantExecTime: time.Second * 1,
+		},
+		{
+			desc: "bidirectional streaming with close send stream delay",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/BidiStream",
+					Timeout:           timeMillisFlag(time.Second * 5),
+					RequestJSON:       `{"test":1}{"test":2}`,
+					StreamRequestOptions: StreamRequestOptions{
+						DelayCloseSendStream: timeMillisFlag(time.Millisecond * 1000),
+					},
+				},
+			},
+			returnOutput:  []simple.Foo{{Test: 4}, {Test: 9}},
+			expectedInput: []simple.Foo{{Test: 1}, {Test: 2}, {Test: -1}},
+			// Test must run for more than 1 seconds as send stream closure has a delay
+			// of 1 second.
+			wantExecTime: time.Second * 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			addr, server := setupGRPCServer(t, &simpleService{
+				expectedInput: tt.expectedInput,
+				returnOutput:  tt.returnOutput,
+			})
+			defer server.Stop()
+
+			tt.opts.TOpts = TransportOptions{
 				ServiceName: "foo",
 				Peers:       []string{"grpc://" + addr.String()},
-			},
-		}
+			}
+			now := time.Now()
+			_, gotErr := runTestWithOpts(tt.opts)
+			duration := time.Now().Sub(now)
 
-		now := time.Now()
-		_, gotErr := runTestWithOpts(opts)
-		duration := time.Now().Sub(now)
-
-		assert.Empty(t, gotErr)
-		// test must run for more than 2 seconds as there are three requests and
-		// it must take 2 seconds totally between consecutive messages
-		assert.True(t, duration > (time.Second*2), "Unexpected time taken on wait: %v", duration)
-	})
+			assert.Empty(t, gotErr)
+			assert.True(t, duration > tt.wantExecTime, "Unexpected time taken: %v", duration)
+		})
+	}
 }
 
 func TestGRPCReflectionSource(t *testing.T) {

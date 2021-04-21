@@ -73,7 +73,11 @@ Request Options:
       --multiplexed-thrift       Enables the Thrift TMultiplexedProtocol used
                                  by services that host multiple Thrift services
                                  on a single endpoint.
-      --stream-interval=         Interval between consecutive stream message sends, applicable separately to every stream request opened on a connection.
+      --stream-interval=         Interval between consecutive stream message sends,
+                                 applicable separately to every stream request
+                                 opened on a connection.
+      --delay-close-send-stream= Delay the closure of send stream once all the
+                                 request messages have been sent.
 
 Transport Options:
   -s, --service=                 The TChannel/Hyperbahn service name
