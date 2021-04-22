@@ -101,7 +101,7 @@ func (s *grpcreflectSource) FindService(fullyQualifiedName string) (*desc.Servic
 		}
 
 		available, availableErr := s.client.ListServices()
-		if availableErr != nil {
+		if availableErr != nil && !grpcreflect.IsElementNotFoundError(availableErr) {
 			return nil, wrapReflectionError(availableErr)
 		}
 
