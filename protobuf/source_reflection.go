@@ -86,19 +86,23 @@ func (s *grpcreflectSource) FindMessage(messageType string) (*desc.MessageDescri
 		return nil, nil
 	}
 
+	if err != nil {
+		return nil, wrapReflectionError(err)
+	}
+
 	return msg, err
 }
 
 func (s *grpcreflectSource) FindService(fullyQualifiedName string) (*desc.ServiceDescriptor, error) {
 	service, err := s.client.ResolveService(fullyQualifiedName)
 	if err != nil {
-		available, availableErr := s.client.ListServices()
-		if availableErr != nil {
-			err = availableErr
+		if !grpcreflect.IsElementNotFoundError(err) {
+			return nil, wrapReflectionError(err)
 		}
 
-		if !grpcreflect.IsElementNotFoundError(err) {
-			return nil, fmt.Errorf("error in protobuf reflection: %v", err)
+		available, availableErr := s.client.ListServices()
+		if availableErr != nil {
+			return nil, wrapReflectionError(availableErr)
 		}
 
 		return nil, encodingerror.NotFound{
@@ -116,4 +120,8 @@ func (s *grpcreflectSource) FindService(fullyQualifiedName string) (*desc.Servic
 func (s *grpcreflectSource) Close() {
 	s.ctxCancel()
 	s.client.Reset()
+}
+
+func wrapReflectionError(err error) error {
+	return fmt.Errorf("error in protobuf reflection: %v", err)
 }

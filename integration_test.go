@@ -1136,15 +1136,15 @@ func TestGRPCReflectionSource(t *testing.T) {
 }
 
 type protoReflectService struct {
-	sleepDuration time.Duration // If non-zero, handler sleeps for the given duration.
+	waitChan chan struct{} // If non-nil, handler waits on the channel
 }
 
 func (p protoReflectService) ServerReflectionInfo(s rpb.ServerReflection_ServerReflectionInfoServer) error {
-	if p.sleepDuration != 0 {
-		// Sleep until the given duration or until stream context completes.
+	if p.waitChan != nil {
+		// Wait on the given channel or until stream context completes.
 		select {
 		case <-s.Context().Done():
-		case <-time.After(p.sleepDuration):
+		case <-p.waitChan:
 		}
 	}
 	return nil
@@ -1154,14 +1154,14 @@ func TestGPCReflectionTimeout(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 
-	// Sleep duration must be longer than go test timeout (30s) to
-	// catch client which does not respect timeouts in reflection calls.
-	// See MakeFile(test_ci,test) for go test timeout.
-	reflectSvc := protoReflectService{sleepDuration: time.Second * 31}
-	s := grpc.NewServer()
-	rpb.RegisterServerReflectionServer(s, reflectSvc)
-	go s.Serve(ln)
-	defer s.Stop()
+	waitChan := make(chan struct{})
+	reflectSvc := protoReflectService{waitChan: waitChan}
+	server := grpc.NewServer()
+	rpb.RegisterServerReflectionServer(server, reflectSvc)
+	go server.Serve(ln)
+
+	defer server.Stop()
+	defer close(waitChan)
 
 	gotOut, gotErr := runTestWithOpts(Options{
 		ROpts: RequestOptions{
