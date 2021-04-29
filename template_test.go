@@ -391,3 +391,9 @@ func TestReadYAMLRequestFails(t *testing.T) {
 		})
 	}
 }
+
+func TestReadYAMLSucceeds(t *testing.T) {
+	opts := newOptions()
+	err := readYAMLFile("testdata/valid.yab", nil, opts)
+	assert.NoError(t, err)
+}
