@@ -473,8 +473,7 @@ func makeContextWithTrace(ctx context.Context, t transport.Transport, request *t
 func makeInitialRequest(out output, transport transport.Transport, serializer encoding.Serializer, req *transport.Request) {
 	response, err := makeRequestWithTracePriority(transport, req, 1)
 	if err != nil {
-		buffer := bytes.NewBuffer(nil)
-		buffer.WriteString(err.Error())
+		buffer := bytes.NewBufferString(err.Error())
 
 		if errorSerializer, ok := serializer.(encoding.ProtoErrorSerializer); ok {
 			details, derr := errorSerializer.ErrorDetails(err)
@@ -488,7 +487,7 @@ func makeInitialRequest(out output, transport transport.Transport, serializer en
 					out.Fatalf("Failed to convert protobuf error details to JSON: %v\nMap: %+v\n", merr, details)
 				}
 				buffer.WriteString("\n")
-				buffer.WriteString(string(bs))
+				buffer.Write(bs)
 				buffer.WriteString("\n")
 			}
 		}

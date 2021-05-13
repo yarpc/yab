@@ -213,7 +213,7 @@ func TestProtobufErrorDetails(t *testing.T) {
 			method:        "Bar/Baz",
 			err:           nil,
 			wantErr:       nil,
-			wantOutAsJSON: `null`,
+			wantOutAsJSON: "null",
 		},
 		{
 			desc:          "std error",
@@ -221,7 +221,7 @@ func TestProtobufErrorDetails(t *testing.T) {
 			method:        "Bar/Baz",
 			err:           fmt.Errorf("this is a test error"),
 			wantErr:       nil,
-			wantOutAsJSON: `null`,
+			wantOutAsJSON: "null",
 		},
 		{
 			desc:          "yarpc error with no details",
@@ -229,7 +229,7 @@ func TestProtobufErrorDetails(t *testing.T) {
 			method:        "Bar/Baz",
 			err:           yarpcerrors.FromError(fmt.Errorf("this is a test error")),
 			wantErr:       nil,
-			wantOutAsJSON: `null`,
+			wantOutAsJSON: "null",
 		},
 		{
 			desc:          "yarpc error bad details bytes",
@@ -237,7 +237,7 @@ func TestProtobufErrorDetails(t *testing.T) {
 			method:        "Bar/Baz",
 			err:           yarpcerrors.FromError(fmt.Errorf("this is a test error")).WithDetails([]byte{0x8, 0x1, 0x12}),
 			wantErr:       fmt.Errorf("could not unmarshal error details unexpected EOF"),
-			wantOutAsJSON: `null`,
+			wantOutAsJSON: "null",
 		},
 		{
 			desc:   "yarpc error with  1 detail",
@@ -281,7 +281,7 @@ func TestProtobufErrorDetails(t *testing.T) {
 			result, err := errorSerializer.ErrorDetails(tt.err)
 
 			if tt.wantErr != nil {
-				require.Error(t, err, "%v", tt.desc)
+				require.Error(t, err, tt.desc)
 				assert.Contains(t, err.Error(), tt.wantErr.Error(), "%v: invalid error", tt.desc)
 			} else {
 				require.NoError(t, err, tt.desc)
