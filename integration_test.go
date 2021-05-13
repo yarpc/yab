@@ -55,8 +55,6 @@ import (
 	ytchan "go.uber.org/yarpc/transport/tchannel"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	//"go.uber.org/yarpc/encoding/protobuf"
-	//"go.uber.org/yarpc/yarpcerrors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
