@@ -2,7 +2,7 @@ Changelog
 =========
 
 # Unreleased
-* New: gRPC details are now printed along the error if there are any.
+* New: gRPC details are now printed along with the error if there are any.
 
 # 0.19.1 (2021-04-02)
 * Fix byte parsing to allow 8-bit signed integers to match the Thrift spec & other language implementations.
