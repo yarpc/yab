@@ -17,6 +17,8 @@ import (
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/dynamic"
 	"go.uber.org/yarpc/pkg/procedure"
+	"go.uber.org/yarpc/yarpcerrors"
+	"google.golang.org/genproto/googleapis/rpc/status"
 )
 
 type protoSerializer struct {
@@ -104,6 +106,46 @@ func NewProtobuf(fullMethodName string, source protobuf.DescriptorProvider) (Ser
 
 func (p protoSerializer) Encoding() Encoding {
 	return Protobuf
+}
+
+func (p protoSerializer) ErrorDetails(err error) ([]interface{}, error) {
+	// Here we use yarpcerrors since the transport layer of yab is using yarpc as well
+	if err == nil || !yarpcerrors.IsStatus(err) {
+		return nil, nil
+	}
+
+	details := []interface{}{}
+	yerr := yarpcerrors.FromError(err)
+	if len(yerr.Details()) == 0 {
+		return nil, nil
+	}
+
+	errStatus := &status.Status{}
+	if err := proto.Unmarshal(yerr.Details(), errStatus); err != nil {
+		return nil, fmt.Errorf("could not unmarshal error details %s", err.Error())
+	}
+
+	for _, detail := range errStatus.Details {
+		rdetail, rerr := p.anyResolver.Resolve(detail.TypeUrl)
+		if rerr != nil {
+			// If we reach this point it means we are not able to resolve the type of the detai
+			// This can happen when an error is being bubbled up in a chaine of services.
+			// For instance, let's say we have A -> B -> C.
+			// If A does not have registered detail messages from C and B blindly bubbled up
+			// errors from C, YAB will not be able to resolve the type of the details based
+			// on the descriptors given by A (through the reflection server).
+			details = append(details, map[string]interface{}{detail.TypeUrl: detail.Value})
+			continue
+		}
+
+		if err := proto.Unmarshal(detail.Value, rdetail); err != nil {
+			return nil, fmt.Errorf("could not unmarshal error detail message %s", err.Error())
+		}
+
+		details = append(details, map[string]interface{}{detail.TypeUrl: rdetail})
+	}
+
+	return details, nil
 }
 
 func (p protoSerializer) MethodType() MethodType {

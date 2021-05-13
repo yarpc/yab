@@ -19,6 +19,8 @@ import (
 	"github.com/jhump/protoreflect/dynamic"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/yarpc/yarpcerrors"
+	"google.golang.org/genproto/googleapis/rpc/status"
 )
 
 func TestNewProtobuf(t *testing.T) {
@@ -154,6 +156,138 @@ func TestProtobufRequest(t *testing.T) {
 				assert.Nil(t, got, "%v: Error cases should not return any bytes", tt.desc)
 				require.Error(t, err, "%v", tt.desc)
 				assert.Contains(t, err.Error(), tt.errMsg, "%v: invalid error", tt.desc)
+			}
+		})
+	}
+}
+
+func TestProtobufErrorDetails(t *testing.T) {
+	source, err := protobuf.NewDescriptorProviderFileDescriptorSetBins("../testdata/protobuf/simple/simple.proto.bin")
+	require.NoError(t, err)
+	anySource, err := protobuf.NewDescriptorProviderFileDescriptorSetBins("../testdata/protobuf/any/any.proto.bin")
+	require.NoError(t, err)
+
+	grpcStatusBytesFunc := func(typeUrl string, msg proto.Message) []byte {
+		valueContent, err := proto.Marshal(msg)
+		require.NoError(t, err)
+
+		a := &any.Any{
+			TypeUrl: typeUrl,
+			Value:   valueContent,
+		}
+
+		s := &status.Status{}
+		s.Details = []*any.Any{a}
+		bytes, err := proto.Marshal(s)
+		require.NoError(t, err)
+		return bytes
+	}
+
+	grpcStatusCorrupedBytesFunc := func(typeUrl string, msg proto.Message) []byte {
+		valueContent, err := proto.Marshal(msg)
+		require.NoError(t, err)
+
+		a := &any.Any{
+			TypeUrl: typeUrl,
+			Value:   valueContent[:1],
+		}
+
+		s := &status.Status{}
+		s.Details = []*any.Any{a}
+		bytes, err := proto.Marshal(s)
+		require.NoError(t, err)
+		return bytes
+	}
+
+	tests := []struct {
+		desc          string
+		method        string
+		source        protobuf.DescriptorProvider
+		err           error
+		wantOutAsJSON string
+		wantErr       error
+	}{
+		{
+			desc:          "nil error",
+			source:        source,
+			method:        "Bar/Baz",
+			err:           nil,
+			wantErr:       nil,
+			wantOutAsJSON: `null`,
+		},
+		{
+			desc:          "std error",
+			source:        source,
+			method:        "Bar/Baz",
+			err:           fmt.Errorf("this is a test error"),
+			wantErr:       nil,
+			wantOutAsJSON: `null`,
+		},
+		{
+			desc:          "yarpc error with no details",
+			source:        source,
+			method:        "Bar/Baz",
+			err:           yarpcerrors.FromError(fmt.Errorf("this is a test error")),
+			wantErr:       nil,
+			wantOutAsJSON: `null`,
+		},
+		{
+			desc:          "yarpc error bad details bytes",
+			source:        source,
+			method:        "Bar/Baz",
+			err:           yarpcerrors.FromError(fmt.Errorf("this is a test error")).WithDetails([]byte{0x8, 0x1, 0x12}),
+			wantErr:       fmt.Errorf("could not unmarshal error details unexpected EOF"),
+			wantOutAsJSON: `null`,
+		},
+		{
+			desc:   "yarpc error with  1 detail",
+			source: anySource,
+			method: "BarAny/BazAny",
+			err: yarpcerrors.FromError(fmt.Errorf("this is a test error")).WithDetails(grpcStatusBytesFunc("type.googleapis.com/FooAny", &tany.FooAny{
+				Value: 10,
+			})),
+			wantErr:       nil,
+			wantOutAsJSON: `[{"type.googleapis.com/FooAny":{"value":10}}]`,
+		},
+		{
+			desc:   "yarpc error with detail which can not be resolved",
+			source: anySource,
+			method: "BarAny/BazAny",
+			err: yarpcerrors.FromError(fmt.Errorf("this is a test error")).WithDetails(grpcStatusBytesFunc("uri/not/identifiable", &tany.FooAny{
+				Value: 10,
+			})),
+			wantErr:       nil,
+			wantOutAsJSON: `[{"uri/not/identifiable":{"V":"CAo="}}]`,
+		},
+		{
+			desc:   "yarpc error with detail with corrupted bytes in any detail message",
+			source: anySource,
+			method: "BarAny/BazAny",
+			err: yarpcerrors.FromError(fmt.Errorf("this is a test error")).WithDetails(grpcStatusCorrupedBytesFunc("type.googleapis.com/FooAny", &tany.FooAny{
+				Value: 10,
+			})),
+			wantErr:       fmt.Errorf("could not unmarshal error detail message unexpected EOF"),
+			wantOutAsJSON: ``,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			serializer, err := NewProtobuf(tt.method, tt.source)
+			require.NoError(t, err, "Failed to create serializer")
+			errorSerializer, ok := serializer.(ProtoErrorSerializer)
+			require.True(t, ok)
+
+			result, err := errorSerializer.ErrorDetails(tt.err)
+
+			if tt.wantErr != nil {
+				require.Error(t, err, "%v", tt.desc)
+				assert.Contains(t, err.Error(), tt.wantErr.Error(), "%v: invalid error", tt.desc)
+			} else {
+				require.NoError(t, err, tt.desc)
+				r, err := json.Marshal(result)
+				require.NoError(t, err)
+				assert.Equal(t, tt.wantOutAsJSON, string(r))
 			}
 		})
 	}

@@ -69,6 +69,13 @@ type Serializer interface {
 	MethodType() MethodType
 }
 
+// ProtoErrorSerializer deserializes errors.
+// Error details are very specific to proto.
+type ProtoErrorSerializer interface {
+	// Error converts an error into something that can be displayed to a user.
+	ErrorDetails(err error) ([]interface{}, error)
+}
+
 // StreamRequestReader interface exposes method to read multiple request body
 type StreamRequestReader interface {
 	// NextBody returns the encoded request body if available, and if not, returns an
