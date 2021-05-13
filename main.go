@@ -474,7 +474,7 @@ func makeInitialRequest(out output, transport transport.Transport, serializer en
 	response, err := makeRequestWithTracePriority(transport, req, 1)
 	if err != nil {
 		buffer := bytes.NewBuffer(nil)
-		_, _ = buffer.WriteString(err.Error())
+		buffer.WriteString(err.Error())
 
 		if errorSerializer, ok := serializer.(encoding.ProtoErrorSerializer); ok {
 			details, derr := errorSerializer.ErrorDetails(err)
@@ -487,9 +487,9 @@ func makeInitialRequest(out output, transport transport.Transport, serializer en
 				if merr != nil {
 					out.Fatalf("Failed to convert protobuf error details to JSON: %v\nMap: %+v\n", merr, details)
 				}
-				_, _ = buffer.WriteString("\n")
-				_, _ = buffer.WriteString(string(bs))
-				_, _ = buffer.WriteString("\n")
+				buffer.WriteString("\n")
+				buffer.WriteString(string(bs))
+				buffer.WriteString("\n")
 			}
 		}
 

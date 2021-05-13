@@ -110,11 +110,10 @@ func (p protoSerializer) Encoding() Encoding {
 
 func (p protoSerializer) ErrorDetails(err error) ([]interface{}, error) {
 	// Here we use yarpcerrors since the transport layer of yab is using yarpc as well
-	if err == nil || !yarpcerrors.IsStatus(err) {
+	if !yarpcerrors.IsStatus(err) {
 		return nil, nil
 	}
 
-	details := []interface{}{}
 	yerr := yarpcerrors.FromError(err)
 	if len(yerr.Details()) == 0 {
 		return nil, nil
@@ -125,27 +124,28 @@ func (p protoSerializer) ErrorDetails(err error) ([]interface{}, error) {
 		return nil, fmt.Errorf("could not unmarshal error details %s", err.Error())
 	}
 
+	details := []interface{}{}
 	for _, detail := range errStatus.Details {
-		rdetail, rerr := p.anyResolver.Resolve(detail.TypeUrl)
-		if rerr != nil {
-			// If we reach this point it means we are not able to resolve the type of the detail
-			// This can happen when an error is being bubbled up in a chaine of services.
-			// For instance, let's say we have A -> B -> C.
-			// If A does not have registered detail messages from C and B blindly bubbled up
-			// errors from C, YAB will not be able to resolve the type of the details based
-			// on the descriptors given by A (through the reflection server).
-			details = append(details, map[string]interface{}{
-				detail.TypeUrl: detail.Value,
-			})
-			continue
-		}
 
-		if err := proto.Unmarshal(detail.Value, rdetail); err != nil {
-			return nil, fmt.Errorf("could not unmarshal error detail message %s", err.Error())
+		// By default we set to the value of the proto detail message to its byte values.
+		// It is possible that YAB will not be able to resolve the type message.
+		// This can happen when an error is being bubbled up in a chain of services.
+		// For instance, let's say we have A -> B -> C.
+		// If A does not have registered detail messages descriptors from C and B blindly bubbled up
+		// errors from C, YAB will not be able to resolve the type of the details based
+		// on the descriptors given by A (through the reflection server).
+		var value interface{} = detail.Value
+
+		rdetail, rerr := p.anyResolver.Resolve(detail.TypeUrl)
+		if rerr == nil {
+			if err := proto.Unmarshal(detail.Value, rdetail); err != nil {
+				return nil, fmt.Errorf("could not unmarshal error detail message %s", err.Error())
+			}
+			value = rdetail
 		}
 
 		details = append(details, map[string]interface{}{
-			detail.TypeUrl: rdetail,
+			detail.TypeUrl: value,
 		})
 	}
 
