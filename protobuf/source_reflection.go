@@ -67,14 +67,14 @@ func NewDescriptorProviderReflection(args ReflectionArgs) (DescriptorProvider, e
 	ctx, cancel := context.WithTimeout(context.Background(), args.Timeout)
 	metadataContext := metadata.NewOutgoingContext(ctx, routingHeaders)
 	return &grpcreflectSource{
-		client:    grpcreflect.NewClient(metadataContext, pbClient),
-		ctxCancel: cancel,
+		client:     grpcreflect.NewClient(metadataContext, pbClient),
+		cancelFunc: cancel,
 	}, nil
 }
 
 type grpcreflectSource struct {
-	client    *grpcreflect.Client
-	ctxCancel context.CancelFunc
+	client     *grpcreflect.Client
+	cancelFunc context.CancelFunc
 }
 
 func (s *grpcreflectSource) FindMessage(messageType string) (*desc.MessageDescriptor, error) {
@@ -118,7 +118,7 @@ func (s *grpcreflectSource) FindService(fullyQualifiedName string) (*desc.Servic
 }
 
 func (s *grpcreflectSource) Close() {
-	s.ctxCancel()
+	s.cancelFunc()
 	s.client.Reset()
 }
 
