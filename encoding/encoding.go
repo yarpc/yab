@@ -69,9 +69,9 @@ type Serializer interface {
 	MethodType() MethodType
 }
 
-// ProtoErrorSerializer deserializes errors.
+// ProtoErrorDeserializer deserializes errors.
 // Error details are very specific to proto.
-type ProtoErrorSerializer interface {
+type ProtoErrorDeserializer interface {
 	// Error converts an error into something that can be displayed to a user.
 	ErrorDetails(err error) ([]interface{}, error)
 }

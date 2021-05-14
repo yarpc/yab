@@ -475,7 +475,7 @@ func makeInitialRequest(out output, transport transport.Transport, serializer en
 	if err != nil {
 		buffer := bytes.NewBufferString(err.Error())
 
-		if errorSerializer, ok := serializer.(encoding.ProtoErrorSerializer); ok {
+		if errorSerializer, ok := serializer.(encoding.ProtoErrorDeserializer); ok {
 			details, derr := errorSerializer.ErrorDetails(err)
 			if derr != nil {
 				out.Fatalf("Failed to get protobuf error details %s", derr.Error())

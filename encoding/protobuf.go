@@ -126,7 +126,6 @@ func (p protoSerializer) ErrorDetails(err error) ([]interface{}, error) {
 
 	details := []interface{}{}
 	for _, detail := range errStatus.Details {
-
 		// By default we set to the value of the proto detail message to its byte values.
 		// It is possible that YAB will not be able to resolve the type message.
 		// This can happen when an error is being bubbled up in a chain of services.

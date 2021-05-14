@@ -275,7 +275,7 @@ func TestProtobufErrorDetails(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			serializer, err := NewProtobuf(tt.method, tt.source)
 			require.NoError(t, err, "Failed to create serializer")
-			errorSerializer, ok := serializer.(ProtoErrorSerializer)
+			errorSerializer, ok := serializer.(ProtoErrorDeserializer)
 			require.True(t, ok)
 
 			result, err := errorSerializer.ErrorDetails(tt.err)
