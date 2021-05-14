@@ -1019,7 +1019,7 @@ func TestGRPCStreamWithBoundedExecutionTime(t *testing.T) {
 					Timeout:           timeMillisFlag(time.Second * 5),
 					RequestJSON:       `{"test":1}{"test":2}{"test":-1}`,
 					StreamRequestOptions: StreamRequestOptions{
-						Interval: timeMillisFlag(time.Millisecond * 1000),
+						Interval: timeMillisFlag(time.Millisecond * 100),
 					},
 				},
 			},
@@ -1027,7 +1027,7 @@ func TestGRPCStreamWithBoundedExecutionTime(t *testing.T) {
 			expectedInput: []simple.Foo{{Test: 1}, {Test: 2}, {Test: -1}},
 			// Test must run for more than 2 seconds as there are three requests and
 			// it must take 2 seconds totally between consecutive messages.
-			wantExecTime: time.Second * 2,
+			wantExecTime: time.Millisecond * 200,
 		},
 		{
 			desc: "bidirectional streaming with stream interval option",
@@ -1038,15 +1038,15 @@ func TestGRPCStreamWithBoundedExecutionTime(t *testing.T) {
 					Timeout:           timeMillisFlag(time.Second * 5),
 					RequestJSON:       `{"test":1}{"test":2}{"test":-1}`,
 					StreamRequestOptions: StreamRequestOptions{
-						Interval: timeMillisFlag(time.Millisecond * 1000),
+						Interval: timeMillisFlag(time.Millisecond * 100),
 					},
 				},
 			},
 			returnOutput:  []simple.Foo{{Test: 4}, {Test: 9}},
 			expectedInput: []simple.Foo{{Test: 1}, {Test: 2}, {Test: -1}},
-			// Test must run for more than 2 seconds as there are three requests and
-			// it must take 2 seconds totally between consecutive messages.
-			wantExecTime: time.Second * 2,
+			// Test must run for more than 200ms as there are three requests and
+			// it must take 200ms totally between consecutive messages.
+			wantExecTime: time.Millisecond * 200,
 		},
 		{
 			desc: "client side streaming with close send stream delay",
@@ -1057,15 +1057,15 @@ func TestGRPCStreamWithBoundedExecutionTime(t *testing.T) {
 					Timeout:           timeMillisFlag(time.Second * 5),
 					RequestJSON:       `{"test":1}{"test":2}{"test":-1}`,
 					StreamRequestOptions: StreamRequestOptions{
-						DelayCloseSendStream: timeMillisFlag(time.Millisecond * 1000),
+						DelayCloseSendStream: timeMillisFlag(time.Millisecond * 100),
 					},
 				},
 			},
 			returnOutput:  []simple.Foo{{Test: 4}},
 			expectedInput: []simple.Foo{{Test: 1}, {Test: 2}, {Test: -1}},
-			// Test must run for more than 1 seconds as send stream closure has a delay
-			// of 1 second.
-			wantExecTime: time.Second * 1,
+			// Test must run for more than 100ms as send stream closure has a delay
+			// of 100ms.
+			wantExecTime: time.Millisecond * 100,
 		},
 		{
 			desc: "bidirectional streaming with close send stream delay",
@@ -1076,15 +1076,15 @@ func TestGRPCStreamWithBoundedExecutionTime(t *testing.T) {
 					Timeout:           timeMillisFlag(time.Second * 5),
 					RequestJSON:       `{"test":1}{"test":2}`,
 					StreamRequestOptions: StreamRequestOptions{
-						DelayCloseSendStream: timeMillisFlag(time.Millisecond * 1000),
+						DelayCloseSendStream: timeMillisFlag(time.Millisecond * 100),
 					},
 				},
 			},
 			returnOutput:  []simple.Foo{{Test: 4}, {Test: 9}},
 			expectedInput: []simple.Foo{{Test: 1}, {Test: 2}, {Test: -1}},
-			// Test must run for more than 1 seconds as send stream closure has a delay
-			// of 1 second.
-			wantExecTime: time.Second * 1,
+			// Test must run for more than 100ms as send stream closure has a delay
+			// of 100ms.
+			wantExecTime: time.Millisecond * 100,
 		},
 	}
 
