@@ -17,6 +17,8 @@ import (
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/dynamic"
 	"go.uber.org/yarpc/pkg/procedure"
+	"go.uber.org/yarpc/yarpcerrors"
+	"google.golang.org/genproto/googleapis/rpc/status"
 )
 
 type protoSerializer struct {
@@ -104,6 +106,49 @@ func NewProtobuf(fullMethodName string, source protobuf.DescriptorProvider) (Ser
 
 func (p protoSerializer) Encoding() Encoding {
 	return Protobuf
+}
+
+func (p protoSerializer) ErrorDetails(err error) ([]interface{}, error) {
+	// Here we use yarpcerrors since the transport layer of yab is using yarpc as well
+	if !yarpcerrors.IsStatus(err) {
+		return nil, nil
+	}
+
+	yerr := yarpcerrors.FromError(err)
+	if len(yerr.Details()) == 0 {
+		return nil, nil
+	}
+
+	errStatus := &status.Status{}
+	if err := proto.Unmarshal(yerr.Details(), errStatus); err != nil {
+		return nil, fmt.Errorf("could not unmarshal error details %s", err.Error())
+	}
+
+	details := []interface{}{}
+	for _, detail := range errStatus.Details {
+		// By default we set to the value of the proto detail message to its byte values.
+		// It is possible that YAB will not be able to resolve the type message.
+		// This can happen when an error is being bubbled up in a chain of services.
+		// For instance, let's say we have A -> B -> C.
+		// If A does not have registered detail messages descriptors from C and B blindly bubbled up
+		// errors from C, YAB will not be able to resolve the type of the details based
+		// on the descriptors given by A (through the reflection server).
+		var value interface{} = detail.Value
+
+		rdetail, rerr := p.anyResolver.Resolve(detail.TypeUrl)
+		if rerr == nil {
+			if err := proto.Unmarshal(detail.Value, rdetail); err != nil {
+				return nil, fmt.Errorf("could not unmarshal error detail message %s", err.Error())
+			}
+			value = rdetail
+		}
+
+		details = append(details, map[string]interface{}{
+			detail.TypeUrl: value,
+		})
+	}
+
+	return details, nil
 }
 
 func (p protoSerializer) MethodType() MethodType {
