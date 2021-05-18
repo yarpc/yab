@@ -1039,8 +1039,8 @@ func TestGRPCStreamWithBoundedExecutionTime(t *testing.T) {
 			},
 			returnOutput:  []simple.Foo{{Test: 4}},
 			expectedInput: []simple.Foo{{Test: 1}, {Test: 2}, {Test: -1}},
-			// Test must run for more than 2 seconds as there are three requests and
-			// it must take 2 seconds totally between consecutive messages.
+			// Test must run for more than 200ms as there are three requests and
+			// it must take 200ms totally between consecutive messages.
 			wantExecTime: time.Millisecond * 200,
 		},
 		{
