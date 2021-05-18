@@ -43,7 +43,7 @@ require (
 	go.uber.org/zap v1.10.0
 	golang.org/x/net v0.0.0-20190926025831-c00fd9afed17
 	golang.org/x/text v0.3.1-0.20180511172408-5c1cf69b5978 // indirect
-	google.golang.org/genproto v0.0.0-20180817151627-c66870c02cf8
+	google.golang.org/genproto v0.0.0-20180817151627-c66870c02cf8 // indirect
 	google.golang.org/grpc v1.24.0
 	gopkg.in/yaml.v2 v2.2.2
 )
