@@ -21,6 +21,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -472,7 +473,26 @@ func makeContextWithTrace(ctx context.Context, t transport.Transport, request *t
 func makeInitialRequest(out output, transport transport.Transport, serializer encoding.Serializer, req *transport.Request) {
 	response, err := makeRequestWithTracePriority(transport, req, 1)
 	if err != nil {
-		out.Fatalf("Failed while making call: %v\n", err)
+		buffer := bytes.NewBufferString(err.Error())
+
+		if errorSerializer, ok := serializer.(encoding.ProtoErrorDeserializer); ok {
+			details, derr := errorSerializer.ErrorDetails(err)
+			if derr != nil {
+				out.Fatalf("Failed to get protobuf error details %s", derr.Error())
+			}
+
+			if len(details) > 0 {
+				bs, merr := json.MarshalIndent(map[string]interface{}{"details": details}, "", "  ")
+				if merr != nil {
+					out.Fatalf("Failed to convert protobuf error details to JSON: %v\nMap: %+v\n", merr, details)
+				}
+				buffer.WriteString("\n")
+				buffer.Write(bs)
+				buffer.WriteString("\n")
+			}
+		}
+
+		out.Fatalf("Failed while making call: %s\n", buffer.String())
 	}
 
 	// responseMap converts the Thrift bytes response to a map.
