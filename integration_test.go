@@ -56,6 +56,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	rpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 //go:generate thriftrw --plugin=yarpc --out ./testdata/yarpc ./testdata/integration.thrift
@@ -377,6 +379,18 @@ type simpleService struct {
 func (s *simpleService) Baz(c context.Context, in *simple.Foo) (*simple.Foo, error) {
 	if in.Test > 0 {
 		return in, nil
+	}
+
+	if in.Test == -1 {
+		st := status.New(codes.InvalidArgument, "invalid username")
+		st, err := st.WithDetails(in)
+		if err != nil {
+			// If this errored, it will always error
+			// here, so better panic so we can figure
+			// out why than have this silently passing.
+			panic(fmt.Sprintf("Unexpected error: %v", err))
+		}
+		return nil, st.Err()
 	}
 
 	return nil, fmt.Errorf("negative input")
@@ -1093,7 +1107,13 @@ func TestGRPCReflectionSource(t *testing.T) {
 					Peers:       []string{addr.String()},
 				},
 			},
-			wantRes: `"test": 1`,
+			wantRes: `{
+  "body": {
+    "test": 1
+  }
+}
+
+`,
 		},
 		{
 			desc: "success (no scheme in peer)",
@@ -1108,7 +1128,13 @@ func TestGRPCReflectionSource(t *testing.T) {
 					Peers:       []string{addr.String()},
 				},
 			},
-			wantRes: `"test": 1`,
+			wantRes: `{
+  "body": {
+    "test": 1
+  }
+}
+
+`,
 		},
 		{
 			desc: "return error",
@@ -1123,14 +1149,40 @@ func TestGRPCReflectionSource(t *testing.T) {
 					Peers:       []string{addr.String()},
 				},
 			},
-			wantErr: "negative input",
+			wantErr: "Failed while making call: code:unknown message:negative input\n",
+		},
+		{
+			desc: "return error with details",
+			opts: Options{
+				ROpts: RequestOptions{
+					Procedure:   "Bar/Baz",
+					Timeout:     timeMillisFlag(time.Second),
+					RequestJSON: `{"test":-1}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+					Peers:       []string{addr.String()},
+				},
+			},
+			wantErr: `Failed while making call: code:invalid-argument message:invalid username
+{
+  "details": [
+    {
+      "type.googleapis.com/Foo": {
+        "test": -1
+      }
+    }
+  ]
+}
+
+`,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			gotOut, gotErr := runTestWithOpts(tt.opts)
-			assert.Contains(t, gotErr, tt.wantErr)
-			assert.Contains(t, gotOut, tt.wantRes)
+			assert.Equal(t, gotErr, tt.wantErr)
+			assert.Equal(t, gotOut, tt.wantRes)
 		})
 	}
 }

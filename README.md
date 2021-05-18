@@ -1,7 +1,7 @@
 # yab [![Build Status][ci-img]][ci] [![Coverage Status][cov-img]][cov]
 
 `yab` (Yet Another Benchmarker) is a tool to benchmark YARPC services. It
-currently supports making Thrift requests to both HTTP and TChannel services.
+currently supports making Thrift requests to both HTTP and [TChannel](https://github.com/uber/tchannel) services, as well as Protobuf requests to [gRPC](https://grpc.io/) services.
 
 `yab` is currently in **beta** status.
 
