@@ -1,7 +1,7 @@
 Changelog
 =========
 
-# Unreleased
+# 0.20.0 (2021-05-18)
 * Add `stream-delay-close-send` option which delays client send stream closure.
 * New: gRPC details are now printed along with the error if there are any.
 
