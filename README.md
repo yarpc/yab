@@ -1,7 +1,7 @@
 # yab [![Build Status][ci-img]][ci] [![Coverage Status][cov-img]][cov]
 
 `yab` (Yet Another Benchmarker) is a tool to benchmark YARPC services. It
-currently supports making Thrift requests to both HTTP and TChannel services.
+currently supports making Thrift requests to both HTTP and [TChannel](https://github.com/uber/tchannel) services, as well as Protobuf requests to [gRPC](https://grpc.io/) services.
 
 `yab` is currently in **beta** status.
 
@@ -73,7 +73,11 @@ Request Options:
       --multiplexed-thrift       Enables the Thrift TMultiplexedProtocol used
                                  by services that host multiple Thrift services
                                  on a single endpoint.
-      --stream-interval=         Interval between consecutive stream message sends, applicable separately to every stream request opened on a connection.
+      --stream-interval=         Interval between consecutive stream message sends,
+                                 applicable separately to every stream request
+                                 opened on a connection.
+      --stream-delay-close-send= Delay the closure of send stream once all the
+                                 request messages have been sent.
 
 Transport Options:
   -s, --service=                 The TChannel/Hyperbahn service name

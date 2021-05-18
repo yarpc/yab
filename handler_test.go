@@ -31,6 +31,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/yarpc/yab/encoding"
+	"go.uber.org/yarpc/api/transport"
 )
 
 type mockStreamReader struct {
@@ -150,5 +151,72 @@ func TestIntervalWaiter(t *testing.T) {
 			assert.GreaterOrEqual(t, int64(timeTaken), int64(time.Millisecond*100), "Unexpected time taken on wait: %v", timeTaken)
 			assert.LessOrEqual(t, int64(timeTaken), int64(time.Millisecond*200), "Unexpected time taken on wait: %v", timeTaken)
 		}
+	})
+}
+
+type mockStreamCloser struct {
+	closeErr error
+}
+
+func (m mockStreamCloser) Close(context.Context) error { return m.closeErr }
+
+func (mockStreamCloser) Context() context.Context { return context.Background() }
+
+func (mockStreamCloser) Request() *transport.StreamRequest { return nil }
+
+func (mockStreamCloser) SendMessage(context.Context, *transport.StreamMessage) error { return nil }
+
+func (mockStreamCloser) ReceiveMessage(context.Context) (*transport.StreamMessage, error) {
+	return nil, nil
+}
+
+func TestCloseSendStream(t *testing.T) {
+	tests := []struct {
+		description string
+		delay       time.Duration
+		err         error
+	}{
+		{
+			description: "close without delay",
+		},
+		{
+			description: "close with error",
+			err:         errors.New("test error"),
+		},
+		{
+			description: "close with delay",
+			delay:       time.Millisecond * 50,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.description, func(t *testing.T) {
+			stream, err := transport.NewClientStream(mockStreamCloser{closeErr: test.err})
+			require.NoError(t, err, "unexpected client stream error")
+
+			start := time.Now()
+			err = closeSendStream(context.Background(), stream, test.delay)
+			end := time.Now()
+
+			if test.err != nil {
+				require.Error(t, err, "unexpected nil error from close")
+				assert.Contains(t, err.Error(), test.err.Error(), "unexpected error message from close")
+			} else {
+				assert.NoError(t, err, "unexpected error from close")
+			}
+
+			assert.True(t, end.After(start.Add(test.delay)), "unexpected execution time")
+		})
+	}
+
+	t.Run("must not delay when context is done", func(t *testing.T) {
+		stream, err := transport.NewClientStream(mockStreamCloser{})
+		require.NoError(t, err, "unexpected client stream error")
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		start := time.Now()
+		require.NoError(t, closeSendStream(ctx, stream, time.Second), "unexpected error from close")
+		assert.True(t, time.Now().Before(start.Add(time.Second)), "expected close to execute immediately")
 	})
 }

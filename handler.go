@@ -212,7 +212,7 @@ func makeClientStream(ctx context.Context, stream *yarpctransport.ClientStream, 
 	}
 
 	if err == io.EOF {
-		err = closeSendStream(ctx, stream)
+		err = closeSendStream(ctx, stream, opts.DelayCloseSendStream.Duration())
 	}
 	if err != nil {
 		return err
@@ -241,7 +241,7 @@ func makeBidiStream(ctx context.Context, cancel context.CancelFunc, stream *yarp
 			var reqBody []byte
 			reqBody, err = streamIO.NextRequest()
 			if err == io.EOF {
-				err = closeSendStream(ctx, stream)
+				err = closeSendStream(ctx, stream, opts.DelayCloseSendStream.Duration())
 				break
 			}
 			if err != nil {
@@ -317,8 +317,16 @@ func receiveStreamMessage(ctx context.Context, stream *yarpctransport.ClientStre
 }
 
 // closeSendStream closes the stream from the client side while
-// stream can continue to receive messages from server
-func closeSendStream(ctx context.Context, stream *yarpctransport.ClientStream) error {
+// stream can continue to receive messages from server. If non-zero delay is
+// passed, stream is closed after the delay.
+func closeSendStream(ctx context.Context, stream *yarpctransport.ClientStream, delayCloseSendStream time.Duration) error {
+	if delayCloseSendStream != 0 {
+		select {
+		case <-time.After(delayCloseSendStream):
+		case <-ctx.Done():
+		}
+	}
+
 	// YARPC stream.Close method internally invokes closeSend on gRPC clientStream.
 	if err := stream.Close(ctx); err != nil {
 		return fmt.Errorf("Failed to close send stream: %v", err)

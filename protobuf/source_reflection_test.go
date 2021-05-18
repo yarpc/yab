@@ -1,6 +1,7 @@
 package protobuf
 
 import (
+	"errors"
 	"net"
 	"testing"
 	"time"
@@ -195,8 +196,42 @@ func TestReflectionRoutingHeaders(t *testing.T) {
 	}
 }
 
+func TestE2eErrors(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer ln.Close()
+
+	s := grpc.NewServer()
+	drs := &dummyReflectionServer{returnErr: errors.New("test error")}
+	rpb.RegisterServerReflectionServer(s, drs)
+	go s.Serve(ln)
+
+	// Ensure that all streams are closed by the end of the test.
+	defer s.GracefulStop()
+
+	source, err := NewDescriptorProviderReflection(ReflectionArgs{
+		Timeout: time.Second,
+		Peers:   []string{ln.Addr().String()},
+	})
+	require.NoError(t, err)
+	defer source.Close()
+
+	t.Run("test error handling in find method", func(t *testing.T) {
+		desc, err := source.FindMessage("test")
+		require.Nil(t, desc, "unexpected message descriptor")
+		assert.EqualError(t, err, "error in protobuf reflection: rpc error: code = Unknown desc = test error")
+	})
+
+	t.Run("test error handling in find service", func(t *testing.T) {
+		desc, err := source.FindService("test")
+		require.Nil(t, desc, "unexpected message descriptor")
+		assert.EqualError(t, err, "error in protobuf reflection: rpc error: code = Unknown desc = test error")
+	})
+}
+
 type dummyReflectionServer struct {
-	md metadata.MD
+	md        metadata.MD
+	returnErr error
 }
 
 func (s *dummyReflectionServer) Reset() {
@@ -204,6 +239,10 @@ func (s *dummyReflectionServer) Reset() {
 }
 
 func (s *dummyReflectionServer) ServerReflectionInfo(r rpb.ServerReflection_ServerReflectionInfoServer) error {
+	if s.returnErr != nil {
+		return s.returnErr
+	}
+
 	if md, ok := metadata.FromIncomingContext(r.Context()); ok {
 		s.md = md
 	}

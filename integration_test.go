@@ -55,6 +55,9 @@ import (
 	ytchan "go.uber.org/yarpc/transport/tchannel"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+	rpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 //go:generate thriftrw --plugin=yarpc --out ./testdata/yarpc ./testdata/integration.thrift
@@ -376,6 +379,18 @@ type simpleService struct {
 func (s *simpleService) Baz(c context.Context, in *simple.Foo) (*simple.Foo, error) {
 	if in.Test > 0 {
 		return in, nil
+	}
+
+	if in.Test == -1 {
+		st := status.New(codes.InvalidArgument, "invalid username")
+		st, err := st.WithDetails(in)
+		if err != nil {
+			// If this errored, it will always error
+			// here, so better panic so we can figure
+			// out why than have this silently passing.
+			panic(fmt.Sprintf("Unexpected error: %v", err))
+		}
+		return nil, st.Err()
 	}
 
 	return nil, fmt.Errorf("negative input")
@@ -1001,72 +1016,113 @@ test: 1
 	}
 }
 
-func TestGRPCStreamWithStreamIntervalOption(t *testing.T) {
-	t.Run("client stream", func(t *testing.T) {
-		addr, server := setupGRPCServer(t, &simpleService{
+func TestGRPCStreamWithBoundedExecutionTime(t *testing.T) {
+	tests := []struct {
+		desc         string
+		opts         Options
+		wantExecTime time.Duration
+
+		returnOutput  []simple.Foo
+		expectedInput []simple.Foo
+	}{
+		{
+			desc: "client side streaming with stream interval option",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/ClientStream",
+					Timeout:           timeMillisFlag(time.Second * 5),
+					RequestJSON:       `{"test":1}{"test":2}{"test":-1}`,
+					StreamRequestOptions: StreamRequestOptions{
+						Interval: timeMillisFlag(time.Millisecond * 100),
+					},
+				},
+			},
 			returnOutput:  []simple.Foo{{Test: 4}},
 			expectedInput: []simple.Foo{{Test: 1}, {Test: 2}, {Test: -1}},
-		})
-		defer server.Stop()
-
-		opts := Options{
-			ROpts: RequestOptions{
-				FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-				Procedure:         "Bar/ClientStream",
-				Timeout:           timeMillisFlag(time.Second * 5),
-				RequestJSON:       `{"test":1}{"test":2}{"test":-1}`,
-				StreamRequestOptions: StreamRequestOptions{
-					Interval: timeMillisFlag(time.Millisecond * 1000),
+			// Test must run for more than 200ms as there are three requests and
+			// it must take 200ms totally between consecutive messages.
+			wantExecTime: time.Millisecond * 200,
+		},
+		{
+			desc: "bidirectional streaming with stream interval option",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/BidiStream",
+					Timeout:           timeMillisFlag(time.Second * 5),
+					RequestJSON:       `{"test":1}{"test":2}{"test":-1}`,
+					StreamRequestOptions: StreamRequestOptions{
+						Interval: timeMillisFlag(time.Millisecond * 100),
+					},
 				},
 			},
-			TOpts: TransportOptions{
-				ServiceName: "foo",
-				Peers:       []string{"grpc://" + addr.String()},
-			},
-		}
-
-		now := time.Now()
-		_, gotErr := runTestWithOpts(opts)
-		duration := time.Now().Sub(now)
-
-		assert.Empty(t, gotErr)
-		// test must run for more than 2 seconds as there are three requests and
-		// it must take 2 seconds totally between consecutive messages
-		assert.True(t, duration > (time.Second*2), "Unexpected time taken on wait: %v", duration)
-	})
-
-	t.Run("bidirectional stream", func(t *testing.T) {
-		addr, server := setupGRPCServer(t, &simpleService{
 			returnOutput:  []simple.Foo{{Test: 4}, {Test: 9}},
 			expectedInput: []simple.Foo{{Test: 1}, {Test: 2}, {Test: -1}},
-		})
-		defer server.Stop()
-
-		opts := Options{
-			ROpts: RequestOptions{
-				FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
-				Procedure:         "Bar/BidiStream",
-				Timeout:           timeMillisFlag(time.Second * 5),
-				RequestJSON:       `{"test":1}{"test":2}{"test":-1}`,
-				StreamRequestOptions: StreamRequestOptions{
-					Interval: timeMillisFlag(time.Millisecond * 1000),
+			// Test must run for more than 200ms as there are three requests and
+			// it must take 200ms totally between consecutive messages.
+			wantExecTime: time.Millisecond * 200,
+		},
+		{
+			desc: "client side streaming with close send stream delay",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/ClientStream",
+					Timeout:           timeMillisFlag(time.Second * 5),
+					RequestJSON:       `{"test":1}{"test":2}{"test":-1}`,
+					StreamRequestOptions: StreamRequestOptions{
+						DelayCloseSendStream: timeMillisFlag(time.Millisecond * 100),
+					},
 				},
 			},
-			TOpts: TransportOptions{
+			returnOutput:  []simple.Foo{{Test: 4}},
+			expectedInput: []simple.Foo{{Test: 1}, {Test: 2}, {Test: -1}},
+			// Test must run for more than 100ms as send stream closure has a delay
+			// of 100ms.
+			wantExecTime: time.Millisecond * 100,
+		},
+		{
+			desc: "bidirectional streaming with close send stream delay",
+			opts: Options{
+				ROpts: RequestOptions{
+					FileDescriptorSet: []string{"testdata/protobuf/simple/simple.proto.bin"},
+					Procedure:         "Bar/BidiStream",
+					Timeout:           timeMillisFlag(time.Second * 5),
+					RequestJSON:       `{"test":1}{"test":2}`,
+					StreamRequestOptions: StreamRequestOptions{
+						DelayCloseSendStream: timeMillisFlag(time.Millisecond * 100),
+					},
+				},
+			},
+			returnOutput:  []simple.Foo{{Test: 4}, {Test: 9}},
+			expectedInput: []simple.Foo{{Test: 1}, {Test: 2}, {Test: -1}},
+			// Test must run for more than 100ms as send stream closure has a delay
+			// of 100ms.
+			wantExecTime: time.Millisecond * 100,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			addr, server := setupGRPCServer(t, &simpleService{
+				expectedInput: tt.expectedInput,
+				returnOutput:  tt.returnOutput,
+			})
+			defer server.Stop()
+
+			tt.opts.TOpts = TransportOptions{
 				ServiceName: "foo",
 				Peers:       []string{"grpc://" + addr.String()},
-			},
-		}
+			}
+			now := time.Now()
+			_, gotErr := runTestWithOpts(tt.opts)
+			duration := time.Now().Sub(now)
 
-		now := time.Now()
-		_, gotErr := runTestWithOpts(opts)
-		duration := time.Now().Sub(now)
-
-		assert.Empty(t, gotErr)
-		// test must run for more than 2 seconds as there are three requests and
-		// it must take 2 seconds totally between consecutive messages
-		assert.True(t, duration > (time.Second*2), "Unexpected time taken on wait: %v", duration)
-	})
+			assert.Empty(t, gotErr)
+			assert.True(t, duration > tt.wantExecTime, "Unexpected time taken: %v", duration)
+		})
+	}
 }
 
 func TestGRPCReflectionSource(t *testing.T) {
@@ -1092,7 +1148,13 @@ func TestGRPCReflectionSource(t *testing.T) {
 					Peers:       []string{addr.String()},
 				},
 			},
-			wantRes: `"test": 1`,
+			wantRes: `{
+  "body": {
+    "test": 1
+  }
+}
+
+`,
 		},
 		{
 			desc: "success (no scheme in peer)",
@@ -1107,7 +1169,13 @@ func TestGRPCReflectionSource(t *testing.T) {
 					Peers:       []string{addr.String()},
 				},
 			},
-			wantRes: `"test": 1`,
+			wantRes: `{
+  "body": {
+    "test": 1
+  }
+}
+
+`,
 		},
 		{
 			desc: "return error",
@@ -1122,14 +1190,83 @@ func TestGRPCReflectionSource(t *testing.T) {
 					Peers:       []string{addr.String()},
 				},
 			},
-			wantErr: "negative input",
+			wantErr: "Failed while making call: code:unknown message:negative input\n",
+		},
+		{
+			desc: "return error with details",
+			opts: Options{
+				ROpts: RequestOptions{
+					Procedure:   "Bar/Baz",
+					Timeout:     timeMillisFlag(time.Second),
+					RequestJSON: `{"test":-1}`,
+				},
+				TOpts: TransportOptions{
+					ServiceName: "foo",
+					Peers:       []string{addr.String()},
+				},
+			},
+			wantErr: `Failed while making call: code:invalid-argument message:invalid username
+{
+  "details": [
+    {
+      "type.googleapis.com/Foo": {
+        "test": -1
+      }
+    }
+  ]
+}
+
+`,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			gotOut, gotErr := runTestWithOpts(tt.opts)
-			assert.Contains(t, gotErr, tt.wantErr)
-			assert.Contains(t, gotOut, tt.wantRes)
+			assert.Equal(t, gotErr, tt.wantErr)
+			assert.Equal(t, gotOut, tt.wantRes)
 		})
 	}
+}
+
+type protoReflectService struct {
+	waitChan chan struct{} // If non-nil, handler waits on the channel
+}
+
+func (p protoReflectService) ServerReflectionInfo(s rpb.ServerReflection_ServerReflectionInfoServer) error {
+	if p.waitChan != nil {
+		// Wait on the given channel or until stream context completes.
+		select {
+		case <-s.Context().Done():
+		case <-p.waitChan:
+		}
+	}
+	return nil
+}
+
+func TestGPCReflectionTimeout(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	waitChan := make(chan struct{})
+	reflectSvc := protoReflectService{waitChan: waitChan}
+	server := grpc.NewServer()
+	rpb.RegisterServerReflectionServer(server, reflectSvc)
+	go server.Serve(ln)
+
+	defer server.Stop()
+	defer close(waitChan)
+
+	gotOut, gotErr := runTestWithOpts(Options{
+		ROpts: RequestOptions{
+			Procedure:   "Bar/Baz",
+			Timeout:     timeMillisFlag(time.Second * 1),
+			RequestJSON: `{"test":0}`,
+		},
+		TOpts: TransportOptions{
+			ServiceName: "foo",
+			Peers:       []string{ln.Addr().String()},
+		},
+	})
+	assert.Empty(t, gotOut, "Expected empty stdout")
+	assert.Contains(t, gotErr, "error in protobuf reflection: rpc error: code = DeadlineExceeded desc = context deadline exceeded", "Expected deadline exceeded error")
 }

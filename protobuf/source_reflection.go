@@ -64,14 +64,17 @@ func NewDescriptorProviderReflection(args ReflectionArgs) (DescriptorProvider, e
 		routingHeaders.Append(ygrpc.RoutingKeyHeader, args.RoutingKey)
 	}
 
-	metadataContext := metadata.NewOutgoingContext(context.Background(), routingHeaders)
+	ctx, cancel := context.WithTimeout(context.Background(), args.Timeout)
+	metadataContext := metadata.NewOutgoingContext(ctx, routingHeaders)
 	return &grpcreflectSource{
-		client: grpcreflect.NewClient(metadataContext, pbClient),
+		client:     grpcreflect.NewClient(metadataContext, pbClient),
+		cancelFunc: cancel,
 	}, nil
 }
 
 type grpcreflectSource struct {
-	client *grpcreflect.Client
+	client     *grpcreflect.Client
+	cancelFunc context.CancelFunc
 }
 
 func (s *grpcreflectSource) FindMessage(messageType string) (*desc.MessageDescriptor, error) {
@@ -83,19 +86,23 @@ func (s *grpcreflectSource) FindMessage(messageType string) (*desc.MessageDescri
 		return nil, nil
 	}
 
+	if err != nil {
+		return nil, wrapReflectionError(err)
+	}
+
 	return msg, err
 }
 
 func (s *grpcreflectSource) FindService(fullyQualifiedName string) (*desc.ServiceDescriptor, error) {
 	service, err := s.client.ResolveService(fullyQualifiedName)
 	if err != nil {
-		available, availableErr := s.client.ListServices()
-		if availableErr != nil {
-			err = availableErr
+		if !grpcreflect.IsElementNotFoundError(err) {
+			return nil, wrapReflectionError(err)
 		}
 
-		if !grpcreflect.IsElementNotFoundError(err) {
-			return nil, err
+		available, availableErr := s.client.ListServices()
+		if availableErr != nil && !grpcreflect.IsElementNotFoundError(availableErr) {
+			return nil, wrapReflectionError(availableErr)
 		}
 
 		return nil, encodingerror.NotFound{
@@ -111,5 +118,10 @@ func (s *grpcreflectSource) FindService(fullyQualifiedName string) (*desc.Servic
 }
 
 func (s *grpcreflectSource) Close() {
+	s.cancelFunc()
 	s.client.Reset()
+}
+
+func wrapReflectionError(err error) error {
+	return fmt.Errorf("error in protobuf reflection: %v", err)
 }
