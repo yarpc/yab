@@ -55,6 +55,7 @@ import (
 	ytchan "go.uber.org/yarpc/transport/tchannel"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+	rpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -1184,4 +1185,47 @@ func TestGRPCReflectionSource(t *testing.T) {
 			assert.Equal(t, gotOut, tt.wantRes)
 		})
 	}
+}
+
+type protoReflectService struct {
+	waitChan chan struct{} // If non-nil, handler waits on the channel
+}
+
+func (p protoReflectService) ServerReflectionInfo(s rpb.ServerReflection_ServerReflectionInfoServer) error {
+	if p.waitChan != nil {
+		// Wait on the given channel or until stream context completes.
+		select {
+		case <-s.Context().Done():
+		case <-p.waitChan:
+		}
+	}
+	return nil
+}
+
+func TestGPCReflectionTimeout(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	waitChan := make(chan struct{})
+	reflectSvc := protoReflectService{waitChan: waitChan}
+	server := grpc.NewServer()
+	rpb.RegisterServerReflectionServer(server, reflectSvc)
+	go server.Serve(ln)
+
+	defer server.Stop()
+	defer close(waitChan)
+
+	gotOut, gotErr := runTestWithOpts(Options{
+		ROpts: RequestOptions{
+			Procedure:   "Bar/Baz",
+			Timeout:     timeMillisFlag(time.Second * 1),
+			RequestJSON: `{"test":0}`,
+		},
+		TOpts: TransportOptions{
+			ServiceName: "foo",
+			Peers:       []string{ln.Addr().String()},
+		},
+	})
+	assert.Empty(t, gotOut, "Expected empty stdout")
+	assert.Contains(t, gotErr, "error in protobuf reflection: rpc error: code = DeadlineExceeded desc = context deadline exceeded", "Expected deadline exceeded error")
 }
