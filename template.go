@@ -28,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/internal/yamlalias"
 	"github.com/yarpc/yab/templateargs"
 
@@ -56,6 +57,8 @@ type template struct {
 	Request  map[interface{}]interface{}   `yaml:"request"`
 	Requests []map[interface{}]interface{} `yaml:"requests"`
 	Timeout  time.Duration                 `yaml:"timeout"`
+	File     string                        `yaml:"file"`
+	Encoding string                        `yaml:"encoding"`
 }
 
 func readYAMLFile(yamlTemplate string, templateArgs map[string]string, opts *Options) error {
@@ -129,6 +132,13 @@ func readYAMLRequest(base string, contents []byte, templateArgs map[string]strin
 		return err
 	}
 
+	if t.File != "" {
+		body, err = ioutil.ReadFile(t.File)
+		if err != nil {
+			return err
+		}
+	}
+
 	if t.Peer != "" {
 		opts.TOpts.Peers = []string{t.Peer}
 		opts.TOpts.PeerList = ""
@@ -158,6 +168,17 @@ func readYAMLRequest(base string, contents []byte, templateArgs map[string]strin
 			return err
 		}
 		opts.ROpts.ThriftFile = thriftFileURL.Path
+	}
+
+	switch strings.ToLower(t.Encoding) {
+	case "thrift":
+		opts.ROpts.Encoding = encoding.Thrift
+	case "json":
+		opts.ROpts.Encoding = encoding.JSON
+	case "protobuf":
+		opts.ROpts.Encoding = encoding.Protobuf
+	case "raw":
+		opts.ROpts.Encoding = encoding.Raw
 	}
 
 	overrideParam(&opts.TOpts.CallerName, t.Caller)
