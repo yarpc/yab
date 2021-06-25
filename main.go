@@ -472,6 +472,23 @@ func makeContextWithTrace(ctx context.Context, t transport.Transport, request *t
 
 func makeInitialRequest(out output, transport transport.Transport, serializer encoding.Serializer, req *transport.Request) {
 	response, err := makeRequestWithTracePriority(transport, req, 1)
+
+	var bs []byte
+	outSerialized := map[string]interface{}{}
+	if response != nil && len(response.Headers) > 0 {
+		outSerialized["headers"] = response.Headers
+	}
+	defer func() {
+		if len(outSerialized) == 0 {
+			return
+		}
+		bs, err = json.MarshalIndent(outSerialized, "", "  ")
+		if err != nil {
+			out.Fatalf("Failed to convert map to JSON: %v\nMap: %+v\n", err, outSerialized)
+		}
+		out.Printf("%s\n\n", bs)
+	}()
+
 	if err != nil {
 		buffer := bytes.NewBufferString(err.Error())
 
@@ -502,20 +519,10 @@ func makeInitialRequest(out output, transport transport.Transport, serializer en
 	}
 
 	// Print the initial output body.
-	outSerialized := map[string]interface{}{
-		"body": responseMap,
-	}
-	if len(response.Headers) > 0 {
-		outSerialized["headers"] = response.Headers
-	}
+	outSerialized["body"] = responseMap
 	for k, v := range response.TransportFields {
 		outSerialized[k] = v
 	}
-	bs, err := json.MarshalIndent(outSerialized, "", "  ")
-	if err != nil {
-		out.Fatalf("Failed to convert map to JSON: %v\nMap: %+v\n", err, responseMap)
-	}
-	out.Printf("%s\n\n", bs)
 }
 
 // isYabTemplate is currently very conservative, it requires a file that exists

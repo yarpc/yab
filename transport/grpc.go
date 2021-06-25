@@ -128,11 +128,16 @@ func (t *grpcTransport) Call(ctx context.Context, request *Request) (*Response, 
 
 	ctx, cancel := requestContextWithTimeout(ctx, request)
 	defer cancel()
+
+	var errs error
+
 	transportResponse, err := t.Outbound.Call(ctx, t.requestToYARPCRequest(request))
-	if err != nil {
-		return nil, err
-	}
-	return yarpcResponseToResponse(transportResponse)
+	errs = multierr.Append(errs, err)
+
+	r, err := yarpcResponseToResponse(transportResponse)
+	errs = multierr.Append(errs, err)
+
+	return r, errs
 }
 
 func (t *grpcTransport) CallStream(ctx context.Context, request *StreamRequest) (*transport.ClientStream, error) {
