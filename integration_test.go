@@ -54,9 +54,9 @@ import (
 	yhttp "go.uber.org/yarpc/transport/http"
 	ytchan "go.uber.org/yarpc/transport/tchannel"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
 	rpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
@@ -1190,6 +1190,13 @@ func TestGRPCReflectionSource(t *testing.T) {
 					Peers:       []string{addr.String()},
 				},
 			},
+			wantRes: `{
+  "headers": {
+    "content-type": "application/grpc"
+  }
+}
+
+`,
 			wantErr: "Failed while making call: code:unknown message:negative input\n",
 		},
 		{
@@ -1205,6 +1212,13 @@ func TestGRPCReflectionSource(t *testing.T) {
 					Peers:       []string{addr.String()},
 				},
 			},
+			wantRes: `{
+  "headers": {
+    "content-type": "application/grpc"
+  }
+}
+
+`,
 			wantErr: `Failed while making call: code:invalid-argument message:invalid username
 {
   "details": [
@@ -1222,8 +1236,8 @@ func TestGRPCReflectionSource(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			gotOut, gotErr := runTestWithOpts(tt.opts)
-			assert.Equal(t, gotErr, tt.wantErr)
-			assert.Equal(t, gotOut, tt.wantRes)
+			assert.Equal(t, tt.wantErr, gotErr, "bad error")
+			assert.Equal(t, tt.wantRes, gotOut, "bad response")
 		})
 	}
 }
