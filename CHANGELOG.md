@@ -2,7 +2,8 @@ Changelog
 =========
 
 # Unreleased (0.21.0)
-* Nothing yet
+* Fix gRPC server stream handling to be compatible with Java gRPC server by closing
+  the send stream post dispatching the client request.
 
 # 0.20.0 (2021-05-18)
 * Add `stream-delay-close-send` option which delays client send stream closure.
