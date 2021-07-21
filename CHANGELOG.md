@@ -2,7 +2,8 @@ Changelog
 =========
 
 # Unreleased (0.21.0)
-* Nothing yet
+* Fix parsing of protobuf responses/error-details containing Any type fields, by maintaining
+  reflection server connection until end of the request.
 
 # 0.20.0 (2021-05-18)
 * Add `stream-delay-close-send` option which delays client send stream closure.
