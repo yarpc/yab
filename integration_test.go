@@ -54,9 +54,9 @@ import (
 	yhttp "go.uber.org/yarpc/transport/http"
 	ytchan "go.uber.org/yarpc/transport/tchannel"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
 	rpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 

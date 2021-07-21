@@ -155,12 +155,12 @@ func makeStreamRequest(t transport.Transport, streamReq *transport.StreamRequest
 	case encoding.ClientStream:
 		return makeClientStream(ctx, stream, streamIO, opts)
 	default:
-		return makeServerStream(ctx, stream, streamIO, opts)
+		return makeServerStream(ctx, stream, streamIO)
 	}
 }
 
 // makeServerStream starts server-side streaming rpc
-func makeServerStream(ctx context.Context, stream *yarpctransport.ClientStream, streamIO StreamIO, opts StreamRequestOptions) error {
+func makeServerStream(ctx context.Context, stream *yarpctransport.ClientStream, streamIO StreamIO) error {
 	req, err := streamIO.NextRequest()
 	// Use nil body if no initial request input is empty, since request
 	// is mandatory in server streaming rpc.
@@ -180,7 +180,7 @@ func makeServerStream(ctx context.Context, stream *yarpctransport.ClientStream, 
 		return err
 	}
 
-	if err = closeSendStream(ctx, stream, opts.DelayCloseSendStream.Duration()); err != nil {
+	if err := closeSendStream(ctx, stream, 0); err != nil {
 		return err
 	}
 
