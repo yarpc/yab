@@ -34,6 +34,7 @@ import (
 	"time"
 
 	"github.com/yarpc/yab/testdata/gen-go/integration"
+	testdataany "github.com/yarpc/yab/testdata/protobuf/any"
 	"github.com/yarpc/yab/testdata/protobuf/simple"
 	yintegration "github.com/yarpc/yab/testdata/yarpc/integration"
 	"github.com/yarpc/yab/testdata/yarpc/integration/fooserver"
@@ -383,7 +384,7 @@ func (s *simpleService) Baz(c context.Context, in *simple.Foo) (*simple.Foo, err
 
 	if in.Test == -1 {
 		st := status.New(codes.InvalidArgument, "invalid username")
-		st, err := st.WithDetails(in)
+		st, err := st.WithDetails(in, &testdataany.FooAny{Value: 123})
 		if err != nil {
 			// If this errored, it will always error
 			// here, so better panic so we can figure
@@ -1211,6 +1212,11 @@ func TestGRPCReflectionSource(t *testing.T) {
     {
       "type.googleapis.com/Foo": {
         "test": -1
+      }
+    },
+    {
+      "type.googleapis.com/FooAny": {
+        "value": 123
       }
     }
   ]

@@ -122,9 +122,6 @@ func NewSerializer(opts Options, resolved resolvedProtocolEncoding) (encoding.Se
 			return nil, err
 		}
 
-		// The descriptor is only used in the New function, so it's safe to defer Close.
-		defer descSource.Close()
-
 		return encoding.NewProtobuf(opts.ROpts.Procedure, descSource)
 	}
 
