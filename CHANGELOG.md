@@ -1,7 +1,10 @@
 Changelog
 =========
 
-# Unreleased (0.21.0)
+# Unreleased (0.22.0-dev)
+* Nothing yet
+
+# 0.21.0 (2021-09-01)
 * Fix gRPC server stream handling to be compatible with Java gRPC server.
 * Fix parsing of protobuf responses/error-details containing Any type fields, by maintaining
   reflection server connection until end of the request.
