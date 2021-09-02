@@ -25,7 +25,7 @@ type protoSerializer struct {
 	serviceName string
 	methodName  string
 	method      *desc.MethodDescriptor
-	anyResolver jsonpb.AnyResolver
+	anyResolver anyResolver
 }
 
 // bytesMsg wraps a raw byte slice for serialization purposes. Especially
@@ -262,6 +262,12 @@ func (p protoStreamRequestReader) NextBody() ([]byte, error) {
 	}
 
 	return p.proto.encode(body)
+}
+
+// Close stops the protobuf reflection/file based descriptor provider.
+func (p protoSerializer) Close() error {
+	p.anyResolver.source.Close()
+	return nil
 }
 
 func splitMethod(fullMethod string) (svc, method string, err error) {

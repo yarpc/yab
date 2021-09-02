@@ -1,6 +1,11 @@
 Changelog
 =========
 
+# 0.21.0 (2021-09-01)
+* Fix gRPC server stream handling to be compatible with Java gRPC server.
+* Fix parsing of protobuf responses/error-details containing Any type fields, by maintaining
+  reflection server connection until end of the request.
+
 # 0.20.0 (2021-05-18)
 * Add `stream-delay-close-send` option which delays client send stream closure.
 * New: gRPC details are now printed along with the error if there are any.

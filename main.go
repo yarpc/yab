@@ -329,6 +329,9 @@ func runWithOptions(opts Options, out output, logger *zap.Logger) {
 	if err != nil {
 		out.Fatalf("Failed while parsing input: %v\n", err)
 	}
+	if serializerWithClose, ok := serializer.(io.Closer); ok {
+		defer serializerWithClose.Close()
+	}
 
 	tracer, closer := getTracer(opts, out)
 	if closer != nil {

@@ -180,6 +180,10 @@ func makeServerStream(ctx context.Context, stream *yarpctransport.ClientStream, 
 		return err
 	}
 
+	if err := closeSendStream(ctx, stream, 0); err != nil {
+		return err
+	}
+
 	for err == nil {
 		var resBody []byte
 		if resBody, err = receiveStreamMessage(ctx, stream); err != nil {
