@@ -3,6 +3,7 @@ package protobuf
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -31,7 +32,7 @@ type ReflectionArgs struct {
 // NewDescriptorProviderReflection returns a DescriptorProvider that reaches
 // out to a reflection server to access file descriptors.
 func NewDescriptorProviderReflection(args ReflectionArgs) (DescriptorProvider, error) {
-	r, deregisterScheme := manual.GenerateAndRegisterManualResolver()
+	r, deregisterScheme := generateAndRegisterManualResolver()
 	defer deregisterScheme()
 	peers := make([]resolver.Address, len(args.Peers))
 	for i, p := range args.Peers {
@@ -124,4 +125,14 @@ func (s *grpcreflectSource) Close() {
 
 func wrapReflectionError(err error) error {
 	return fmt.Errorf("error in protobuf reflection: %v", err)
+}
+
+// generateAndRegisterManualResovler is copied verbatim from:
+// https://github.com/grpc/grpc-go/blob/v1.29.1/resolver/manual/manual.go#L85-L93
+// It will facilitate upgrading grpc after it is removed upstream.
+func generateAndRegisterManualResolver() (*manual.Resolver, func()) {
+	scheme := strconv.FormatInt(time.Now().UnixNano(), 36)
+	r := manual.NewBuilderWithScheme(scheme)
+	resolver.Register(r)
+	return r, func() { resolver.UnregisterForTesting(scheme) }
 }
