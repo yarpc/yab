@@ -28,7 +28,6 @@ require (
 	github.com/samuel/go-thrift v0.0.0-20190219015601-e8b6b52668fe // indirect
 	github.com/streadway/quantile v0.0.0-20150917103942-b0c588724d25 // indirect
 	github.com/stretchr/testify v1.4.0
-	github.com/uber-go/atomic v0.0.0-00010101000000-000000000000 // indirect
 	github.com/uber-go/mapdecode v1.0.0 // indirect
 	github.com/uber-go/tally v3.3.12+incompatible // indirect
 	github.com/uber/jaeger-client-go v2.19.0+incompatible
@@ -47,5 +46,3 @@ require (
 	google.golang.org/grpc v1.24.0
 	gopkg.in/yaml.v2 v2.2.2
 )
-
-replace github.com/uber-go/atomic => github.com/uber-go/atomic v1.4.0
