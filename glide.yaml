@@ -4,20 +4,22 @@ import:
 - package: github.com/casimir/xdg-go
 - package: github.com/jessevdk/go-flags
 - package: github.com/stretchr/testify
+  version: ^1.7
 - package: go.uber.org/thriftrw
   version: ^1
 - package: go.uber.org/atomic
-  version: ^1
+  version: ^1.9
 - package: github.com/uber/tchannel-go
-  version: ^1.3
+  version: ^1.22
 - package: golang.org/x/net
 - package: go.uber.org/zap
   version: ^1
 - package: gopkg.in/yaml.v2
+  version: ^2.4
 - package: github.com/opentracing/opentracing-go
-  version: ^1
+  version: ^1.2
 - package: github.com/uber/jaeger-client-go
-  version: ^2.14
+  version: ^2.30
 - package: go.uber.org/yarpc
   version: ^1.21
 - package: github.com/jhump/protoreflect
