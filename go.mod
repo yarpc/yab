@@ -22,7 +22,7 @@ require (
 	golang.org/x/net v0.0.0-20211015210444-4f30a5c0130f
 	google.golang.org/genproto v0.0.0-20180817151627-c66870c02cf8
 	google.golang.org/grpc v1.24.0
-	gopkg.in/yaml.v2 v2.2.2
+	gopkg.in/yaml.v2 v2.2.8
 )
 
 require (
