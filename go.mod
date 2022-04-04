@@ -11,7 +11,7 @@ require (
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/jhump/protoreflect v0.0.0-20180908113807-a84568470d8a
 	github.com/opentracing/opentracing-go v1.2.0
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/uber/tchannel-go v1.22.3
 	go.uber.org/atomic v1.9.0
