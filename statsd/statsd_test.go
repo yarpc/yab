@@ -28,7 +28,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/cactus/go-statsd-client/statsd"
+	"github.com/cactus/go-statsd-client/v5/statsd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -53,41 +53,13 @@ func TestNewClientEmpty(t *testing.T) {
 	statsd.Timing("t", time.Second)
 }
 
-func TestEnsureStatsd(t *testing.T) {
-	noopClient, err := statsd.NewNoopClient()
-	require.NoError(t, err, "Failed to initialize NooClient")
-
-	tests := []struct {
-		statsd statsd.Statter
-		err    error
-		panic  bool
-	}{
-		{noopClient, nil, false},
-		{noopClient, errors.New("err"), true},
-		{nil, errors.New("err"), true},
-	}
-
-	for _, tt := range tests {
-		if tt.panic {
-			assert.Panics(t, func() {
-				ensureStatsd(tt.statsd, tt.err)
-			})
-			continue
-		}
-
-		got := ensureStatsd(tt.statsd, tt.err)
-		assert.Equal(t, tt.statsd, got, "Got unexpected instance")
-	}
-}
-
 func TestNewClientCreate(t *testing.T) {
 	origNewStatsD := newStatsD
 	defer func() { newStatsD = origNewStatsD }()
 	origUserEnv := os.Getenv("USER")
 	defer os.Setenv("USER", origUserEnv)
 
-	noopClient, err := statsd.NewNoopClient()
-	require.NoError(t, err, "Failed to initialize NooClient")
+	noopClient := newNoopStatter()
 	errFailed := errors.New("failure for test")
 
 	tests := []struct {

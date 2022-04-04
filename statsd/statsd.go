@@ -26,9 +26,8 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/cactus/go-statsd-client/v5/statsd"
 	"go.uber.org/zap"
-
-	"github.com/cactus/go-statsd-client/statsd"
 )
 
 // Client is the statsd interface that we use.
@@ -38,7 +37,14 @@ type Client interface {
 }
 
 // Noop is a no-op statsd client.
-var Noop Client = client{ensureStatsd(statsd.NewNoopClient())}
+var Noop Client = client{newNoopStatter()}
+
+func newNoopStatter() statsd.Statter {
+	// A nil *statsd.Client is a valid no-op statsd.Statter.
+	// This will convert to a valid non-nil statsd.Statter value.
+	var client *statsd.Client
+	return client
+}
 
 var newStatsD = statsd.NewBufferedClient
 
@@ -52,13 +58,6 @@ func (c client) Inc(stat string) {
 
 func (c client) Timing(stat string, d time.Duration) {
 	c.statter.TimingDuration(stat, d, 1.0)
-}
-
-func ensureStatsd(statter statsd.Statter, err error) statsd.Statter {
-	if err != nil {
-		panic(err)
-	}
-	return statter
 }
 
 func createStatsd(statsdHostPort, service, method string) (statsd.Statter, error) {

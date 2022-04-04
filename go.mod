@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/apache/thrift v0.0.0-20161221203622-b2a4d4ae21c7
-	github.com/cactus/go-statsd-client v3.1.2-0.20180516050940-5e3c483eb932+incompatible
+	github.com/cactus/go-statsd-client/v5 v5.0.0
 	github.com/casimir/xdg-go v0.0.0-20160329195404-372ccc2180da
 	github.com/ghodss/yaml v1.0.0
 	github.com/golang/protobuf v1.3.2

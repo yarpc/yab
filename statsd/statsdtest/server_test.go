@@ -6,8 +6,8 @@ import (
 
 	"github.com/uber/tchannel-go/testutils"
 
-	"github.com/cactus/go-statsd-client/statsd"
-	"github.com/cactus/go-statsd-client/statsd/statsdtest"
+	"github.com/cactus/go-statsd-client/v5/statsd"
+	"github.com/cactus/go-statsd-client/v5/statsd/statsdtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/multierr"
