@@ -759,7 +759,7 @@ func TestParseIniFile(t *testing.T) {
 		{
 			message:       "invalid ini file should raise error",
 			configPath:    "invalid",
-			expectedError: "couldn't read testdata/ini/invalid/yab/defaults.ini: testdata/ini/invalid/yab/defaults.ini:2: time: unknown unit foo in duration 3foo",
+			expectedError: `couldn't read testdata/ini/invalid/yab/defaults.ini: testdata/ini/invalid/yab/defaults.ini:2: time: unknown unit "foo" in duration "3foo"`,
 		},
 	}
 	for _, tt := range tests {
