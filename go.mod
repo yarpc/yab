@@ -7,7 +7,7 @@ require (
 	github.com/cactus/go-statsd-client/v5 v5.0.0
 	github.com/casimir/xdg-go v0.0.0-20160329195404-372ccc2180da
 	github.com/ghodss/yaml v1.0.0
-	github.com/golang/protobuf v1.3.2
+	github.com/golang/protobuf v1.5.2
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/jhump/protoreflect v0.0.0-20180908113807-a84568470d8a
 	github.com/opentracing/opentracing-go v1.2.0
@@ -20,8 +20,8 @@ require (
 	go.uber.org/yarpc v1.40.0
 	go.uber.org/zap v1.21.0
 	golang.org/x/net v0.0.0-20220403103023-749bd193bc2b
-	google.golang.org/genproto v0.0.0-20180817151627-c66870c02cf8
-	google.golang.org/grpc v1.24.0
+	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013
+	google.golang.org/grpc v1.46.2
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -36,14 +36,13 @@ require (
 	github.com/gogo/protobuf v1.3.0 // indirect
 	github.com/gogo/status v1.1.0 // indirect
 	github.com/golang/mock v1.3.1-0.20190508161146-9fa652df1129 // indirect
-	github.com/google/go-cmp v0.5.4 // indirect
 	github.com/kisielk/errcheck v1.2.0 // indirect
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/pkg/errors v0.8.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.1.0 // indirect
-	github.com/prometheus/client_model v0.0.0-20190129233127-fd36f4220a90 // indirect
+	github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4 // indirect
 	github.com/prometheus/common v0.6.0 // indirect
 	github.com/prometheus/procfs v0.0.5 // indirect
 	github.com/samuel/go-thrift v0.0.0-20190219015601-e8b6b52668fe // indirect
@@ -59,6 +58,7 @@ require (
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.10 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	honnef.co/go/tools v0.0.1-2019.2.3 // indirect
 )
