@@ -70,13 +70,13 @@ func TestProtobufHealthResponse(t *testing.T) {
 	}{
 		{
 			desc:      "pass",
-			reqBody:   nil,
+			reqBody:   []byte{},
 			outAsJSON: "{}",
 		},
 		{
 			desc:    "fail",
 			reqBody: []byte{0x1, 0x2},
-			errMsg:  "illegal tag",
+			errMsg:  "cannot parse invalid wire-format data",
 		},
 	}
 
