@@ -361,7 +361,7 @@ func setupYARPCServer(t *testing.T, inbound ytransport.Inbound, opts ...ythrift.
 		Inbounds: []ytransport.Inbound{inbound},
 	}
 	dispatcher := yarpc.NewDispatcher(cfg)
-	dispatcher.Register(fooserver.New(&yarpcHandler{}, opts...))
+	dispatcher.Register(fooserver.New(&yarpcHandler{}, append(opts, ythrift.NoWire(false))...))
 	require.NoError(t, dispatcher.Start(), "Failed to start Dispatcher")
 	return dispatcher
 }
