@@ -17,7 +17,7 @@ require (
 	go.uber.org/atomic v1.9.0
 	go.uber.org/multierr v1.8.0
 	go.uber.org/thriftrw v1.29.2
-	go.uber.org/yarpc v1.60.0
+	go.uber.org/yarpc v1.61.0
 	go.uber.org/zap v1.21.0
 	golang.org/x/net v0.0.0-20220403103023-749bd193bc2b
 	google.golang.org/genproto v0.0.0-20200212174721-66ed5ce911ce
@@ -26,7 +26,7 @@ require (
 )
 
 require (
-	github.com/BurntSushi/toml v0.3.1 // indirect
+	github.com/BurntSushi/toml v0.4.1 // indirect
 	github.com/HdrHistogram/hdrhistogram-go v1.1.2 // indirect
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -47,12 +47,12 @@ require (
 	github.com/uber-go/tally v3.3.15+incompatible // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	go.uber.org/net/metrics v1.3.0 // indirect
+	golang.org/x/exp/typeparams v0.0.0-20220218215828-6cf2b201936e // indirect
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
-	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
+	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
 	golang.org/x/sys v0.0.0-20220403205710-6acee93ad0eb // indirect
 	golang.org/x/text v0.3.7 // indirect
-	golang.org/x/tools v0.1.10 // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	golang.org/x/tools v0.1.11-0.20220513221640-090b14e8501f // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
-	honnef.co/go/tools v0.0.1-2019.2.3 // indirect
+	honnef.co/go/tools v0.3.2 // indirect
 )
