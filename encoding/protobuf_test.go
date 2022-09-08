@@ -107,7 +107,7 @@ func TestProtobufRequest(t *testing.T) {
 			method: "Bar/Baz",
 			desc:   "pass",
 			bsIn:   []byte(`{}`),
-			bsOut:  nil,
+			bsOut:  []byte{},
 		},
 		{
 			method: "Bar/Baz",
@@ -344,7 +344,7 @@ func TestProtobufResponse(t *testing.T) {
 			bsIn: getAnyType(t, "type.googleapis.com/Foo", &simple.Foo{
 				Test: 10,
 			}),
-			outAsJSON: `{"value":1, "nestedAny": {"@type": "type.googleapis.com/Foo", "value": "CAo="}}`,
+			outAsJSON: `{"value":1, "nestedAny": {"@type": "type.googleapis.com/Foo"}}`,
 		},
 	}
 
