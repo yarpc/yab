@@ -62,7 +62,7 @@ func TestBenchmarkStateErrors(t *testing.T) {
 	assert.Equal(t, state1.totalSuccess, 0, "Success count mismatch")
 	assert.Equal(t, state1.totalRequests, 7, "Request count mismatch")
 
-	state1.printErrors(out)
+	printErrors(out, state1.getErrorSummary())
 
 	expected := map[string]int{
 		"failed after Xms": 7,
@@ -81,7 +81,7 @@ func TestBenchmarkStateErrors(t *testing.T) {
 func TestBenchmarkStateNoError(t *testing.T) {
 	state := newBenchmarkState(statsd.Noop)
 	buf, _, out := getOutput(t)
-	state.printErrors(out)
+	printErrors(out, state.getErrorSummary())
 	assert.Equal(t, 0, buf.Len(), "Expected no output with no errors, got: %s", buf.String())
 }
 

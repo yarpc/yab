@@ -315,3 +315,75 @@ func TestBenchmarkOutput(t *testing.T) {
 		}
 	}
 }
+
+func TestBenchmarkErrorsOutput(t *testing.T) {
+	// Testing the error output in text and json output format
+	tests := []struct {
+		format        string
+		wantJSON      bool
+		wantOutput    []string
+		notWantOutput []string
+	}{
+		{
+			format:        "json",
+			wantJSON:      true,
+			wantOutput:    []string{"summary", "benchmarkParameters", "maxRPS", "latencies", "errorSummary"},
+			notWantOutput: []string{"Errors:", "Benchmark parameters", "Max RPS", "Unrecognized format option"},
+		},
+		{
+			format:        "text",
+			wantJSON:      false,
+			wantOutput:    []string{"Benchmark parameters", "Max RPS", "Errors:"},
+			notWantOutput: []string{"summary", "maxRPS", "Unrecognized format option"},
+		},
+	}
+
+	var requests atomic.Int32
+	s := newServer(t)
+	defer s.shutdown()
+	// GIVEN: The endpoint returns an error
+	s.register(fooMethod, methods.errorIf(func() bool {
+		requests.Inc()
+		return true
+	}))
+	m := benchmarkMethodForTest(t, fooMethod, transport.TChannel)
+
+	for _, tt := range tests {
+		t.Run(tt.format, func(t *testing.T) {
+			requests.Store(0)
+			buf, _, out := getOutput(t)
+			opts := Options{
+				BOpts: BenchmarkOptions{
+					MaxRequests:    1,
+					MaxDuration:    100 * time.Millisecond,
+					Connections:    1,
+					WarmupRequests: 0,
+					Concurrency:    1,
+					Format:         tt.format,
+				},
+				TOpts: s.transportOpts(),
+			}
+
+			runBenchmark(out, _testLogger, opts, _resolvedTChannelThrift, fooMethod, m)
+			bufStr := buf.String()
+
+			for _, want := range tt.wantOutput {
+				assert.Contains(t, bufStr, want)
+			}
+			for _, notWant := range tt.notWantOutput {
+				assert.NotContains(t, bufStr, notWant)
+			}
+
+			if tt.wantJSON {
+				// Creating struct from JSON output string
+				var benchmarkOutput BenchmarkOutput
+				b := []byte(bufStr)
+				err := json.Unmarshal(b, &benchmarkOutput)
+				require.NoError(t, err)
+				assert.Equal(t, benchmarkOutput.Parameters.MaxRPS, opts.BOpts.RPS)
+				assert.GreaterOrEqual(t, opts.BOpts.MaxRequests, benchmarkOutput.Summary.TotalRequests)
+				assert.Equal(t, len(_quantiles), len(benchmarkOutput.Latencies))
+			}
+		})
+	}
+}
