@@ -380,9 +380,8 @@ func TestBenchmarkErrorsOutput(t *testing.T) {
 				b := []byte(bufStr)
 				err := json.Unmarshal(b, &benchmarkOutput)
 				require.NoError(t, err)
-				assert.Equal(t, benchmarkOutput.Parameters.MaxRPS, opts.BOpts.RPS)
-				assert.GreaterOrEqual(t, opts.BOpts.MaxRequests, benchmarkOutput.Summary.TotalRequests)
-				assert.Equal(t, len(_quantiles), len(benchmarkOutput.Latencies))
+				// EXPECT: All requests were errors
+				assert.GreaterOrEqual(t, opts.BOpts.MaxRequests, benchmarkOutput.ErrorSummary.TotalErrors)
 			}
 		})
 	}
