@@ -69,9 +69,9 @@ type Summary struct {
 
 // ErrorSummary stores the summary of the errors encountered
 type ErrorSummary struct {
-	TotalErrors int     `json:"totalErrors"`
-	ErrorRate   float64 `json:"errorRate"`
-	ErrorsCount map[string]int
+	TotalErrors int            `json:"totalErrors"`
+	ErrorRate   float64        `json:"errorRate"`
+	ErrorsCount map[string]int `json:"errorsCount"`
 }
 
 // StreamSummary stores summary of stream messages sent and received

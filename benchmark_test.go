@@ -325,16 +325,17 @@ func TestBenchmarkErrorsOutput(t *testing.T) {
 		notWantOutput []string
 	}{
 		{
-			format:        "json",
-			wantJSON:      true,
-			wantOutput:    []string{"summary", "benchmarkParameters", "maxRPS", "latencies", "errorSummary"},
+			format:   "json",
+			wantJSON: true,
+			wantOutput: []string{"summary", "benchmarkParameters", "maxRPS", "latencies", "errorSummary",
+				"errorRate", "totalErrors", "errorsCount"},
 			notWantOutput: []string{"Errors:", "Benchmark parameters", "Max RPS", "Unrecognized format option"},
 		},
 		{
 			format:        "text",
 			wantJSON:      false,
 			wantOutput:    []string{"Benchmark parameters", "Max RPS", "Errors:"},
-			notWantOutput: []string{"summary", "maxRPS", "Unrecognized format option"},
+			notWantOutput: []string{"summary", "maxRPS", "Unrecognized format option", "errorRate", "totalErrors", "errorsCount"},
 		},
 	}
 
