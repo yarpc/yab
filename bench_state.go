@@ -25,7 +25,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/yarpc/yab/sorted"
 	"github.com/yarpc/yab/statsd"
 )
 
@@ -99,17 +98,20 @@ func (s *benchmarkState) getLatencies() map[float64]time.Duration {
 	return latencyValues
 }
 
-func (s *benchmarkState) printErrors(out output) {
+func (s *benchmarkState) getErrorSummary() *ErrorSummary {
 	if len(s.errors) == 0 {
-		return
+		return nil
 	}
-	out.Printf("Errors:\n")
-	for _, k := range sorted.MapKeys(s.errors) {
-		v := s.errors[k]
-		out.Printf("  %4d: %v\n", v, k)
+	sum := &ErrorSummary{
+		TotalErrors: s.totalErrors,
+		ErrorRate:   100 * float64(s.totalErrors) / float64(s.totalRequests),
+		ErrorsCount: map[string]int{},
 	}
-	out.Printf("Total errors: %v\n", s.totalErrors)
-	out.Printf("Error rate: %.4f%%\n", 100*float32(s.totalErrors)/float32(s.totalRequests))
+
+	for k, v := range s.errors {
+		sum.ErrorsCount[k] = v
+	}
+	return sum
 }
 
 func (s *benchmarkState) getQuantile(q float64) time.Duration {

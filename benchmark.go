@@ -34,6 +34,7 @@ import (
 
 	"github.com/yarpc/yab/encoding"
 	"github.com/yarpc/yab/limiter"
+	"github.com/yarpc/yab/sorted"
 	"github.com/yarpc/yab/statsd"
 	"github.com/yarpc/yab/transport"
 
@@ -66,6 +67,13 @@ type Summary struct {
 	RPS                float64 `json:"rps"`
 }
 
+// ErrorSummary stores the summary of the errors encountered
+type ErrorSummary struct {
+	TotalErrors int            `json:"totalErrors"`
+	ErrorRate   float64        `json:"errorRate"`
+	ErrorsCount map[string]int `json:"errorsCount"`
+}
+
 // StreamSummary stores summary of stream messages sent and received
 type StreamSummary struct {
 	TotalStreamMessagesSent     int `json:"totalStreamMessagesSent"`
@@ -77,6 +85,9 @@ type BenchmarkOutput struct {
 	Parameters Parameters        `json:"benchmarkParameters"`
 	Latencies  map[string]string `json:"latencies"`
 	Summary    Summary           `json:"summary"`
+
+	// ErrorSummary sums up the errors encountered (if any). Is nil if no errors have been encountered
+	ErrorSummary *ErrorSummary `json:"errorSummary,omitempty"`
 
 	// StreamSummary is available only for streaming benchmark. It is nil and
 	// omitted in unary benchmark.
@@ -245,9 +256,7 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 		zap.Time("startTime", start),
 	)
 
-	// Print out errors
-	// TODO: allow errors to be printed in JSON format for output consistency
-	overall.printErrors(out)
+	errors := overall.getErrorSummary()
 
 	latencyValues := overall.getLatencies()
 
@@ -272,13 +281,13 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 	}
 
 	if formatAsJSON {
-		outputJSON(out, parameters, latencyValues, summary, streamSummary)
+		outputJSON(out, parameters, latencyValues, summary, streamSummary, errors)
 	} else {
-		outputPlaintext(out, latencyValues, summary, streamSummary)
+		outputPlaintext(out, latencyValues, summary, streamSummary, errors)
 	}
 }
 
-func outputJSON(out output, parameters Parameters, latencyValues map[float64]time.Duration, summary Summary, streamSummary *StreamSummary) {
+func outputJSON(out output, parameters Parameters, latencyValues map[float64]time.Duration, summary Summary, streamSummary *StreamSummary, errorSummary *ErrorSummary) {
 	latencies := make(map[string]string, len(_quantiles))
 	for _, quantile := range _quantiles {
 		latencies[fmt.Sprintf("%.4f", quantile)] = latencyValues[quantile].String()
@@ -288,6 +297,7 @@ func outputJSON(out output, parameters Parameters, latencyValues map[float64]tim
 		Parameters:    parameters,
 		Latencies:     latencies,
 		Summary:       summary,
+		ErrorSummary:  errorSummary,
 		StreamSummary: streamSummary,
 	}
 
@@ -298,7 +308,10 @@ func outputJSON(out output, parameters Parameters, latencyValues map[float64]tim
 	out.Printf("%s\n", jsonOutput)
 }
 
-func outputPlaintext(out output, latencyValues map[float64]time.Duration, summary Summary, streamSummary *StreamSummary) {
+func outputPlaintext(out output, latencyValues map[float64]time.Duration, summary Summary, streamSummary *StreamSummary, errorSummary *ErrorSummary) {
+	// Print errors
+	printErrors(out, errorSummary)
+
 	// Print out latencies
 	printLatencies(out, latencyValues)
 
@@ -328,6 +341,19 @@ func printLatencies(out output, latencyValues map[float64]time.Duration) {
 	for _, quantile := range _quantiles {
 		out.Printf("  %.4f: %v\n", quantile, latencyValues[quantile])
 	}
+}
+
+func printErrors(out output, errorSum *ErrorSummary) {
+	if errorSum == nil {
+		return
+	}
+	out.Printf("Errors:\n")
+	for _, k := range sorted.MapKeys(errorSum.ErrorsCount) {
+		v := errorSum.ErrorsCount[k]
+		out.Printf("  %4d: %v\n", v, k)
+	}
+	out.Printf("Total errors: %v\n", errorSum.TotalErrors)
+	out.Printf("Error rate: %.4f%%\n", errorSum.ErrorRate)
 }
 
 // stopOnInterrupt sets up a signal that will trigger the run to stop.
