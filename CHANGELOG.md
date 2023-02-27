@@ -1,8 +1,8 @@
 Changelog
 =========
 
-# Unreleased (0.22.0-dev)
-* Nothing yet
+# 0.22.0 (2023-02-27)
+* Fix: output benchmark errors in JSON format.
 
 # 0.21.0 (2021-09-01)
 * Fix gRPC server stream handling to be compatible with Java gRPC server.
