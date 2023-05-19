@@ -45,6 +45,7 @@ func NewDescriptorProviderReflection(args ReflectionArgs) (DescriptorProvider, e
 
 	conn, err := grpc.DialContext(context.Background(),
 		r.Scheme()+":///", // minimal target to dial registered host:port pairs
+		grpc.WithAuthority(strings.Join(args.Peers, ",")),
 		grpc.WithTimeout(args.Timeout),
 		grpc.WithBlock(),
 		grpc.WithInsecure())
