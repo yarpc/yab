@@ -379,7 +379,7 @@ func createJaegerTracer(opts Options, out output) (opentracing.Tracer, io.Closer
 		// throttling threshold. Better to use "always false" sampling and
 		// only enable the span when we have not hit the throttling
 		// threshold.
-		jaeger_config.Sampler(jaeger.NewConstSampler(false)),
+		jaeger_config.Sampler(jaeger.NewConstSampler(opts.TOpts.ForceJaegerSample)),
 		jaeger_config.Reporter(jaeger.NewNullReporter()),
 	)
 	if err != nil {
@@ -389,6 +389,9 @@ func createJaegerTracer(opts Options, out output) (opentracing.Tracer, io.Closer
 }
 
 func getTracer(opts Options, out output) (opentracing.Tracer, io.Closer) {
+	if !opts.TOpts.Jaeger && opts.TOpts.ForceJaegerSample {
+		out.Fatalf("Cannot force Jaeger sampling without enabling Jaeger")
+	}
 	if opts.TOpts.Jaeger && !opts.TOpts.NoJaeger {
 		return createJaegerTracer(opts, out)
 	}

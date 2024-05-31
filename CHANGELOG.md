@@ -1,6 +1,9 @@
 Changelog
 =========
 
+# Unreleased
+* Introduce new options --force-jaeger-sample to ensure yab requests are traced.
+
 # 0.22.0 (2023-02-27)
 * Fix: output benchmark errors in JSON format.
 
