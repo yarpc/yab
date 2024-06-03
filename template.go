@@ -50,12 +50,13 @@ type template struct {
 	RoutingKey      string `yaml:"routingKey" yaml-aliases:"routingkey,routing-key,rk"`
 	RoutingDelegate string `yaml:"routingDelegate" yaml-aliases:"routingdelegate,routing-delegate,rd"`
 
-	Headers  map[string]string             `yaml:"headers"`
-	Baggage  map[string]string             `yaml:"baggage"`
-	Jaeger   bool                          `yaml:"jaeger"`
-	Request  map[interface{}]interface{}   `yaml:"request"`
-	Requests []map[interface{}]interface{} `yaml:"requests"`
-	Timeout  time.Duration                 `yaml:"timeout"`
+	Headers           map[string]string             `yaml:"headers"`
+	Baggage           map[string]string             `yaml:"baggage"`
+	Jaeger            bool                          `yaml:"jaeger"`
+	ForceJaegerSample bool                          `yaml:"forceJaegerSample" yaml-aliases:"forcejaegersample,force-jaeger-sample"`
+	Request           map[interface{}]interface{}   `yaml:"request"`
+	Requests          []map[interface{}]interface{} `yaml:"requests"`
+	Timeout           time.Duration                 `yaml:"timeout"`
 }
 
 func readYAMLFile(yamlTemplate string, templateArgs map[string]string, opts *Options) error {
@@ -150,6 +151,9 @@ func readYAMLRequest(base string, contents []byte, templateArgs map[string]strin
 	opts.ROpts.Baggage = merge(opts.ROpts.Baggage, t.Baggage)
 	if t.Jaeger {
 		opts.TOpts.Jaeger = true
+		if t.ForceJaegerSample {
+			opts.TOpts.ForceJaegerSample = true
+		}
 	}
 
 	if t.Thrift != "" {

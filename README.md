@@ -96,6 +96,8 @@ Transport Options:
                                  traffic group.
       --jaeger                   Use the Jaeger tracing client to send Uber
                                  style traces and baggage headers
+      --force-jaeger-sample      If Jaeger tracing is enabled with --jaeger, force all requests
+                                 to be sampled.
   -T, --topt=                    Transport options for TChannel, protocol
                                  headers for HTTP
       --http-method=             The HTTP method to use (default: POST)

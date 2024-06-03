@@ -65,9 +65,10 @@ import (
 //go:generate protoc --go_out=plugins=grpc:. ./testdata/protobuf/simple/simple.proto
 
 var integrationTests = []struct {
-	call    int32
-	wantRes string
-	wantErr string
+	call            int32
+	wantRes         string
+	wantErr         string
+	shouldbesampled bool
 }{
 	{
 		call:    0,
@@ -80,6 +81,11 @@ var integrationTests = []struct {
 	{
 		call:    5,
 		wantRes: `"result": 5`,
+	},
+	{
+		call:            5,
+		wantRes:         `"result": 5`,
+		shouldbesampled: true,
 	},
 }
 
@@ -100,8 +106,13 @@ func verifyBaggage(ctx context.Context) error {
 		return errors.New("missing span")
 	}
 
-	if _, ok := span.Context().(jaeger.SpanContext); !ok {
+	spanContext, ok := span.Context().(jaeger.SpanContext)
+	if !ok {
 		return errors.New("trace context is not from jaeger")
+	}
+
+	if yarpc.CallFromContext(ctx).Header("shouldbesampled") == "true" && !spanContext.IsSampled() {
+		return errors.New("span is expected to be sampled")
 	}
 
 	val := span.BaggageItem("baggagekey")
@@ -267,10 +278,14 @@ func TestIntegrationProtocols(t *testing.T) {
 					ThriftDisableEnvelopes: c.disableEnvelope,
 				},
 				TOpts: TransportOptions{
-					ServiceName: "foo",
-					Peers:       []string{peer},
-					Jaeger:      true,
+					ServiceName:       "foo",
+					Peers:             []string{peer},
+					Jaeger:            true,
+					ForceJaegerSample: tt.shouldbesampled,
 				},
+			}
+			if tt.shouldbesampled {
+				opts.ROpts.Headers["shouldbesampled"] = "true"
 			}
 
 			gotOut, gotErr := runTestWithOpts(opts)
