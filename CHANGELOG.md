@@ -1,7 +1,7 @@
 Changelog
 =========
 
-# Unreleased
+# 0.23.0 (2024-06-13)
 * Introduce new options --force-jaeger-sample to ensure yab requests are traced.
 
 # 0.22.0 (2023-02-27)
