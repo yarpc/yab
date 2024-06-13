@@ -39,6 +39,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/uber/jaeger-client-go"
 	"github.com/uber/tchannel-go/testutils"
 	"github.com/uber/tchannel-go/thrift"
 	"go.uber.org/thriftrw/protocol"
@@ -1237,6 +1238,24 @@ func TestGetTracer(t *testing.T) {
 		{
 			opts: Options{
 				TOpts: TransportOptions{
+					CallerName:        "test",
+					Jaeger:            true,
+					ForceJaegerSample: false,
+				},
+			},
+		},
+		{
+			opts: Options{
+				TOpts: TransportOptions{
+					CallerName:        "test",
+					Jaeger:            true,
+					ForceJaegerSample: true,
+				},
+			},
+		},
+		{
+			opts: Options{
+				TOpts: TransportOptions{
 					CallerName: "test",
 					Jaeger:     true,
 					NoJaeger:   true,
@@ -1279,6 +1298,12 @@ func TestGetTracer(t *testing.T) {
 			continue
 		}
 
+		if jaegerTracer, ok := tracer.(*jaeger.Tracer); assert.True(t, ok, "expected a Jaeger tracer") {
+			constSampler, ok := jaegerTracer.Sampler().(*jaeger.ConstSampler)
+			if assert.True(t, ok, "expected a ConstSampler") {
+				assert.Equal(t, tt.opts.TOpts.ForceJaegerSample, constSampler.Decision, "expected const sampler to be configured correctly")
+			}
+		}
 		assert.NotEqual(t, opentracing.NoopTracer{}, tracer, "Expected %+v to return real tracer")
 	}
 }

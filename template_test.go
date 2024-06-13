@@ -76,6 +76,7 @@ func TestTemplate(t *testing.T) {
 	assert.Equal(t, "rd", opts.TOpts.RoutingDelegate)
 	assert.Equal(t, map[string]string{"baggage1": "value1", "baggage2": "value2"}, opts.ROpts.Baggage)
 	assert.Equal(t, true, opts.TOpts.Jaeger)
+	assert.Equal(t, true, opts.TOpts.ForceJaegerSample)
 	assert.Equal(t, "location:\n  cityId: 1\n  latitude: 37.7\n  longitude: -122.4\n  message: true\n", opts.ROpts.RequestJSON)
 	assert.Equal(t, timeMillisFlag(4500*time.Millisecond), opts.ROpts.Timeout)
 	assert.True(t, opts.ROpts.ThriftDisableEnvelopes)
@@ -273,6 +274,7 @@ func TestTemplateAlias(t *testing.T) {
 		wantRoutingKey            string
 		wantRoutingDelegate       string
 		wantDisableThriftEnvelope *bool
+		wantForceJaegerSample     bool
 	}{
 		{
 			templates: []string{
@@ -309,6 +311,14 @@ func TestTemplateAlias(t *testing.T) {
 			},
 			wantDisableThriftEnvelope: new(bool),
 		},
+		{
+			templates: []string{
+				`forceJaegerSample: true`,
+				`forcejaegersample: true`,
+				`force-jaeger-sample: true`,
+			},
+			wantForceJaegerSample: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -321,6 +331,7 @@ func TestTemplateAlias(t *testing.T) {
 				assert.Equal(t, tt.wantRoutingKey, templ.RoutingKey, "routing key aliases expanded")
 				assert.Equal(t, tt.wantRoutingDelegate, templ.RoutingDelegate, "routing delegate aliases expanded")
 				assert.Equal(t, tt.wantDisableThriftEnvelope, templ.DisableThriftEnvelope, "disable thrift envelope aliases expanded")
+				assert.Equal(t, tt.wantForceJaegerSample, templ.ForceJaegerSample, "force jaeger sample aliases expanded")
 			})
 		}
 	}
