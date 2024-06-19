@@ -236,7 +236,7 @@ func TestProtobufErrorDetails(t *testing.T) {
 			source:        source,
 			method:        "Bar/Baz",
 			err:           yarpcerrors.FromError(fmt.Errorf("this is a test error")).WithDetails([]byte{0x8, 0x1, 0x12}),
-			wantErr:       fmt.Errorf("could not unmarshal error details unexpected EOF"),
+			wantErr:       fmt.Errorf("could not unmarshal error details"),
 			wantOutAsJSON: "null",
 		},
 		{
