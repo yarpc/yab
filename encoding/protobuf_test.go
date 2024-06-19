@@ -95,7 +95,7 @@ func TestProtobufRequest(t *testing.T) {
 			method: "Bar/Baz",
 			desc:   "invalid field in request input",
 			bsIn:   []byte(`{"foo": "1"}`),
-			errMsg: "Message type Foo has no known field named foo",
+			errMsg: "message type Foo has no known field named foo",
 		},
 		{
 			method: "Bar/Baz",
