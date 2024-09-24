@@ -32,8 +32,7 @@ type ReflectionArgs struct {
 // NewDescriptorProviderReflection returns a DescriptorProvider that reaches
 // out to a reflection server to access file descriptors.
 func NewDescriptorProviderReflection(args ReflectionArgs) (DescriptorProvider, error) {
-	r, deregisterScheme := GenerateAndRegisterManualResolver()
-	defer deregisterScheme()
+	r := GenerateAndRegisterManualResolver()
 	peers := make([]resolver.Address, len(args.Peers))
 	for i, p := range args.Peers {
 		if strings.Contains(p, "://") {
@@ -127,9 +126,9 @@ func wrapReflectionError(err error) error {
 	return fmt.Errorf("error in protobuf reflection: %v", err)
 }
 
-func GenerateAndRegisterManualResolver() (*manual.Resolver, func()) {
+func GenerateAndRegisterManualResolver() *manual.Resolver {
 	scheme := strconv.FormatInt(time.Now().UnixNano(), 36)
 	r := manual.NewBuilderWithScheme(scheme)
 	resolver.Register(r)
-	return r, func() { resolver.UnregisterForTesting(scheme) }
+	return r
 }
