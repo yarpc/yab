@@ -3,7 +3,6 @@ package protobuf
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -32,7 +31,6 @@ type ReflectionArgs struct {
 // NewDescriptorProviderReflection returns a DescriptorProvider that reaches
 // out to a reflection server to access file descriptors.
 func NewDescriptorProviderReflection(args ReflectionArgs) (DescriptorProvider, error) {
-	r := GenerateAndRegisterManualResolver()
 	peers := make([]resolver.Address, len(args.Peers))
 	for i, p := range args.Peers {
 		if strings.Contains(p, "://") {
@@ -40,7 +38,7 @@ func NewDescriptorProviderReflection(args ReflectionArgs) (DescriptorProvider, e
 		}
 		peers[i] = resolver.Address{Addr: p, Type: resolver.Backend}
 	}
-	r.InitialState(resolver.State{Addresses: peers})
+	r := GetOrGenerateAndRegisterManualResolver(args.Service, peers)
 
 	conn, err := grpc.DialContext(context.Background(),
 		r.Scheme()+":///", // minimal target to dial registered host:port pairs
@@ -126,9 +124,21 @@ func wrapReflectionError(err error) error {
 	return fmt.Errorf("error in protobuf reflection: %v", err)
 }
 
-func GenerateAndRegisterManualResolver() *manual.Resolver {
-	scheme := strconv.FormatInt(time.Now().UnixNano(), 36)
+func GetOrGenerateAndRegisterManualResolver(service string, peers []resolver.Address) *manual.Resolver {
+	scheme := "dest-" + service
+	newState := resolver.State{Addresses: peers}
+
+	rb := resolver.Get(scheme)
+	if rb != nil {
+		if r, ok := rb.(*manual.Resolver); ok {
+			r.InitialState(newState)
+			return r
+		}
+	}
+
 	r := manual.NewBuilderWithScheme(scheme)
 	resolver.Register(r)
+	r.InitialState(newState)
+
 	return r
 }
