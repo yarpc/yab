@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jhump/protoreflect/desc"
@@ -17,6 +18,8 @@ import (
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
 )
+
+var resolverMutex sync.Mutex
 
 // ReflectionArgs are args for constructing a DescriptorProvider that reaches out to a reflection server.
 type ReflectionArgs struct {
@@ -38,6 +41,7 @@ func NewDescriptorProviderReflection(args ReflectionArgs) (DescriptorProvider, e
 		}
 		peers[i] = resolver.Address{Addr: p, Type: resolver.Backend}
 	}
+	resolverMutex.Lock()
 	r := GetOrGenerateAndRegisterManualResolver(args.Service, peers)
 
 	conn, err := grpc.DialContext(context.Background(),
@@ -45,6 +49,9 @@ func NewDescriptorProviderReflection(args ReflectionArgs) (DescriptorProvider, e
 		grpc.WithTimeout(args.Timeout),
 		grpc.WithBlock(),
 		grpc.WithInsecure())
+
+	resolverMutex.Unlock()
+
 	if err != nil {
 		return nil, fmt.Errorf("could not reach reflection server: %s", err)
 	}
