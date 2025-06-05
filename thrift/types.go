@@ -167,7 +167,13 @@ func parseBinaryMap(v map[interface{}]interface{}) ([]byte, error) {
 func parseBinary(value interface{}) ([]byte, error) {
 	switch v := value.(type) {
 	case string:
-		return []byte(v), nil
+		dst := make([]byte, base64.StdEncoding.DecodedLen(len(v)))
+		n, err := base64.StdEncoding.Decode(dst, []byte(v))
+		if err != nil {
+			return nil, err
+		}
+		dst = dst[:n]
+		return dst, nil
 	case []byte:
 		return v, nil
 	case []interface{}:
