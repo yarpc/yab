@@ -107,18 +107,23 @@ func TestValueFromWireSuccess(t *testing.T) {
 			spec: &compile.StringSpec{},
 			v:    "str",
 		},
+		// binary has a more complicated input/output pair due to base64 encoding
+		// and how we can *return* binary (which json base64 encodes for you) but
+		// requests cannot *provide* binary.
 		{
-			w:    wire.NewValueBinary([]byte("foo")),
-			spec: &compile.BinarySpec{},
-			v:    []byte("foo"),
+			skipToWire: true,
+			w:          wire.NewValueBinary([]byte("foo")),
+			spec:       &compile.BinarySpec{},
+			v:          map[string][]byte{"base64": []byte("foo")},
 		},
 		{
-			w: wire.NewValueBinary([]byte("foo")),
+			skipToWire: true,
+			w:          wire.NewValueBinary([]byte("foo")),
 			spec: &compile.TypedefSpec{
 				Name:   "Blob",
 				Target: &compile.BinarySpec{},
 			},
-			v: []byte("foo"),
+			v: map[string][]byte{"base64": []byte("foo")},
 		},
 		{
 			w: wire.NewValueString("str"),

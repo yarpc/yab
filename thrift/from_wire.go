@@ -163,7 +163,18 @@ func valueFromWire(spec compile.TypeSpec, w wire.Value) (interface{}, error) {
 		if _, ok := spec.(*compile.StringSpec); ok {
 			result = w.GetString()
 		} else {
-			result = w.GetBinary()
+			// request encoding allows either:
+			//  "data verbatim"
+			// or a base64 encoded:
+			//  {"base64":"ZGF0YSB2ZXJiYXRpbQ=="}
+			//
+			// match that, for now always encoding so
+			// it can be differentiated from the old format
+			// with an inline base64 value:
+			//  "ZGF0YSB2ZXJiYXRpbQ=="
+			result = map[string][]byte{
+				"base64": w.GetBinary(),
+			}
 		}
 	case wire.TStruct:
 		result, err = valueFromWireStruct(spec.(*compile.StructSpec), w.GetStruct())
