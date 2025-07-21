@@ -22,18 +22,18 @@ package encoding
 
 import (
 	"io/ioutil"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"gopkg.in/yaml.v2"
 
-	"path/filepath"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/thriftrw/compile"
+
 	"github.com/yarpc/yab/thrift"
 	"github.com/yarpc/yab/transport"
-	"go.uber.org/thriftrw/compile"
 )
 
 func getSpec(t *testing.T, thriftFile string) compile.TypeSpec {
@@ -45,7 +45,7 @@ func getSpec(t *testing.T, thriftFile string) compile.TypeSpec {
 	return spec
 }
 
-func getSerializer(typeSpec compile.TypeSpec) thriftSerializer {
+func getSerializer(typeSpec compile.TypeSpec, binaryEnvelope bool) thriftSerializer {
 	// Not inline to avoid go vet unkeyed literal error.
 	argSpec := compile.ArgsSpec{{
 		ID:       0,
@@ -61,6 +61,9 @@ func getSerializer(typeSpec compile.TypeSpec) thriftSerializer {
 			ResultSpec: &compile.ResultSpec{
 				ReturnType: typeSpec,
 			},
+		},
+		opts: thrift.Options{
+			Base64ResponseEnvelope: binaryEnvelope,
 		},
 	}
 }
@@ -88,7 +91,7 @@ func TestYAMLToThrift(t *testing.T) {
 		inContents, err := ioutil.ReadFile(inFile)
 		require.NoError(t, err, "Failed to read input file: %v", inFile)
 
-		serializer := getSerializer(getSpec(t, thriftFile))
+		serializer := getSerializer(getSpec(t, thriftFile), true)
 		req, err := serializer.Request(inContents)
 		require.NoError(t, err, "Failed to get request")
 
