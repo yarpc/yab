@@ -37,7 +37,7 @@ func getFieldMap(fields compile.FieldGroup) map[int16]*compile.FieldSpec {
 	return specs
 }
 
-func valueFromWireStruct(spec *compile.StructSpec, w wire.Struct) (map[string]interface{}, error) {
+func valueFromWireStruct(spec *compile.StructSpec, w wire.Struct, opt wireDecodeOptions) (map[string]interface{}, error) {
 	result := make(map[string]interface{})
 	specs := getFieldMap(spec.Fields)
 	for _, f := range w.Fields {
@@ -48,7 +48,7 @@ func valueFromWireStruct(spec *compile.StructSpec, w wire.Struct) (map[string]in
 		}
 
 		var err error
-		result[fSpec.Name], err = valueFromWire(fSpec.Type, f.Value)
+		result[fSpec.Name], err = valueFromWire(fSpec.Type, f.Value, opt)
 		if err != nil {
 			return nil, specStructFieldMismatch{fSpec.Name, err}
 		}
@@ -71,12 +71,12 @@ func valueFromWireStruct(spec *compile.StructSpec, w wire.Struct) (map[string]in
 	return result, nil
 }
 
-func valueFromWireList(spec *compile.ListSpec, w wire.ValueList) ([]interface{}, error) {
+func valueFromWireList(spec *compile.ListSpec, w wire.ValueList, opt wireDecodeOptions) ([]interface{}, error) {
 	result := make([]interface{}, w.Size())
 	values := wire.ValueListToSlice(w)
 	for i, v := range values {
 		var err error
-		result[i], err = valueFromWire(spec.ValueSpec, v)
+		result[i], err = valueFromWire(spec.ValueSpec, v, opt)
 		if err != nil {
 			return nil, specListItemMismatch{i, err}
 		}
@@ -84,23 +84,23 @@ func valueFromWireList(spec *compile.ListSpec, w wire.ValueList) ([]interface{},
 	return result, nil
 }
 
-func valueFromWireSet(spec *compile.SetSpec, w wire.ValueList) ([]interface{}, error) {
+func valueFromWireSet(spec *compile.SetSpec, w wire.ValueList, opt wireDecodeOptions) ([]interface{}, error) {
 	// Since wire.Set and wire.List are exactly the same type, we can cast one to the other.
 	return valueFromWireList(&compile.ListSpec{
 		ValueSpec: spec.ValueSpec,
-	}, w)
+	}, w, opt)
 }
 
-func valueFromWireMap(spec *compile.MapSpec, w wire.MapItemList) (map[string]interface{}, error) {
+func valueFromWireMap(spec *compile.MapSpec, w wire.MapItemList, opt wireDecodeOptions) (map[string]interface{}, error) {
 	result := make(map[string]interface{}, w.Size())
 	values := wire.MapItemListToSlice(w)
 	for _, v := range values {
-		key, err := valueFromWire(spec.KeySpec, v.Key)
+		key, err := valueFromWire(spec.KeySpec, v.Key, opt)
 		if err != nil {
 			return nil, specMapItemMismatch{"key", err}
 		}
 
-		value, err := valueFromWire(spec.ValueSpec, v.Value)
+		value, err := valueFromWire(spec.ValueSpec, v.Value, opt)
 		if err != nil {
 			return nil, specMapItemMismatch{"value", err}
 		}
@@ -131,8 +131,12 @@ func mapEnumValueToName(enumSpec *compile.EnumSpec, result int32) interface{} {
 	return fmt.Sprintf("%v(%v)", enumSpec.Name, result)
 }
 
+type wireDecodeOptions struct {
+	binaryEnvelope bool
+}
+
 // valueFromWire converts the wire.Value to the specific type it represents.
-func valueFromWire(spec compile.TypeSpec, w wire.Value) (interface{}, error) {
+func valueFromWire(spec compile.TypeSpec, w wire.Value, opt wireDecodeOptions) (interface{}, error) {
 	if spec.TypeCode() != w.Type() {
 		return nil, specTypeMismatch{specified: spec.TypeCode(), got: w.Type()}
 	}
@@ -163,16 +167,38 @@ func valueFromWire(spec compile.TypeSpec, w wire.Value) (interface{}, error) {
 		if _, ok := spec.(*compile.StringSpec); ok {
 			result = w.GetString()
 		} else {
-			result = w.GetBinary()
+			if opt.binaryEnvelope {
+				// request encoding allows either:
+				//  "data verbatim"
+				// or a base64 encoded:
+				//  {"base64":"ZGF0YSB2ZXJiYXRpbQ=="}
+				//
+				// match that, for now always encoding so
+				// it can be differentiated from the old format
+				// with an inline base64 value:
+				//  "ZGF0YSB2ZXJiYXRpbQ=="
+				result = map[string][]byte{
+					"base64": w.GetBinary(),
+				}
+			} else {
+				// default but legacy behavior, preserved for compatibility:
+				// base64 encoded data returned inline.
+				//
+				// this matches protobuf's behavior, but does NOT match yab's
+				// input formats for thrift:
+				// - inline non-encoded / literal (convenient for json-safe data)
+				// - base64-enveloped-and-encoded
+				result = w.GetBinary()
+			}
 		}
 	case wire.TStruct:
-		result, err = valueFromWireStruct(spec.(*compile.StructSpec), w.GetStruct())
+		result, err = valueFromWireStruct(spec.(*compile.StructSpec), w.GetStruct(), opt)
 	case wire.TList:
-		result, err = valueFromWireList(spec.(*compile.ListSpec), w.GetList())
+		result, err = valueFromWireList(spec.(*compile.ListSpec), w.GetList(), opt)
 	case wire.TSet:
-		result, err = valueFromWireSet(spec.(*compile.SetSpec), w.GetSet())
+		result, err = valueFromWireSet(spec.(*compile.SetSpec), w.GetSet(), opt)
 	case wire.TMap:
-		result, err = valueFromWireMap(spec.(*compile.MapSpec), w.GetMap())
+		result, err = valueFromWireMap(spec.(*compile.MapSpec), w.GetMap(), opt)
 	default:
 		panic(fmt.Sprintf("valueFromWire got an unknown type: %v", spec))
 	}

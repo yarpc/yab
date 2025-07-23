@@ -1,2 +1,3 @@
 arg:
-  b: !!binary dGVzdGRhdGE=
+  b:
+    base64: dGVzdGRhdGE=

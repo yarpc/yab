@@ -111,10 +111,11 @@ func NewSerializer(opts Options, resolved resolvedProtocolEncoding) (encoding.Se
 		}
 
 		return encoding.NewThrift(encoding.ThriftParams{
-			File:        opts.ROpts.ThriftFile,
-			Method:      opts.ROpts.Procedure,
-			Envelope:    envelope,
-			Multiplexed: opts.ROpts.ThriftMultiplexed,
+			File:                   opts.ROpts.ThriftFile,
+			Method:                 opts.ROpts.Procedure,
+			Envelope:               envelope,
+			Multiplexed:            opts.ROpts.ThriftMultiplexed,
+			Base64ResponseEnvelope: opts.ROpts.ThriftBase64ResponseEnvelope,
 		})
 	case encoding.Protobuf:
 		descSource, err := newProtoDescriptorProvider(opts.ROpts, opts.TOpts, resolved)
