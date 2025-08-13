@@ -1,6 +1,11 @@
 Changelog
 =========
 
+# 0.25.0 (2025-08-12)
+* Fix invalid reference to syscall.recvmsg
+* Optionally encode binary in thrift responses in the same way as requests
+* Fix GH actions cache version
+
 # 0.24.0 (2025-01-27)
 * Fix add default authority as service name for reflection call
 * Added arm64 builds to release
