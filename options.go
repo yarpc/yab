@@ -95,6 +95,10 @@ type TransportOptions struct {
 	HTTPMethod          string            `long:"http-method" description:"The HTTP method to use"`
 	GRPCMaxResponseSize int               `long:"grpc-max-response-size" description:"Maximum response size for gRPC requests. Default value is 4MB"`
 	ForceJaegerSample   bool              `long:"force-jaeger-sample" description:"Force all requests to be sampled for Jaeger tracing (use with --jaeger)"`
+
+	// Enables HTTP2 transport
+	UseHTTP2 bool `long:"http2" description:"Enable HTTP/2 for HTTP transport"`
+
 	// This is a hack to work around go-flags not allowing disabling flags:
 	// https://github.com/jessevdk/go-flags/issues/191
 	// Do not specify this value in a defaults.ini file as it is not possible

@@ -185,6 +185,7 @@ func getTransport(opts TransportOptions, resolved resolvedProtocolEncoding, trac
 		Encoding:        resolved.enc.String(),
 		URLs:            opts.Peers,
 		Tracer:          tracer,
+		UseHTTP2:        opts.UseHTTP2,
 	}
 	return transport.NewHTTP(hopts)
 }
