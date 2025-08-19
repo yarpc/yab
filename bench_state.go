@@ -22,6 +22,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"time"
 
@@ -139,7 +140,7 @@ func (s *benchmarkState) getQuantile(q float64) time.Duration {
 	rightBias := exactIdx - float64(leftIdx)
 	leftBias := 1 - rightBias
 
-	return time.Duration(float64(s.latencies[leftIdx])*leftBias + float64(s.latencies[rightIdx])*rightBias)
+	return time.Duration(math.Round(float64(s.latencies[leftIdx])*leftBias + float64(s.latencies[rightIdx])*rightBias))
 }
 
 type byDuration []time.Duration
