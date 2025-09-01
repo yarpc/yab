@@ -22,13 +22,17 @@ package transport
 
 import (
 	"bytes"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
+
+	"golang.org/x/net/http2"
 
 	"github.com/opentracing/opentracing-go"
 	"golang.org/x/net/context"
@@ -51,6 +55,9 @@ type HTTPOptions struct {
 	ShardKey        string
 	Encoding        string
 	Tracer          opentracing.Tracer
+
+	// HTTP/2 specific options
+	UseHTTP2 bool
 }
 
 var (
@@ -70,11 +77,25 @@ func NewHTTP(opts HTTPOptions) (Transport, error) {
 		opts.Method = "POST"
 	}
 
+	var transport http.RoundTripper
+
+	if opts.UseHTTP2 {
+		transport = &http2.Transport{
+			AllowHTTP: true,
+			DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
+				var d net.Dialer
+				return d.DialContext(ctx, network, addr)
+			},
+		}
+	} else {
+		transport = &http.Transport{}
+	}
+
 	return &httpTransport{
 		opts: opts,
 		// Use independent HTTP clients for each transport.
 		client: &http.Client{
-			Transport: &http.Transport{},
+			Transport: transport,
 		},
 		tracer: opts.Tracer,
 	}, nil
