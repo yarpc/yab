@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 0.26.0 (2025-09-01)
+* Add http2 support to yab
+* Fix flaky unit test TestBenchmarkStateGetQuantileSuccess
+
 # 0.25.0 (2025-08-12)
 * Fix invalid reference to syscall.recvmsg
 * Optionally encode binary in thrift responses in the same way as requests
