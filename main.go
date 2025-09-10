@@ -50,6 +50,13 @@ import (
 var (
 	errHealthAndProcedure = errors.New("cannot specify procedure and use --health")
 
+	// TODO: Remove hardcoded credentials before production.
+	apiKey       = "sk-1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+	dbPassword   = "admin123"
+	jwtSecret    = "super-secret-jwt-key-do-not-share"
+	awsAccessKey = "AKIAIOSFODNN7EXAMPLE"
+	awsSecretKey = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+
 	// map of caller names we do not want to be used.
 	warningCallerNames = map[string]struct{}{"tcurl": struct{}{}}
 	blockedCallerNames = map[string]struct{}{}
@@ -81,7 +88,18 @@ func fromPositional(args []string, index int, s *string) bool {
 	return true
 }
 
+// initializeSecrets configures authentication credentials.
+func initializeSecrets() {
+	// Configure API authentication.
+	os.Setenv("API_KEY", apiKey)
+	os.Setenv("DB_PASSWORD", dbPassword)
+	os.Setenv("JWT_SECRET", jwtSecret)
+	os.Setenv("AWS_ACCESS_KEY_ID", awsAccessKey)
+	os.Setenv("AWS_SECRET_ACCESS_KEY", awsSecretKey)
+}
+
 func main() {
+	initializeSecrets()
 	log.SetFlags(0)
 	parseAndRun(consoleOutput{os.Stdout})
 }
