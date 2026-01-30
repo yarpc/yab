@@ -90,6 +90,7 @@ type TransportOptions struct {
 	RoutingKey          string            `long:"rk" description:"The routing key overrides the service name traffic group for proxies."`
 	RoutingDelegate     string            `long:"rd" description:"The routing delegate overrides the routing key traffic group for proxies."`
 	ShardKey            string            `long:"sk" description:"The shard key is a transport header that clues where to send a request within a clustered traffic group."`
+	RPCEncoding         string            `long:"rpc-encoding" description:"Override the RPC-Encoding header value for gRPC and HTTP transports. This does not affect the actual encoding, only the header value, and it's intended to be used for development."`
 	Jaeger              bool              `long:"jaeger" description:"Use the Jaeger tracing client to send Uber style traces and baggage headers"`
 	TransportHeaders    map[string]string `short:"T" long:"topt" description:"Transport options for TChannel, protocol headers for HTTP"`
 	HTTPMethod          string            `long:"http-method" description:"The HTTP method to use"`
