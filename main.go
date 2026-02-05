@@ -371,9 +371,6 @@ func createJaegerTracer(opts Options, out output) (opentracing.Tracer, io.Closer
 	// dispense credits to the client synchronously.
 	tracer, closer, err := jaeger_config.Configuration{
 		ServiceName: opts.TOpts.CallerName,
-		Throttler: &jaeger_config.ThrottlerConfig{
-			SynchronousInitialization: true,
-		},
 	}.NewTracer(
 		// SamplingPriority overrides sampler decision when below
 		// throttling threshold. Better to use "always false" sampling and
