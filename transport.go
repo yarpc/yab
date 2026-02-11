@@ -145,6 +145,11 @@ func getTransport(opts TransportOptions, resolved resolvedProtocolEncoding, trac
 		return nil, errTracerRequired
 	}
 
+	encoding := resolved.enc.String()
+	if opts.RPCEncoding != "" {
+		encoding = opts.RPCEncoding
+	}
+
 	if resolved.protocol == transport.TChannel {
 		hostPorts := getHosts(opts.Peers)
 		remapLocalHost(hostPorts)
@@ -156,7 +161,7 @@ func getTransport(opts TransportOptions, resolved resolvedProtocolEncoding, trac
 			RoutingKey:      opts.RoutingKey,
 			ShardKey:        opts.ShardKey,
 			Peers:           hostPorts,
-			Encoding:        resolved.enc.String(),
+			Encoding:        encoding,
 			TransportOpts:   opts.TransportHeaders,
 			Tracer:          tracer,
 		}
@@ -168,7 +173,7 @@ func getTransport(opts TransportOptions, resolved resolvedProtocolEncoding, trac
 			Addresses:       getHosts(opts.Peers),
 			Tracer:          tracer,
 			Caller:          opts.CallerName,
-			Encoding:        resolved.enc.String(),
+			Encoding:        encoding,
 			RoutingKey:      opts.RoutingKey,
 			RoutingDelegate: opts.RoutingDelegate,
 			MaxResponseSize: opts.GRPCMaxResponseSize,
@@ -182,7 +187,7 @@ func getTransport(opts TransportOptions, resolved resolvedProtocolEncoding, trac
 		RoutingDelegate: opts.RoutingDelegate,
 		RoutingKey:      opts.RoutingKey,
 		ShardKey:        opts.ShardKey,
-		Encoding:        resolved.enc.String(),
+		Encoding:        encoding,
 		URLs:            opts.Peers,
 		Tracer:          tracer,
 		UseHTTP2:        opts.UseHTTP2,
