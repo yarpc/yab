@@ -145,11 +145,6 @@ func getTransport(opts TransportOptions, resolved resolvedProtocolEncoding, trac
 		return nil, errTracerRequired
 	}
 
-	encoding := resolved.enc.String()
-	if opts.RPCEncoding != "" {
-		encoding = opts.RPCEncoding
-	}
-
 	if resolved.protocol == transport.TChannel {
 		hostPorts := getHosts(opts.Peers)
 		remapLocalHost(hostPorts)
@@ -161,7 +156,7 @@ func getTransport(opts TransportOptions, resolved resolvedProtocolEncoding, trac
 			RoutingKey:      opts.RoutingKey,
 			ShardKey:        opts.ShardKey,
 			Peers:           hostPorts,
-			Encoding:        encoding,
+			Encoding:        resolved.enc.String(),
 			TransportOpts:   opts.TransportHeaders,
 			Tracer:          tracer,
 		}
@@ -169,17 +164,25 @@ func getTransport(opts TransportOptions, resolved resolvedProtocolEncoding, trac
 	}
 
 	if resolved.protocol == transport.GRPC {
+		grpcEncoding := resolved.enc.String()
+		if opts.RPCEncoding != "" {
+			grpcEncoding = opts.RPCEncoding
+		}
 		return transport.NewGRPC(transport.GRPCOptions{
 			Addresses:       getHosts(opts.Peers),
 			Tracer:          tracer,
 			Caller:          opts.CallerName,
-			Encoding:        encoding,
+			Encoding:        grpcEncoding,
 			RoutingKey:      opts.RoutingKey,
 			RoutingDelegate: opts.RoutingDelegate,
 			MaxResponseSize: opts.GRPCMaxResponseSize,
 		})
 	}
 
+	httpEncoding := resolved.enc.String()
+	if opts.RPCEncoding != "" {
+		httpEncoding = opts.RPCEncoding
+	}
 	hopts := transport.HTTPOptions{
 		Method:          opts.HTTPMethod,
 		SourceService:   opts.CallerName,
@@ -187,7 +190,7 @@ func getTransport(opts TransportOptions, resolved resolvedProtocolEncoding, trac
 		RoutingDelegate: opts.RoutingDelegate,
 		RoutingKey:      opts.RoutingKey,
 		ShardKey:        opts.ShardKey,
-		Encoding:        encoding,
+		Encoding:        httpEncoding,
 		URLs:            opts.Peers,
 		Tracer:          tracer,
 		UseHTTP2:        opts.UseHTTP2,
