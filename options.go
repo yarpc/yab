@@ -91,7 +91,7 @@ type TransportOptions struct {
 	RoutingDelegate     string            `long:"rd" description:"The routing delegate overrides the routing key traffic group for proxies."`
 	ShardKey            string            `long:"sk" description:"The shard key is a transport header that clues where to send a request within a clustered traffic group."`
 	Jaeger              bool              `long:"jaeger" description:"Use the Jaeger tracing client to send Uber style traces and baggage headers"`
-	TransportHeaders    map[string]string `short:"T" long:"topt" description:"Transport options for TChannel, protocol headers for HTTP"`
+	TransportHeaders    map[string]string `short:"T" long:"topt" description:"Transport options for TChannel, protocol headers for HTTP & gRPC, as a key:value pair per flag"`
 	HTTPMethod          string            `long:"http-method" description:"The HTTP method to use"`
 	GRPCMaxResponseSize int               `long:"grpc-max-response-size" description:"Maximum response size for gRPC requests. Default value is 4MB"`
 	ForceJaegerSample   bool              `long:"force-jaeger-sample" description:"Force all requests to be sampled for Jaeger tracing (use with --jaeger)"`

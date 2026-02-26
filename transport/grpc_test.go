@@ -381,3 +381,203 @@ func (r *testRouter) Choose(_ context.Context, request *transport.Request) (tran
 	}
 	return transport.HandlerSpec{}, fmt.Errorf("no procedure for service %s and name %s", request.Service, request.Procedure)
 }
+
+func TestRequestToYARPCRequest(t *testing.T) {
+	tests := []struct {
+		name    string
+		request *Request
+		want    func(*testing.T, *transport.Request)
+	}{
+		{
+			name: "basic request",
+			request: &Request{
+				TargetService: "test-service",
+				Method:        "test-method",
+				Body:          []byte("test-body"),
+				Headers: map[string]string{
+					"header1": "value1",
+					"header2": "value2",
+				},
+			},
+			want: func(t *testing.T, req *transport.Request) {
+				assert.Equal(t, "test-caller", req.Caller)
+				assert.Equal(t, "test-service", req.Service)
+				assert.Equal(t, transport.Encoding("json"), req.Encoding)
+				assert.Equal(t, "test-method", req.Procedure)
+				val1, ok1 := req.Headers.Get("header1")
+				assert.True(t, ok1)
+				assert.Equal(t, "value1", val1)
+				val2, ok2 := req.Headers.Get("header2")
+				assert.True(t, ok2)
+				assert.Equal(t, "value2", val2)
+				body, err := ioutil.ReadAll(req.Body)
+				require.NoError(t, err)
+				assert.Equal(t, []byte("test-body"), body)
+			},
+		},
+		{
+			name: "transport headers override regular headers",
+			request: &Request{
+				TargetService: "test-service",
+				Method:        "test-method",
+				Body:          []byte("test-body"),
+				Headers: map[string]string{
+					"header1": "original-value",
+					"header2": "value2",
+				},
+				TransportHeaders: map[string]string{
+					"header1": "overridden-value",
+					"header3": "value3",
+				},
+			},
+			want: func(t *testing.T, req *transport.Request) {
+				assert.Equal(t, "test-caller", req.Caller)
+				assert.Equal(t, "test-service", req.Service)
+				assert.Equal(t, "test-method", req.Procedure)
+				// header1 should be overridden by TransportHeaders
+				val1, ok1 := req.Headers.Get("header1")
+				assert.True(t, ok1)
+				assert.Equal(t, "overridden-value", val1)
+				// header2 should still have original value
+				val2, ok2 := req.Headers.Get("header2")
+				assert.True(t, ok2)
+				assert.Equal(t, "value2", val2)
+				// header3 should be from TransportHeaders
+				val3, ok3 := req.Headers.Get("header3")
+				assert.True(t, ok3)
+				assert.Equal(t, "value3", val3)
+			},
+		},
+		{
+			name: "only transport headers",
+			request: &Request{
+				TargetService: "test-service",
+				Method:        "test-method",
+				Body:          []byte("test-body"),
+				TransportHeaders: map[string]string{
+					"transport-header": "transport-value",
+				},
+			},
+			want: func(t *testing.T, req *transport.Request) {
+				val, ok := req.Headers.Get("transport-header")
+				assert.True(t, ok)
+				assert.Equal(t, "transport-value", val)
+			},
+		},
+		{
+			name: "with routing key and delegate",
+			request: &Request{
+				TargetService: "test-service",
+				Method:        "test-method",
+				Body:          []byte("test-body"),
+				ShardKey:      "shard-123",
+			},
+			want: func(t *testing.T, req *transport.Request) {
+				assert.Equal(t, "shard-123", req.ShardKey)
+				assert.Equal(t, "routing-key-test", req.RoutingKey)
+				assert.Equal(t, "routing-delegate-test", req.RoutingDelegate)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			grpcTransport := &grpcTransport{
+				Caller:          "test-caller",
+				Encoding:        "json",
+				RoutingKey:      "routing-key-test",
+				RoutingDelegate: "routing-delegate-test",
+			}
+			yarpcRequest := grpcTransport.requestToYARPCRequest(tt.request)
+			require.NotNil(t, yarpcRequest)
+			tt.want(t, yarpcRequest)
+		})
+	}
+}
+
+func TestRequestToYARPCStreamRequest(t *testing.T) {
+	tests := []struct {
+		name          string
+		grpcTransport *grpcTransport
+		streamRequest *StreamRequest
+		want          func(*testing.T, *transport.StreamRequest)
+	}{
+		{
+			name: "valid stream request",
+			grpcTransport: &grpcTransport{
+				Caller:          "test-caller",
+				Encoding:        "json",
+				RoutingKey:      "routing-key",
+				RoutingDelegate: "routing-delegate",
+			},
+			streamRequest: &StreamRequest{
+				Request: &Request{
+					TargetService: "test-service",
+					Method:        "test-method",
+					Headers: map[string]string{
+						"header1": "value1",
+					},
+					ShardKey: "shard-key",
+				},
+			},
+			want: func(t *testing.T, req *transport.StreamRequest) {
+				require.NotNil(t, req)
+				require.NotNil(t, req.Meta)
+				assert.Equal(t, "test-caller", req.Meta.Caller)
+				assert.Equal(t, "test-service", req.Meta.Service)
+				assert.Equal(t, transport.Encoding("json"), req.Meta.Encoding)
+				assert.Equal(t, "test-method", req.Meta.Procedure)
+				val, ok := req.Meta.Headers.Get("header1")
+				assert.True(t, ok)
+				assert.Equal(t, "value1", val)
+				assert.Equal(t, "shard-key", req.Meta.ShardKey)
+				assert.Equal(t, "routing-key", req.Meta.RoutingKey)
+				assert.Equal(t, "routing-delegate", req.Meta.RoutingDelegate)
+			},
+		},
+		{
+			name:          "nil transport",
+			grpcTransport: nil,
+			streamRequest: &StreamRequest{
+				Request: &Request{
+					TargetService: "test-service",
+					Method:        "test-method",
+				},
+			},
+			want: func(t *testing.T, req *transport.StreamRequest) {
+				assert.Nil(t, req)
+			},
+		},
+		{
+			name: "nil stream request",
+			grpcTransport: &grpcTransport{
+				Caller:   "test-caller",
+				Encoding: "json",
+			},
+			streamRequest: nil,
+			want: func(t *testing.T, req *transport.StreamRequest) {
+				assert.Nil(t, req)
+			},
+		},
+		{
+			name: "nil inner request",
+			grpcTransport: &grpcTransport{
+				Caller:   "test-caller",
+				Encoding: "json",
+			},
+			streamRequest: &StreamRequest{
+				Request: nil,
+			},
+			want: func(t *testing.T, req *transport.StreamRequest) {
+				assert.Nil(t, req)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			yarpcRequest := tt.grpcTransport.requestToYARPCStreamRequest(tt.streamRequest)
+			tt.want(t, yarpcRequest)
+		})
+	}
+}

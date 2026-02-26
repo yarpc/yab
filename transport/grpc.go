@@ -163,12 +163,16 @@ func (t *grpcTransport) requestToYARPCStreamRequest(streamRequest *StreamRequest
 }
 
 func (t *grpcTransport) requestToYARPCRequest(request *Request) *transport.Request {
+	headers := transport.HeadersFromMap(request.Headers)
+	for key, val := range request.TransportHeaders {
+		headers = headers.With(key, val)
+	}
 	return &transport.Request{
 		Caller:          t.Caller,
 		Service:         request.TargetService,
 		Encoding:        transport.Encoding(t.Encoding),
 		Procedure:       request.Method,
-		Headers:         transport.HeadersFromMap(request.Headers),
+		Headers:         headers,
 		ShardKey:        request.ShardKey,
 		RoutingKey:      t.RoutingKey,
 		RoutingDelegate: t.RoutingDelegate,
