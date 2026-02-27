@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"net"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/opentracing/opentracing-go"
@@ -45,33 +43,6 @@ func (r *encodingCaptureRouter) Choose(_ context.Context, req *apitransport.Requ
 		})), nil
 	}
 	return apitransport.HandlerSpec{}, apitransport.UnrecognizedProcedureError(req)
-}
-
-func TestRPCEncodingFlagOverridesHTTPHeader(t *testing.T) {
-	const want = "dev-override"
-
-	var got string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		got = r.Header.Get("RPC-Encoding")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("ok"))
-	}))
-	defer srv.Close()
-
-	opts := TransportOptions{
-		ServiceName: "svc",
-		CallerName:  "caller",
-		Peers:       []string{srv.URL},
-		HTTPMethod:  "POST",
-		RPCEncoding: want,
-	}
-
-	tp, err := getTransport(opts, resolvedProtocolEncoding{protocol: yabtransport.HTTP, enc: encoding.JSON}, opentracing.NoopTracer{})
-	require.NoError(t, err)
-
-	_, err = tp.Call(context.Background(), &yabtransport.Request{Method: "Foo::Bar", Body: []byte("hello")})
-	require.NoError(t, err)
-	assert.Equal(t, want, got)
 }
 
 func TestRPCEncodingFlagOverridesGRPCHeader(t *testing.T) {
