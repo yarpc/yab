@@ -179,10 +179,6 @@ func getTransport(opts TransportOptions, resolved resolvedProtocolEncoding, trac
 		})
 	}
 
-	httpEncoding := resolved.enc.String()
-	if opts.RPCEncoding != "" {
-		httpEncoding = opts.RPCEncoding
-	}
 	hopts := transport.HTTPOptions{
 		Method:          opts.HTTPMethod,
 		SourceService:   opts.CallerName,
@@ -190,7 +186,7 @@ func getTransport(opts TransportOptions, resolved resolvedProtocolEncoding, trac
 		RoutingDelegate: opts.RoutingDelegate,
 		RoutingKey:      opts.RoutingKey,
 		ShardKey:        opts.ShardKey,
-		Encoding:        httpEncoding,
+		Encoding:        resolved.enc.String(),
 		URLs:            opts.Peers,
 		Tracer:          tracer,
 		UseHTTP2:        opts.UseHTTP2,
