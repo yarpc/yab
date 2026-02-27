@@ -164,11 +164,15 @@ func getTransport(opts TransportOptions, resolved resolvedProtocolEncoding, trac
 	}
 
 	if resolved.protocol == transport.GRPC {
+		grpcEncoding := resolved.enc.String()
+		if opts.RPCEncoding != "" {
+			grpcEncoding = opts.RPCEncoding
+		}
 		return transport.NewGRPC(transport.GRPCOptions{
 			Addresses:       getHosts(opts.Peers),
 			Tracer:          tracer,
 			Caller:          opts.CallerName,
-			Encoding:        resolved.enc.String(),
+			Encoding:        grpcEncoding,
 			RoutingKey:      opts.RoutingKey,
 			RoutingDelegate: opts.RoutingDelegate,
 			MaxResponseSize: opts.GRPCMaxResponseSize,
