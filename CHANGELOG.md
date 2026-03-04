@@ -1,6 +1,9 @@
 Changelog
 =========
 
+# 0.27.0 (2026-03-04)
+* New: -en flag to specify the value of rpc-encoding in gRPC
+
 # 0.26.0 (2025-09-01)
 * Add http2 support to yab
 * Fix flaky unit test TestBenchmarkStateGetQuantileSuccess
