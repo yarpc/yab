@@ -229,8 +229,8 @@ func runBenchmark(out output, logger *zap.Logger, allOpts Options, resolved reso
 
 	logger.Info("Benchmark starting.", zap.Any("options", opts))
 	start := time.Now()
-	for i, c := range connections {
-		for j := 0; j < opts.Concurrency; j++ {
+	for j := 0; j < opts.Concurrency; j++ {
+		for i, c := range connections {
 			state := states[i*opts.Concurrency+j]
 
 			wg.Add(1)
