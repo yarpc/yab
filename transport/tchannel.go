@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"maps"
 	"os"
 
 	"github.com/opentracing/opentracing-go"
@@ -38,10 +39,22 @@ import (
 // If this key is used, then the headers are sent as is.
 const rawHeadersKey = "_raw_"
 
+// Headers yab stamps on every outbound TChannel call so that traffic
+// originating from yab can be identified even when --caller is spoofed
+// or left at a generic value.
+const (
+	yabClientHeader = "x-yab-client"
+	yabSourceHeader = "x-yab-source"
+	yabDestHeader   = "x-yab-dest"
+	yabEnvHeader    = "x-yab-env"
+)
+
 type tchan struct {
-	sc          *tchannel.SubChannel
-	callOptions *tchannel.CallOptions
-	tracer      opentracing.Tracer
+	sc            *tchannel.SubChannel
+	callOptions   *tchannel.CallOptions
+	tracer        opentracing.Tracer
+	callerName    string
+	targetService string
 }
 
 // TChannelOptions are used to create a TChannel transport.
@@ -124,9 +137,11 @@ func NewTChannel(opts TChannelOptions) (Transport, error) {
 	applyTChanOptions(callOpts, opts.TransportOpts)
 
 	return &tchan{
-		sc:          ch.GetSubChannel(opts.TargetService),
-		callOptions: callOpts,
-		tracer:      opts.Tracer,
+		sc:            ch.GetSubChannel(opts.TargetService),
+		callOptions:   callOpts,
+		tracer:        opts.Tracer,
+		callerName:    callerName,
+		targetService: opts.TargetService,
 	}, nil
 }
 
@@ -146,6 +161,7 @@ func (t *tchan) Call(ctx context.Context, r *Request) (*Response, error) {
 	// the request object allows us to overwrite the headers reference without
 	// introducing a data race.
 	req := *r
+	req.Headers = t.addYabHeaders(req.Headers)
 
 	call, err := t.sc.BeginCall(ctx, req.Method, t.callOptions)
 
@@ -167,6 +183,45 @@ func (t *tchan) Call(ctx context.Context, r *Request) (*Response, error) {
 	tchSpan := tchannel.CurrentSpan(ctx)
 	res.TransportFields["trace"] = fmt.Sprintf("%x", tchSpan.TraceID())
 	return res, nil
+}
+
+// addYabHeaders stamps identity headers onto every outbound TChannel call.
+// x-yab-client marks the call as originating from yab, unconditionally.
+// x-yab-source is the best identity we have for the caller: the service name
+// the deploy/scheduling environment assigned to this container
+// (UDEPLOY_SERVICE_NAME), falling back to whatever the caller passed via
+// --caller/-cn if that env var isn't set (e.g. a personal devpod).
+//
+// It returns a new map rather than mutating headers in place, since the
+// caller's headers map is shared with the original *Request (Call only
+// makes a shallow copy). Raw payloads (rawHeadersKey) bypass the headers
+// map/encoding entirely, so nothing added here would reach the wire; the
+// map is returned untouched in that case.
+func (t *tchan) addYabHeaders(headers map[string]string) map[string]string {
+	if _, ok := headers[rawHeadersKey]; ok {
+		// Raw payloads bypass the headers map/encoding entirely (writeArgs
+		// writes the rawHeadersKey value verbatim and ignores every other
+		// key), so nothing added below would ever reach the wire.
+		return headers
+	}
+
+	newHeaders := make(map[string]string, len(headers)+4)
+	maps.Copy(newHeaders, headers)
+
+	newHeaders[yabClientHeader] = "true"
+	newHeaders[yabDestHeader] = t.targetService
+
+	source := t.callerName
+	if udeploySvc := os.Getenv("UDEPLOY_SERVICE_NAME"); udeploySvc != "" {
+		// UBER_RUNTIME_ENVIRONMENT is set alongside UDEPLOY_SERVICE_NAME by
+		// uDeploy as part of the same standard identity env vars for every
+		// scheduled workload, so it isn't expected to be empty here.
+		newHeaders[yabEnvHeader] = os.Getenv("UBER_RUNTIME_ENVIRONMENT")
+		source = udeploySvc
+	}
+	newHeaders[yabSourceHeader] = source
+
+	return newHeaders
 }
 
 func (t *tchan) readResponse(call *tchannel.OutboundCall) (*Response, error) {
