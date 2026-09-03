@@ -24,6 +24,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"testing"
 	"time"
 
@@ -117,13 +118,19 @@ func TestTChannelCallSuccessJSON(t *testing.T) {
 	headers := map[string]string{
 		"k": "v",
 	}
+	expectedHeaders := map[string]string{
+		"k":             "v",
+		yabClientHeader: "true",
+		yabDestHeader:   svr.ServiceName(),
+		yabSourceHeader: "yab",
+	}
 	body := map[string]interface{}{
 		"bodyk": "bodyv",
 	}
 
 	echoFunc := func(ctx tjson.Context, args map[string]interface{}) (map[string]interface{}, error) {
 		ctx.SetResponseHeaders(ctx.Headers())
-		assert.Equal(t, headers, ctx.Headers(), "Headers mismatch")
+		assert.Equal(t, expectedHeaders, ctx.Headers(), "Headers mismatch")
 		assert.Equal(t, body, args, "Args mismatch")
 		return body, nil
 	}
@@ -147,7 +154,7 @@ func TestTChannelCallSuccessJSON(t *testing.T) {
 	require.NoError(t, err, "Call failed")
 
 	// We use TrimSpace to trim any newlines at the end which can be ignored.
-	assert.Equal(t, headers, res.Headers, "Response headers mismatch")
+	assert.Equal(t, expectedHeaders, res.Headers, "Response headers mismatch")
 	assert.Equal(t, req.Body, bytes.TrimSpace(res.Body), "Response body mismatch")
 }
 
@@ -156,21 +163,26 @@ func TestTChannelCallSuccessRaw(t *testing.T) {
 	defer svr.Close()
 
 	headers := map[string]string{"k": "v"}
+	expectedHeaders := map[string]string{
+		"k":             "v",
+		yabClientHeader: "true",
+		yabDestHeader:   svr.ServiceName(),
+		yabSourceHeader: "yab",
+	}
 
 	tests := []struct {
 		headers         map[string]string
-		arg2            []byte
+		rawArg2         []byte // only set for the raw-payload case; compared as exact bytes
 		appError        bool
 		responseHeaders map[string]string
 	}{
 		{
 			headers:         headers,
-			arg2:            thriftEncodedHeaders(t, headers),
-			responseHeaders: headers,
+			responseHeaders: expectedHeaders,
 		},
 		{
 			headers:         map[string]string{rawHeadersKey: "no encoding"},
-			arg2:            []byte("no encoding"),
+			rawArg2:         []byte("no encoding"),
 			responseHeaders: map[string]string{rawHeadersKey: "no encoding"},
 		},
 	}
@@ -184,7 +196,16 @@ func TestTChannelCallSuccessRaw(t *testing.T) {
 
 			lastSpan = tchannel.CurrentSpan(ctx).TraceID()
 
-			assert.Equal(t, tt.arg2, args.Arg2, "Arg2 mismatch")
+			if tt.rawArg2 != nil {
+				assert.Equal(t, tt.rawArg2, args.Arg2, "Arg2 mismatch")
+			} else {
+				// thrift.WriteHeaders iterates a map, so byte order isn't
+				// stable across independently-built maps; decode and compare
+				// as maps instead of raw bytes.
+				gotHeaders, err := thrift.ReadHeaders(bytes.NewReader(args.Arg2))
+				require.NoError(t, err, "failed to decode headers")
+				assert.Equal(t, tt.responseHeaders, gotHeaders, "Arg2 headers mismatch")
+			}
 			return &raw.Res{
 				IsErr: tt.appError,
 				Arg2:  args.Arg2,
@@ -203,7 +224,7 @@ func TestTChannelCallSuccessRaw(t *testing.T) {
 		res, err := transport.Call(ctx, req)
 		require.NoError(t, err, "Call failed")
 
-		assert.Equal(t, req.Headers, res.Headers, "Response headers mismatch")
+		assert.Equal(t, tt.responseHeaders, res.Headers, "Response headers mismatch")
 		assert.Equal(t, req.Body, res.Body, "Response body mismatch")
 		assert.Equal(t, !tt.appError, res.TransportFields["ok"], "Response should be ok")
 		assert.Equal(t, fmt.Sprintf("%x", lastSpan), res.TransportFields["trace"], "Response trace")
@@ -333,11 +354,83 @@ func TestTChannelCallOptions(t *testing.T) {
 
 		assert.Equal(t, req.Body, res.Body, "Response body mismatch")
 	}
-
 }
 
-func thriftEncodedHeaders(t *testing.T, headers map[string]string) []byte {
-	var buf bytes.Buffer
-	require.NoError(t, thrift.WriteHeaders(&buf, headers), "WriteHeaders failed")
-	return buf.Bytes()
+func TestTChannelAddYabHeaders(t *testing.T) {
+	tests := []struct {
+		desc          string
+		callerName    string
+		targetService string
+		udeployEnv    string
+		runtimeEnv    string
+		headers       map[string]string
+		want          map[string]string
+	}{
+		{
+			desc:          "no udeploy env, falls back to caller-provided source",
+			callerName:    "yab",
+			targetService: "svc",
+			headers:       map[string]string{"k": "v"},
+			want: map[string]string{
+				"k":             "v",
+				yabClientHeader: "true",
+				yabDestHeader:   "svc",
+				yabSourceHeader: "yab",
+			},
+		},
+		{
+			desc:          "udeploy env agrees with caller-provided source",
+			callerName:    "real-service",
+			targetService: "svc",
+			udeployEnv:    "real-service",
+			runtimeEnv:    "production",
+			headers:       map[string]string{"k": "v"},
+			want: map[string]string{
+				"k":             "v",
+				yabClientHeader: "true",
+				yabDestHeader:   "svc",
+				yabSourceHeader: "real-service",
+				yabEnvHeader:    "production",
+			},
+		},
+		{
+			desc:          "udeploy env disagrees with caller-provided source",
+			callerName:    "totally-legit-service",
+			targetService: "svc",
+			udeployEnv:    "real-service",
+			runtimeEnv:    "staging",
+			headers:       map[string]string{"k": "v"},
+			want: map[string]string{
+				"k":             "v",
+				yabClientHeader: "true",
+				yabDestHeader:   "svc",
+				yabSourceHeader: "real-service",
+				yabEnvHeader:    "staging",
+			},
+		},
+		{
+			desc:          "raw payload headers are left untouched",
+			callerName:    "yab",
+			targetService: "svc",
+			udeployEnv:    "real-service",
+			headers:       map[string]string{rawHeadersKey: "raw bytes"},
+			want:          map[string]string{rawHeadersKey: "raw bytes"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Setenv("UDEPLOY_SERVICE_NAME", tt.udeployEnv)
+			t.Setenv("UBER_RUNTIME_ENVIRONMENT", tt.runtimeEnv)
+
+			tr := &tchan{callerName: tt.callerName, targetService: tt.targetService}
+			origHeaders := maps.Clone(tt.headers)
+
+			got := tr.addYabHeaders(tt.headers)
+
+			assert.Equal(t, tt.want, got)
+			assert.Equal(t, origHeaders, tt.headers, "input headers map must not be mutated")
+		})
+	}
+
 }
