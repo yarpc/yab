@@ -1,6 +1,26 @@
 Changelog
 =========
 
+# 0.29.0 (2026-09-07)
+* Add x-yab-client/x-yab-source/x-yab-dest/x-yab-env identity headers to outbound TChannel calls.
+
+# 0.28.0 (2026-07-07)
+* Fix: make --concurrency more fair between transports in benchmark mode.
+* Bump actions/setup-go to v6.
+* Update README with Go Report Card badge.
+
+# 0.27.0 (2026-03-04)
+* New: -en flag to specify the value of rpc-encoding in gRPC
+
+# 0.26.0 (2025-09-01)
+* Add http2 support to yab
+* Fix flaky unit test TestBenchmarkStateGetQuantileSuccess
+
+# 0.25.0 (2025-08-12)
+* Fix invalid reference to syscall.recvmsg
+* Optionally encode binary in thrift responses in the same way as requests
+* Fix GH actions cache version
+
 # 0.24.0 (2025-01-27)
 * Fix add default authority as service name for reflection call
 * Added arm64 builds to release

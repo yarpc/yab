@@ -47,6 +47,10 @@ func ResponseBytesToMap(spec *compile.FunctionSpec, responseBytes []byte, opts O
 		specs = getFieldMap(spec.ResultSpec.Exceptions)
 	}
 
+	decodeOpts := wireDecodeOptions{
+		binaryEnvelope: opts.Base64ResponseEnvelope,
+	}
+
 	result := make(map[string]interface{})
 	for _, f := range w.Fields {
 		err = nil
@@ -55,14 +59,14 @@ func ResponseBytesToMap(spec *compile.FunctionSpec, responseBytes []byte, opts O
 			if spec.ResultSpec == nil || spec.ResultSpec.ReturnType == nil {
 				return nil, fmt.Errorf("got unexpected result for void method: %v", f.Value)
 			}
-			result["result"], err = valueFromWire(spec.ResultSpec.ReturnType, f.Value)
+			result["result"], err = valueFromWire(spec.ResultSpec.ReturnType, f.Value, decodeOpts)
 		} else {
 			exSpec, ok := specs[f.ID]
 			if !ok {
 				return nil, fmt.Errorf("got unknown exception with ID %v: %v", f.ID, f.Value)
 			}
 
-			result[exSpec.Name], err = valueFromWire(exSpec.Type, f.Value)
+			result[exSpec.Name], err = valueFromWire(exSpec.Type, f.Value, decodeOpts)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse result field %v: %v", f.ID, err)

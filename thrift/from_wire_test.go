@@ -70,7 +70,8 @@ func TestValueFromWireSuccess(t *testing.T) {
 		spec compile.TypeSpec
 		v    interface{}
 
-		skipToWire bool
+		skipToWire     bool
+		binaryEnvelope bool
 	}{
 		{
 			w:    wire.NewValueBool(true),
@@ -107,18 +108,41 @@ func TestValueFromWireSuccess(t *testing.T) {
 			spec: &compile.StringSpec{},
 			v:    "str",
 		},
+		// binary has a more complicated input/output pair due to inconsistent
+		// handling of base64-encoded strings, controlled by a CLI option.
 		{
-			w:    wire.NewValueBinary([]byte("foo")),
-			spec: &compile.BinarySpec{},
-			v:    []byte("foo"),
+			binaryEnvelope: false,
+			skipToWire:     true,
+			w:              wire.NewValueBinary([]byte("foo")),
+			spec:           &compile.BinarySpec{},
+			v:              []byte("foo"), // historical behavior: inline base64 as a string
 		},
 		{
-			w: wire.NewValueBinary([]byte("foo")),
+			binaryEnvelope: false,
+			skipToWire:     true,
+			w:              wire.NewValueBinary([]byte("foo")),
 			spec: &compile.TypedefSpec{
 				Name:   "Blob",
 				Target: &compile.BinarySpec{},
 			},
-			v: []byte("foo"),
+			v: []byte("foo"), // historical behavior: inline base64 as a string
+		},
+		{
+			binaryEnvelope: true,
+			skipToWire:     true,
+			w:              wire.NewValueBinary([]byte("foo")),
+			spec:           &compile.BinarySpec{},
+			v:              map[string][]byte{"base64": []byte("foo")}, // new / opt-in behavior: wrap in a map, matching input format
+		},
+		{
+			binaryEnvelope: true,
+			skipToWire:     true,
+			w:              wire.NewValueBinary([]byte("foo")),
+			spec: &compile.TypedefSpec{
+				Name:   "Blob",
+				Target: &compile.BinarySpec{},
+			},
+			v: map[string][]byte{"base64": []byte("foo")}, // new / opt-in behavior: wrap in a map, matching input format
 		},
 		{
 			w: wire.NewValueString("str"),
@@ -361,7 +385,7 @@ func TestValueFromWireSuccess(t *testing.T) {
 		spec, err := tt.spec.Link(compile.EmptyScope("fake"))
 		require.NoError(t, err, "Failed to link %v", tt.spec)
 
-		got, err := valueFromWire(spec, tt.w)
+		got, err := valueFromWire(spec, tt.w, wireDecodeOptions{binaryEnvelope: tt.binaryEnvelope})
 		if assert.NoError(t, err, "Failed for valueFromWire(%v, %v)", spec, tt.w) {
 			assert.Equal(t, tt.v, got, "Unexpected value for valueFromWire(%v, %v)", tt.spec, tt.w)
 		}
@@ -468,7 +492,9 @@ func TestValueFromWireError(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got, err := valueFromWire(tt.spec, tt.w)
+		got, err := valueFromWire(tt.spec, tt.w, wireDecodeOptions{
+			binaryEnvelope: false, // not relevant for these tests
+		})
 		if !assert.Error(t, err, "Expected error for %v", tt.msg) {
 			continue
 		}

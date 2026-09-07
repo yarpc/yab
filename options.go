@@ -57,8 +57,9 @@ type RequestOptions struct {
 	TemplateArgs      map[string]string `short:"A" long:"arg" description:"A list of key-value template arguments, specified as -A foo:bar -A user:me"`
 
 	// Thrift options
-	ThriftDisableEnvelopes bool `long:"disable-thrift-envelope" description:"Disables Thrift envelopes (disabled by default for TChannel and gRPC)"`
-	ThriftMultiplexed      bool `long:"multiplexed-thrift" description:"Enables the Thrift TMultiplexedProtocol used by services that host multiple Thrift services on a single endpoint."`
+	ThriftDisableEnvelopes       bool `long:"disable-thrift-envelope" description:"Disables Thrift envelopes (disabled by default for TChannel and gRPC)"`
+	ThriftMultiplexed            bool `long:"multiplexed-thrift" description:"Enables the Thrift TMultiplexedProtocol used by services that host multiple Thrift services on a single endpoint."`
+	ThriftBase64ResponseEnvelope bool `long:"thrift-base64-response-envelope" description:"Enables a {\"base64\": \"base64 data\"} wrapper around binary response fields in thrift, to match the input formats and remove ambiguity (disabled by default, so binary is returned as \"base64 data\", matching protobuf)"`
 
 	// These are aliases for tcurl compatibility.
 	Aliases struct {
@@ -89,11 +90,16 @@ type TransportOptions struct {
 	RoutingKey          string            `long:"rk" description:"The routing key overrides the service name traffic group for proxies."`
 	RoutingDelegate     string            `long:"rd" description:"The routing delegate overrides the routing key traffic group for proxies."`
 	ShardKey            string            `long:"sk" description:"The shard key is a transport header that clues where to send a request within a clustered traffic group."`
+	RPCEncoding         string            `long:"en" description:"Override the rpc-encoding header/metadata value for gRPC and HTTP transports. This does not re-encode the request body and is intended for development."`
 	Jaeger              bool              `long:"jaeger" description:"Use the Jaeger tracing client to send Uber style traces and baggage headers"`
 	TransportHeaders    map[string]string `short:"T" long:"topt" description:"Transport options for TChannel, protocol headers for HTTP"`
 	HTTPMethod          string            `long:"http-method" description:"The HTTP method to use"`
 	GRPCMaxResponseSize int               `long:"grpc-max-response-size" description:"Maximum response size for gRPC requests. Default value is 4MB"`
 	ForceJaegerSample   bool              `long:"force-jaeger-sample" description:"Force all requests to be sampled for Jaeger tracing (use with --jaeger)"`
+
+	// Enables HTTP2 transport
+	UseHTTP2 bool `long:"http2" description:"Enable HTTP/2 for HTTP transport"`
+
 	// This is a hack to work around go-flags not allowing disabling flags:
 	// https://github.com/jessevdk/go-flags/issues/191
 	// Do not specify this value in a defaults.ini file as it is not possible

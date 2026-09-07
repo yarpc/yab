@@ -49,10 +49,11 @@ type thriftSerializer struct {
 // ThriftParams contains the parameters for the NewThrift function.
 // We use a struct as there are multiple consecutive arguments of the same type.
 type ThriftParams struct {
-	File        string
-	Method      string
-	Multiplexed bool
-	Envelope    bool
+	File                   string
+	Method                 string
+	Multiplexed            bool
+	Envelope               bool
+	Base64ResponseEnvelope bool
 }
 
 // NewThrift returns a Thrift serializer.
@@ -85,7 +86,8 @@ func NewThrift(p ThriftParams) (Serializer, error) {
 	}
 
 	opts := thrift.Options{
-		UseEnvelopes: p.Envelope,
+		UseEnvelopes:           p.Envelope,
+		Base64ResponseEnvelope: p.Base64ResponseEnvelope,
 	}
 	if p.Multiplexed {
 		opts.EnvelopeMethodPrefix = thriftSvc + _multiplexedSeparator

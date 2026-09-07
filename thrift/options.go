@@ -24,4 +24,16 @@ package thrift
 type Options struct {
 	UseEnvelopes         bool
 	EnvelopeMethodPrefix string
+	// Base64ResponseEnvelope controls whether binary fields in responses should
+	// be yaml/json-encoded with a base64-signaling envelope or not.
+	//
+	// if true, binary data is represented with `{"base64": "encoded"}`, which
+	// matches how thrift request fields are provided.
+	//
+	// if false, it is simply an inline string with `"encoded"`, which matches
+	// how protobuf represents this data, but does not match thrift's request
+	// formats.
+	//
+	// this currently defaults to false for backwards compatibility reasons.
+	Base64ResponseEnvelope bool
 }
