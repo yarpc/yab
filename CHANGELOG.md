@@ -1,6 +1,14 @@
 Changelog
 =========
 
+# 0.29.0 (2026-09-07)
+* Add x-yab-client/x-yab-source/x-yab-dest/x-yab-env identity headers to outbound TChannel calls.
+
+# 0.28.0 (2026-07-07)
+* Fix: make --concurrency more fair between transports in benchmark mode.
+* Bump actions/setup-go to v6.
+* Update README with Go Report Card badge.
+
 # 0.27.0 (2026-03-04)
 * New: -en flag to specify the value of rpc-encoding in gRPC
 
